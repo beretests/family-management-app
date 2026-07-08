@@ -1,6 +1,7 @@
 # Data Model
 
 Phase 3 adds the first Supabase Postgres schema for family-scoped app data.
+Phase 4 wires the identity and family-member tables into the app UI.
 
 ## Identity And Families
 
@@ -20,6 +21,22 @@ Bootstrap flow:
 2. User creates a `families` row with `created_by_profile_id = auth.uid()`.
 3. User creates the first `family_members` parent row for that family.
 4. Parent policies then allow managing the family.
+
+Phase 4 adds a narrow RLS helper for step 3:
+`current_user_created_family_without_members(family_id)`. It allows only the
+creator of a family with no existing members to create their own initial parent
+membership row.
+
+Child profile management:
+
+- Child profiles are `family_members` rows with `role = 'child'`.
+- MVP child profiles do not require Supabase Auth accounts.
+- Parent-entered preferences and dislikes are stored in
+  `family_member_preferences.notes` until chore templates exist.
+- Removing a child from active use sets `lifecycle_status = 'inactive'` and
+  `deactivated_at`; it does not hard-delete history.
+- Sick, rest, and under-the-weather updates append
+  `family_member_statuses` rows.
 
 ## House And Chores
 

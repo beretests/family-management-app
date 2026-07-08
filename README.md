@@ -13,9 +13,9 @@ This repository is built iteratively with the workflow in `AGENTS.md`:
 
 ## Current Phase
 
-Phase 3 adds the initial Supabase database schema, seed data, and RLS policies.
-It intentionally does not add storage buckets, cron jobs, production
-deployment, or paid services.
+Phase 4 adds parent-managed family setup and child profile management on top of
+the Supabase schema and RLS policies. It intentionally does not add storage
+buckets, cron jobs, production deployment, or paid services.
 
 ## Tech Stack
 
@@ -28,6 +28,7 @@ deployment, or paid services.
 - Vercel Hobby target
 - Supabase Auth through `@supabase/ssr`
 - Supabase Postgres migrations and RLS
+- Parent-managed family and child profiles
 - Supabase private storage planned for later phases
 
 ## Getting Started

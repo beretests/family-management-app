@@ -73,3 +73,51 @@ where not exists (
 -- This should return one row with starter_template_count = 14.
 select count(*) as starter_template_count
 from public.starter_chore_templates;
+
+-- Authenticated parent bootstrap should work under RLS. This verifies the
+-- first parent family_members row can be inserted before any family members
+-- exist, then rolls back all temporary rows.
+begin;
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  created_at,
+  updated_at
+) values (
+  '11111111-1111-4111-8111-111111111111',
+  'authenticated',
+  'authenticated',
+  'phase4-bootstrap@example.com',
+  'test-only',
+  now(),
+  now(),
+  now()
+);
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+insert into public.profiles(id, display_name)
+values ('11111111-1111-4111-8111-111111111111', 'Phase 4 Parent');
+insert into public.families(id, name, created_by_profile_id)
+values (
+  '22222222-2222-4222-8222-222222222222',
+  'Phase 4 Family',
+  '11111111-1111-4111-8111-111111111111'
+);
+insert into public.family_members(
+  id,
+  family_id,
+  profile_id,
+  display_name,
+  role
+) values (
+  '33333333-3333-4333-8333-333333333333',
+  '22222222-2222-4222-8222-222222222222',
+  '11111111-1111-4111-8111-111111111111',
+  'Phase 4 Parent',
+  'parent'
+);
+rollback;

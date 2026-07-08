@@ -1,8 +1,9 @@
 # Local Development
 
-This guide covers local development through Phase 3. Supabase Auth is wired for
-parent and caregiver accounts, and the initial database schema, RLS policies,
-and starter chore seed data are available through Supabase CLI migrations.
+This guide covers local development through Phase 4. Supabase Auth is wired for
+parent and caregiver accounts, the initial schema/RLS policies are available
+through Supabase CLI migrations, and signed-in parents can create family and
+child profiles.
 
 ## Requirements
 
@@ -66,8 +67,8 @@ npm run build
 
 ## Supabase
 
-Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 3
-also adds local migrations and seed data.
+Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 4
+also requires the local or remote database migrations to be applied.
 
 See:
 
@@ -81,6 +82,9 @@ For local database work:
 supabase start
 supabase db reset
 ```
+
+After signing in locally, visit `/dashboard`. If no family exists yet, the app
+links to `/family/setup`; family management lives at `/settings/family`.
 
 This project uses non-default local Supabase ports to avoid conflicts with other
 local projects:
@@ -98,7 +102,7 @@ Later phases will add:
 
 ## Vercel
 
-No Vercel deployment is required in Phase 2.
+No Vercel deployment is required in Phase 4.
 
 See `docs/vercel-setup.md` for planned env var and callback URL setup.
 
@@ -110,5 +114,5 @@ Later phases will add:
 
 ## Cost Guardrails
 
-Phase 2 adds no paid services. Do not add SMS, paid email, paid analytics, paid
+Phase 4 adds no paid services. Do not add SMS, paid email, paid analytics, paid
 AI APIs, paid storage, queues, or observability without owner approval.

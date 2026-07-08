@@ -1,7 +1,7 @@
 # Supabase Setup
 
-This document covers Supabase setup through Phase 3: Auth plus the initial
-database schema and RLS policies.
+This document covers Supabase setup through Phase 4: Auth, the initial database
+schema/RLS policies, and parent-managed family profile setup.
 
 ## Phase 2: Auth
 
@@ -114,6 +114,27 @@ After applying migrations, verify:
 - children cannot approve submissions or manage parent settings/templates.
 - global starter chore templates are read-only reference data for authenticated
   users.
+
+## Phase 4: Family Bootstrap RLS
+
+Phase 4 adds a small follow-up migration:
+
+- `20260708190000_fix_initial_family_member_bootstrap.sql`
+
+It creates `current_user_created_family_without_members(family_id)` and replaces
+the initial parent `family_members` insert policy. This lets an authenticated
+user create the first parent membership row for a family they just created,
+while keeping later member management parent-only.
+
+Run `supabase db reset` locally after pulling this phase. For a linked remote
+project, review the migration and then use:
+
+```bash
+supabase db push
+```
+
+The SQL verification script now includes a rollback-only bootstrap check for
+this policy.
 
 ### API Keys
 
