@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getBootstrapReadinessItems } from "@/lib/bootstrap-readiness";
 
@@ -58,9 +59,23 @@ export default function Home() {
               Today&apos;s family plan, ready for fair chores and busy schedules.
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--muted)]">
-              Phase 1 establishes the Next.js foundation. Auth, Supabase data,
-              assignments, and reviews arrive in later approved phases.
+              Supabase Auth is ready for parent and caregiver accounts. Family
+              data, assignments, and reviews arrive in later approved phases.
             </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                className="inline-flex min-h-11 items-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                href="/sign-in"
+              >
+                Sign in
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center rounded-md border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+                href="/sign-up"
+              >
+                Create account
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-3 shadow-sm">

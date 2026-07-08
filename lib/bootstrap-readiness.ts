@@ -17,11 +17,11 @@ export function getBootstrapReadinessItems(): BootstrapReadinessItem[] {
       tone: "success",
     },
     {
-      label: "Supabase",
+      label: "Supabase Auth",
       description:
-        "Environment variable names are documented, but clients and auth are intentionally deferred.",
-      status: "Planned",
-      tone: "info",
+        "SSR clients, protected routes, email sign-in, and Google OAuth entry points are ready for configuration.",
+      status: "Ready",
+      tone: "success",
     },
     {
       label: "Free-tier guardrails",
