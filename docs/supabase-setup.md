@@ -1,7 +1,7 @@
 # Supabase Setup
 
-This document starts with the Phase 2 Auth setup. Database schema, migrations,
-RLS, storage, seed data, and retention cleanup are planned for later phases.
+This document covers Supabase setup through Phase 3: Auth plus the initial
+database schema and RLS policies.
 
 ## Phase 2: Auth
 
@@ -44,14 +44,93 @@ Do not enable it until:
 - possible SMS costs are accepted
 - setup steps are documented here and in `docs/auth-setup.md`
 
-## Later Phases
+## Phase 3: Database Schema And RLS
 
-Phase 3 should add:
+Phase 3 adds:
 
+- `supabase/config.toml`
 - migrations in `supabase/migrations`
-- RLS policies
-- seed data
-- data-model documentation
+- RLS policies on app tables
+- starter chore seed data in `supabase/seed.sql`
+- data-model documentation in `docs/data-model.md`
+
+### Local CLI Setup
+
+Install the Supabase CLI using the current official instructions for your
+machine, then from the repo root run:
+
+```bash
+supabase start
+supabase db reset
+```
+
+`supabase db reset` applies migrations and runs `supabase/seed.sql` locally.
+
+This repo intentionally uses non-default local ports in `supabase/config.toml`
+so it can run alongside other Supabase projects:
+
+- API: `http://127.0.0.1:55421`
+- Database: `postgresql://postgres:postgres@127.0.0.1:55422/postgres`
+- Studio: `http://127.0.0.1:55423`
+- Email testing: `http://127.0.0.1:55424`
+- SMTP: `55425`
+- POP3: `55426`
+- Analytics: `http://127.0.0.1:55427`
+- Shadow database: `55420`
+
+Optional verification:
+
+```bash
+supabase status
+```
+
+Then run the SQL checks in `tests/sql/rls-verification.sql` from a local SQL
+editor or `psql`.
+
+### Remote Project Setup
+
+Do not make manual dashboard table edits for app schema. Keep schema changes in
+migrations.
+
+When ready to apply to a remote project:
+
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+Review the migration before confirming. Do not run destructive migration steps
+without explicit approval.
+
+### RLS Review
+
+After applying migrations, verify:
+
+- RLS is enabled on app tables.
+- family-owned tables include `family_id`.
+- parents can manage family settings, members, templates, tasks, rewards, and
+  approvals.
+- children can read family schedule and their own assignments/submissions.
+- children cannot approve submissions or manage parent settings/templates.
+- global starter chore templates are read-only reference data for authenticated
+  users.
+
+### API Keys
+
+Use:
+
+```bash
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
+```
+
+Do not use `SUPABASE_SECRET_KEY` in browser code. It bypasses RLS and must stay
+server-only.
+
+The legacy `SUPABASE_SERVICE_ROLE_KEY` name may remain in docs for compatibility
+with older tooling, but new app code should prefer `SUPABASE_SECRET_KEY`.
+
+## Later Phases
 
 Phase 8 should add:
 

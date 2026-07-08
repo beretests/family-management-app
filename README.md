@@ -13,9 +13,9 @@ This repository is built iteratively with the workflow in `AGENTS.md`:
 
 ## Current Phase
 
-Phase 2 adds Supabase Auth for parent and caregiver accounts. It intentionally
-does not add database migrations, RLS policies, storage buckets, cron jobs, or
-paid services.
+Phase 3 adds the initial Supabase database schema, seed data, and RLS policies.
+It intentionally does not add storage buckets, cron jobs, production
+deployment, or paid services.
 
 ## Tech Stack
 
@@ -27,7 +27,8 @@ paid services.
 - Vitest
 - Vercel Hobby target
 - Supabase Auth through `@supabase/ssr`
-- Supabase Postgres, RLS, and private storage planned for later phases
+- Supabase Postgres migrations and RLS
+- Supabase private storage planned for later phases
 
 ## Getting Started
 
@@ -70,6 +71,8 @@ Never commit real secrets.
 - `docs/architecture.md`: current architecture and phase boundaries
 - `docs/auth-setup.md`: Supabase Auth provider setup
 - `docs/supabase-setup.md`: Supabase dashboard setup notes
+- `docs/data-model.md`: database tables and RLS policy intent
+- `docs/product-decisions.md`: product rules represented in the schema
 - `docs/vercel-setup.md`: Vercel env and callback setup notes
 - `docs/PHASE_HANDOFF.md`: handoff notes for the next phase
 - `docs/WORKTREE_PHASE_WORKFLOW.md`: branch/worktree process

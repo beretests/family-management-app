@@ -1,8 +1,8 @@
 # Local Development
 
-This guide covers local development through Phase 2. Supabase Auth is wired for
-parent and caregiver accounts. Database, RLS, storage, and deployment setup are
-planned for later phases.
+This guide covers local development through Phase 3. Supabase Auth is wired for
+parent and caregiver accounts, and the initial database schema, RLS policies,
+and starter chore seed data are available through Supabase CLI migrations.
 
 ## Requirements
 
@@ -66,16 +66,33 @@ npm run build
 
 ## Supabase
 
-Supabase dashboard setup is required to test real sign-up/sign-in flows.
+Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 3
+also adds local migrations and seed data.
 
 See:
 
 - `docs/auth-setup.md`
 - `docs/supabase-setup.md`
+- `docs/data-model.md`
+
+For local database work:
+
+```bash
+supabase start
+supabase db reset
+```
+
+This project uses non-default local Supabase ports to avoid conflicts with other
+local projects:
+
+- API: `http://127.0.0.1:55421`
+- Database: `postgresql://postgres:postgres@127.0.0.1:55422/postgres`
+- Studio: `http://127.0.0.1:55423`
+- Email testing: `http://127.0.0.1:55424`
+- Analytics: `http://127.0.0.1:55427`
 
 Later phases will add:
 
-- database migrations and RLS
 - private evidence storage bucket
 - storage policies and retention cleanup
 
