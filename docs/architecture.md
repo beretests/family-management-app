@@ -1,6 +1,6 @@
 # Architecture
 
-This document reflects the Phase 3 auth and database foundation. It should be
+This document reflects the Phase 4 auth, database, and family profile foundation. It should be
 updated whenever a later phase adds app-facing data access, storage, cron, or
 deployment behavior.
 
@@ -10,6 +10,10 @@ deployment behavior.
 app/
   (app)/
     dashboard/
+    family/
+      setup/
+    settings/
+      family/
   (auth)/
     callback/
     sign-in/
@@ -19,12 +23,15 @@ app/
   page.tsx
 components/
   auth/
+  family/
   layout/
   ui/
 features/
   auth/
+  family/
 lib/
   auth/
+  permissions/
   supabase/
 supabase/
   config.toml
@@ -36,9 +43,9 @@ tests/
 docs/
 ```
 
-The app renders a public landing page, Supabase Auth entry points, and a
-protected dashboard placeholder. Phase 3 adds the database schema and RLS
-foundation but does not yet connect UI screens to family data.
+The app renders a public landing page, Supabase Auth entry points, a protected
+dashboard, family setup, and parent-managed child profile settings. Phase 4
+connects the first app UI screens to family data.
 
 ## Request Flow
 
@@ -68,6 +75,15 @@ Database flow:
 4. RLS helper functions resolve membership from `auth.uid()`.
 5. Family-owned tables use `family_id` and RLS policies to constrain access.
 
+Family profile flow:
+
+1. `/dashboard` loads family context through `features/family/queries.ts`.
+2. If no family exists, the user is sent to `/family/setup`.
+3. Family setup creates `profiles`, `families`, and the first parent
+   `family_members` row through Server Actions.
+4. `/settings/family` lets active parents create child profiles, update notes,
+   set status, and deactivate children.
+
 Client provided `family_id`, `member_id`, and role values must be treated as
 untrusted. Server-side code should resolve permissions from the authenticated
 session and database membership.
@@ -83,7 +99,8 @@ session and database membership.
 
 ## Security Posture
 
-Phase 3 has no app-facing database CRUD UI, file storage, or cron route.
+Phase 4 adds app-facing CRUD for family and child profile records. It still has
+no file storage or cron route.
 
 Auth security decisions:
 
@@ -94,6 +111,8 @@ Auth security decisions:
 - keeps phone auth disabled by default
 - enables RLS on app tables
 - uses security-definer helpers to avoid trusting client role values
+- validates family profile mutations with Zod Server Actions
+- resolves active parent membership server-side before child management writes
 
 The project reserves these environment variables:
 
@@ -109,7 +128,7 @@ Only `NEXT_PUBLIC_*` variables may be read in browser code.
 
 ## Free-Tier Posture
 
-Phase 3 runs locally and is compatible with Vercel Hobby deployment, but no
+Phase 4 runs locally and is compatible with Vercel Hobby deployment, but no
 deployment has been performed.
 
 The app does not include paid services, analytics, AI APIs, SMS, storage,
@@ -117,7 +136,8 @@ queues, or external cron providers.
 
 ## Testing Strategy
 
-Phase 3 includes SQL verification notes for RLS and family-owned table shape.
+Phase 4 includes SQL verification notes for RLS, family-owned table shape, seed
+data, and the initial parent bootstrap policy.
 Later phases should add tests for:
 
 - Supabase auth flows
