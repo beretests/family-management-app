@@ -1,0 +1,36 @@
+project_id = "family-app-codex-workflow"
+
+[api]
+enabled = true
+port = 55421
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 55422
+shadow_port = 55420
+major_version = 15
+
+[studio]
+enabled = true
+port = 55423
+
+[inbucket]
+enabled = true
+port = 55424
+smtp_port = 55425
+pop3_port = 55426
+
+[analytics]
+enabled = true
+port = 55427
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/callback"]
+enable_signup = true
+
+[storage]
+enabled = true
