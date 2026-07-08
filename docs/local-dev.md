@@ -1,14 +1,15 @@
 # Local Development
 
-This guide covers the Phase 1 app foundation. Supabase Auth, database, RLS,
-storage, and deployment setup are planned for later phases.
+This guide covers local development through Phase 2. Supabase Auth is wired for
+parent and caregiver accounts. Database, RLS, storage, and deployment setup are
+planned for later phases.
 
 ## Requirements
 
 - Node.js 20.9 or newer for the current Next.js toolchain.
 - npm 10 or newer.
 
-The current environment used for Phase 1 verification was:
+The current environment used for verification was:
 
 - Node.js v24.3.0
 - npm 11.4.2
@@ -29,8 +30,8 @@ Open `http://localhost:3000`.
 
 ## Environment Variables
 
-Phase 1 can run without Supabase values. The placeholders are present now so
-later phases can add Auth, RLS, storage, and cron without renaming variables.
+The public landing page can run without Supabase values. Auth routes show a
+setup notice until Supabase public env vars are configured.
 
 Create `.env.local` from `.env.example` when values are available:
 
@@ -65,30 +66,32 @@ npm run build
 
 ## Supabase
 
-No Supabase dashboard setup is required in Phase 1.
+Supabase dashboard setup is required to test real sign-up/sign-in flows.
 
-Later phases will document:
+See:
 
-- Supabase project creation
-- Auth provider setup
+- `docs/auth-setup.md`
+- `docs/supabase-setup.md`
+
+Later phases will add:
+
 - database migrations and RLS
 - private evidence storage bucket
 - storage policies and retention cleanup
 
 ## Vercel
 
-No Vercel deployment is required in Phase 1.
+No Vercel deployment is required in Phase 2.
 
-Later phases will document:
+See `docs/vercel-setup.md` for planned env var and callback URL setup.
+
+Later phases will add:
 
 - importing the repo
-- adding environment variables
-- configuring auth callback URLs
-- setting `NEXT_PUBLIC_APP_URL`
 - optional low-frequency cron setup
 - free-tier usage monitoring
 
 ## Cost Guardrails
 
-Phase 1 adds no paid services. Do not add SMS, paid email, paid analytics, paid
+Phase 2 adds no paid services. Do not add SMS, paid email, paid analytics, paid
 AI APIs, paid storage, queues, or observability without owner approval.

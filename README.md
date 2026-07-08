@@ -13,8 +13,8 @@ This repository is built iteratively with the workflow in `AGENTS.md`:
 
 ## Current Phase
 
-Phase 1 bootstraps the Next.js foundation only. It intentionally does not add
-Supabase Auth, database migrations, RLS policies, storage buckets, cron jobs, or
+Phase 2 adds Supabase Auth for parent and caregiver accounts. It intentionally
+does not add database migrations, RLS policies, storage buckets, cron jobs, or
 paid services.
 
 ## Tech Stack
@@ -26,7 +26,8 @@ paid services.
 - Prettier
 - Vitest
 - Vercel Hobby target
-- Supabase planned for auth, Postgres, RLS, and private storage in later phases
+- Supabase Auth through `@supabase/ssr`
+- Supabase Postgres, RLS, and private storage planned for later phases
 
 ## Getting Started
 
@@ -57,8 +58,9 @@ npm run build
 
 ## Environment
 
-Copy `.env.example` to `.env.local` when local secrets are needed. Phase 1 does
-not require Supabase values to render the bootstrap app.
+Copy `.env.example` to `.env.local` when local secrets are needed. The public
+landing page can run without Supabase values. Auth routes show setup notices
+until Supabase public env vars are configured.
 
 Never commit real secrets.
 
@@ -66,6 +68,9 @@ Never commit real secrets.
 
 - `docs/local-dev.md`: local setup and commands
 - `docs/architecture.md`: current architecture and phase boundaries
+- `docs/auth-setup.md`: Supabase Auth provider setup
+- `docs/supabase-setup.md`: Supabase dashboard setup notes
+- `docs/vercel-setup.md`: Vercel env and callback setup notes
 - `docs/PHASE_HANDOFF.md`: handoff notes for the next phase
 - `docs/WORKTREE_PHASE_WORKFLOW.md`: branch/worktree process
 - `docs/PRODUCT_SPEC.md`: product and UX requirements

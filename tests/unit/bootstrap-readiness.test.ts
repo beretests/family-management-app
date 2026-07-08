@@ -8,7 +8,7 @@ describe("getBootstrapReadinessItems", () => {
     expect(items).toHaveLength(3);
     expect(items.map((item) => item.label)).toEqual([
       "App Router",
-      "Supabase",
+      "Supabase Auth",
       "Free-tier guardrails",
     ]);
   });
