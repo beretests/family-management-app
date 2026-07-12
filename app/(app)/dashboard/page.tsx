@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getFamilyContext } from "@/features/family/queries";
+import { scheduleEventTypeLabels } from "@/features/schedule/labels";
+import { getScheduleEvents } from "@/features/schedule/queries";
+import type { ScheduleEvent } from "@/features/schedule/types";
+import { endOfDay, formatTimeRange, startOfDay } from "@/lib/dates/schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +43,12 @@ export default async function DashboardPage() {
       member.currentStatus?.status ?? "normal",
     ),
   );
+  const today = new Date();
+  const todayEvents = await getScheduleEvents({
+    endsAt: endOfDay(today),
+    familyId: context.family.id,
+    startsAt: startOfDay(today),
+  });
 
   return (
     <section className="grid gap-5">
@@ -48,21 +58,61 @@ export default async function DashboardPage() {
           {context.family.name}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-          Parent-managed family profiles are connected to Supabase RLS. Chores,
-          schedules, rewards, and reviews arrive in later approved phases.
+          Parent-managed family profiles and schedules are connected to
+          Supabase RLS. Chores, rewards, and reviews arrive in later approved
+          phases.
         </p>
-        <Link
-          className="mt-5 inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-          href="/settings/family"
-        >
-          Manage family
-        </Link>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link
+            className="inline-flex min-h-10 items-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+            href="/schedule"
+          >
+            Open schedule
+          </Link>
+          <Link
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+            href="/settings/family"
+          >
+            Manage family
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
         <MetricCard label="Active kids" value={activeChildren.length} />
         <MetricCard label="Rest flags" value={childrenNeedingRest.length} />
-        <MetricCard label="Family members" value={context.members.length} />
+        <MetricCard label="Today events" value={todayEvents.length} />
+      </div>
+
+      <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">
+            Today
+          </h2>
+          <Link
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+            href="/schedule"
+          >
+            View week
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {todayEvents.length === 0 ? (
+            <p className="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)] md:col-span-3">
+              Nothing scheduled today.
+            </p>
+          ) : null}
+          {todayEvents.slice(0, 6).map((event) => (
+            <DashboardEventCard
+              event={event}
+              key={event.id}
+              memberName={
+                context.members.find((member) => member.id === event.memberId)
+                  ?.displayName ?? "Whole family"
+              }
+            />
+          ))}
+        </div>
       </div>
 
       <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
@@ -106,6 +156,26 @@ export default async function DashboardPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+function DashboardEventCard({
+  event,
+  memberName,
+}: {
+  event: ScheduleEvent;
+  memberName: string;
+}) {
+  return (
+    <article className="rounded-md border border-[var(--line)] p-4">
+      <h3 className="font-semibold text-[var(--foreground)]">{event.title}</h3>
+      <p className="mt-1 text-sm text-[var(--muted)]">
+        {formatTimeRange(event.startsAt, event.endsAt, event.allDay)}
+      </p>
+      <p className="mt-2 text-sm text-[var(--muted)]">
+        {memberName} · {scheduleEventTypeLabels[event.eventType]}
+      </p>
+    </article>
   );
 }
 

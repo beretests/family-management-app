@@ -1,7 +1,8 @@
 # Data Model
 
 Phase 3 adds the first Supabase Postgres schema for family-scoped app data.
-Phase 4 wires the identity and family-member tables into the app UI.
+Phase 4 wires the identity and family-member tables into the app UI. Phase 5
+wires schedule events into app-facing day/week views.
 
 ## Identity And Families
 
@@ -67,8 +68,16 @@ Actual Supabase Storage bucket policies are not part of Phase 3.
 - `schedule_events`: family schedule entries, extracurriculars, appointments,
   sick/rest windows, parent blocked time, and chore/task schedule entries.
 
-Kids may insert/update their own extracurricular entries. Parents can manage all
-family schedule events.
+Phase 5 uses the existing `schedule_events` table without adding a migration.
+Parent Server Actions create, update, and delete rows after resolving active
+parent membership server-side. Assigned `member_id` values are checked against
+active family members before write attempts. Day/week reads are constrained by
+`family_id`, `starts_at`, and `ends_at`; RLS still decides whether the
+authenticated user can read the family schedule.
+
+Kids may insert/update their own extracurricular entries at the RLS layer, but
+the Phase 5 UI exposes parent-managed schedule CRUD only. Child-facing schedule
+entry remains future scope.
 
 ## Swaps, Rewards, Points, Reminders
 
