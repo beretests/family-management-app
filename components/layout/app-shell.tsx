@@ -30,6 +30,12 @@ export function AppShell({
               </Link>
               <Link
                 className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+                href="/schedule"
+              >
+                Schedule
+              </Link>
+              <Link
+                className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
                 href="/settings/family"
               >
                 Family
@@ -39,7 +45,7 @@ export function AppShell({
               <button
                 className="min-h-10 rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
                 type="submit"
-            >
+              >
                 Sign out
               </button>
             </form>

@@ -1,17 +1,21 @@
 # Architecture
 
-This document reflects the Phase 4 auth, database, and family profile foundation. It should be
-updated whenever a later phase adds app-facing data access, storage, cron, or
-deployment behavior.
+This document reflects the Phase 5 auth, database, family profile, and schedule
+foundation. It should be updated whenever a later phase adds app-facing storage,
+cron, or deployment behavior.
 
 ## Current Shape
 
 ```text
 app/
+  api/
+    test/
+      session/
   (app)/
     dashboard/
     family/
       setup/
+    schedule/
     settings/
       family/
   (auth)/
@@ -25,12 +29,15 @@ components/
   auth/
   family/
   layout/
+  schedule/
   ui/
 features/
   auth/
   family/
+  schedule/
 lib/
   auth/
+  dates/
   permissions/
   supabase/
 supabase/
@@ -38,14 +45,16 @@ supabase/
   migrations/
   seed.sql
 tests/
+  e2e/
   sql/
   unit/
 docs/
 ```
 
 The app renders a public landing page, Supabase Auth entry points, a protected
-dashboard, family setup, and parent-managed child profile settings. Phase 4
-connects the first app UI screens to family data.
+dashboard, family setup, parent-managed child profile settings, and family
+schedule day/week views. Phase 5 connects schedule UI to the existing
+`schedule_events` table.
 
 ## Request Flow
 
@@ -66,6 +75,15 @@ Auth request flow:
 5. `/callback` exchanges the auth code for a server-managed session.
 6. `app/(app)/layout.tsx` verifies claims before rendering protected pages.
 
+E2E test auth flow:
+
+1. Playwright creates a confirmed local Supabase user from the Node test process.
+2. The browser verifies the sign-in page is available.
+3. Playwright posts credentials to `/api/test/session`.
+4. That route returns 404 unless `E2E_TEST_AUTH_ENABLED=true`.
+5. When enabled, the route uses normal Supabase password sign-in and sets SSR
+   auth cookies for the browser context.
+
 Database flow:
 
 1. Supabase Auth establishes the user identity.
@@ -84,6 +102,17 @@ Family profile flow:
 4. `/settings/family` lets active parents create child profiles, update notes,
    set status, and deactivate children.
 
+Schedule flow:
+
+1. `/schedule` loads the signed-in user's family context.
+2. The route reads day/week events through `features/schedule/queries.ts`.
+3. Parents create, update, and delete schedule events through Server Actions.
+4. Schedule actions validate input with Zod, resolve active parent membership
+   server-side, verify assigned members belong to the family, and then rely on
+   existing Supabase RLS policies for database writes.
+5. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
+   events assigned to the same family member.
+
 Client provided `family_id`, `member_id`, and role values must be treated as
 untrusted. Server-side code should resolve permissions from the authenticated
 session and database membership.
@@ -99,8 +128,8 @@ session and database membership.
 
 ## Security Posture
 
-Phase 4 adds app-facing CRUD for family and child profile records. It still has
-no file storage or cron route.
+Phase 5 adds app-facing CRUD for family schedule records. It still has no file
+storage or cron route.
 
 Auth security decisions:
 
@@ -108,11 +137,17 @@ Auth security decisions:
 - uses `getClaims()` for protected route checks
 - validates redirect targets so auth redirects stay on local app paths
 - keeps service-role and secret keys out of browser code
+- keeps the E2E service-role lookup in Node test code only
 - keeps phone auth disabled by default
 - enables RLS on app tables
 - uses security-definer helpers to avoid trusting client role values
 - validates family profile mutations with Zod Server Actions
 - resolves active parent membership server-side before child management writes
+- validates schedule mutations with Zod Server Actions
+- resolves active parent membership server-side before schedule management
+  writes
+- checks assigned schedule members server-side before write attempts
+- guards the test-only session route behind `E2E_TEST_AUTH_ENABLED=true`
 
 The project reserves these environment variables:
 
@@ -128,7 +163,7 @@ Only `NEXT_PUBLIC_*` variables may be read in browser code.
 
 ## Free-Tier Posture
 
-Phase 4 runs locally and is compatible with Vercel Hobby deployment, but no
+Phase 5 runs locally and is compatible with Vercel Hobby deployment, but no
 deployment has been performed.
 
 The app does not include paid services, analytics, AI APIs, SMS, storage,
@@ -136,14 +171,17 @@ queues, or external cron providers.
 
 ## Testing Strategy
 
-Phase 4 includes SQL verification notes for RLS, family-owned table shape, seed
-data, and the initial parent bootstrap policy.
+Phase 5 includes unit coverage for schedule validation and same-member conflict
+detection. It also includes a Playwright smoke test for local parent session
+setup, family setup, child creation, and schedule event creation. SQL
+verification notes still cover RLS, family-owned table shape, seed data, and the
+initial parent bootstrap policy.
 Later phases should add tests for:
 
 - Supabase auth flows
 - parent/child permissions
 - RLS policy behavior
-- schedule conflict detection
+- additional E2E coverage for edit/delete flows
 - deterministic chore generation and assignment
 - points ledger calculations
 - evidence cleanup selection
