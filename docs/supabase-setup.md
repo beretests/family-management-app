@@ -1,7 +1,7 @@
 # Supabase Setup
 
-This document covers Supabase setup through Phase 4: Auth, the initial database
-schema/RLS policies, and parent-managed family profile setup.
+This document covers Supabase setup through Phase 8: Auth, database schema/RLS
+policies, family profile setup, assignments, and private evidence storage.
 
 ## Phase 2: Auth
 
@@ -151,11 +151,34 @@ server-only.
 The legacy `SUPABASE_SERVICE_ROLE_KEY` name may remain in docs for compatibility
 with older tooling, but new app code should prefer `SUPABASE_SECRET_KEY`.
 
-## Later Phases
+## Phase 8: Evidence Storage
 
-Phase 8 should add:
+Phase 8 adds:
 
-- private evidence storage bucket
-- storage policies
-- signed URL access pattern
-- evidence retention documentation
+- additive `task_instances` snapshot columns for evidence requirements
+- private `task-evidence` Storage bucket
+- Storage object policies scoped by family, task, and assigned member
+- signed URL access pattern for private evidence previews
+- evidence retention documentation in `docs/storage-retention.md`
+
+Apply locally with:
+
+```bash
+supabase db reset
+```
+
+For a linked remote project, review the migration and then use:
+
+```bash
+supabase db push
+```
+
+The migration creates the bucket as private and limits uploads to:
+
+- JPEG
+- PNG
+- WebP
+- GIF
+- 5 MB max file size
+
+Do not make the `task-evidence` bucket public.
