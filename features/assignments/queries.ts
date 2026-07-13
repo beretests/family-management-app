@@ -27,6 +27,9 @@ type TaskInstanceRow = {
   assignment_reason: string | null;
   difficulty_snapshot: number;
   estimated_minutes_snapshot: number;
+  requires_evidence_snapshot: boolean;
+  evidence_type_snapshot: "photo" | "note" | null;
+  completion_check_text_snapshot: string | null;
   is_undesirable: boolean;
   created_at: string;
   updated_at: string;
@@ -69,6 +72,7 @@ function mapTaskInstance(row: TaskInstanceRow): TaskInstance {
     createdByMemberId: row.created_by_member_id,
     difficultySnapshot: row.difficulty_snapshot,
     dueAt: row.due_at,
+    evidenceTypeSnapshot: row.evidence_type_snapshot,
     estimatedMinutesSnapshot: row.estimated_minutes_snapshot,
     familyId: row.family_id,
     id: row.id,
@@ -78,17 +82,19 @@ function mapTaskInstance(row: TaskInstanceRow): TaskInstance {
     rejectedAt: row.rejected_at,
     rejectionCount: row.rejection_count,
     rejectionReason: row.rejection_reason,
+    requiresEvidenceSnapshot: row.requires_evidence_snapshot,
     status: row.status,
     submittedAt: row.submitted_at,
     subtasksSnapshot: mapSubtasksSnapshot(row.subtasks_snapshot),
     templateId: row.template_id,
     titleSnapshot: row.title_snapshot,
     updatedAt: row.updated_at,
+    completionCheckTextSnapshot: row.completion_check_text_snapshot,
   };
 }
 
 const taskInstanceSelect =
-  "id,family_id,template_id,assigned_to_member_id,created_by_member_id,title_snapshot,subtasks_snapshot,points_possible,points_awarded,status,due_at,available_from,completed_at,submitted_at,approved_at,rejected_at,rejection_count,rejection_reason,assignment_reason,difficulty_snapshot,estimated_minutes_snapshot,is_undesirable,created_at,updated_at";
+  "id,family_id,template_id,assigned_to_member_id,created_by_member_id,title_snapshot,subtasks_snapshot,points_possible,points_awarded,status,due_at,available_from,completed_at,submitted_at,approved_at,rejected_at,rejection_count,rejection_reason,assignment_reason,difficulty_snapshot,estimated_minutes_snapshot,requires_evidence_snapshot,evidence_type_snapshot,completion_check_text_snapshot,is_undesirable,created_at,updated_at";
 
 export async function getTaskInstances({
   endsAt,

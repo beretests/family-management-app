@@ -1,9 +1,10 @@
 # Local Development
 
-This guide covers local development through Phase 6. Supabase Auth is wired for
+This guide covers local development through Phase 8. Supabase Auth is wired for
 parent and caregiver accounts, the initial schema/RLS policies are available
 through Supabase CLI migrations, and signed-in parents can create family and
-child profiles, family schedule events, and chore templates.
+child profiles, family schedule events, chore templates, assignments, and kid
+task submissions.
 
 ## Requirements
 
@@ -76,14 +77,13 @@ The E2E suite uses Playwright with system Chrome by default. Set
 `PLAYWRIGHT_BROWSER_CHANNEL` if you need a different installed browser channel.
 The Playwright-managed dev server runs on `http://127.0.0.1:3106` by default
 and enables `E2E_TEST_AUTH_ENABLED=true`, which turns on the guarded local-only
-test session route at `/api/test/session`. Without that flag, the route returns
-404. The test runner reads local Supabase connection details from environment
+test session route at `/api/test/session`. Without that flag, the route returns 404. The test runner reads local Supabase connection details from environment
 variables or `supabase status -o env`; do not commit service-role values.
 
 ## Supabase
 
-Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 6
-also requires the local or remote database migrations to be applied.
+Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 8
+also requires the local or remote database and Storage migrations to be applied.
 
 See:
 
@@ -99,9 +99,10 @@ supabase db reset
 ```
 
 After signing in locally, visit `/dashboard`. If no family exists yet, the app
-links to `/family/setup`; family management lives at `/settings/family`, and
-day/week schedule views live at `/schedule`. Chore template setup lives at
-`/chores`.
+links to `/family/setup`; family management lives at `/settings/family`, day/week
+schedule views live at `/schedule`, chore template setup lives at `/chores`,
+assignment planning lives at `/assignments`, and kid task submission lives at
+`/my-today`.
 
 This project uses non-default local Supabase ports to avoid conflicts with other
 local projects:
@@ -112,14 +113,14 @@ local projects:
 - Email testing: `http://127.0.0.1:55424`
 - Analytics: `http://127.0.0.1:55427`
 
-Later phases will add:
+Phase 8 creates a private `task-evidence` bucket through migration. Evidence
+uploads are limited to JPEG, PNG, WebP, or GIF files up to 5 MB.
 
-- private evidence storage bucket
-- storage policies and retention cleanup
+Later phases will add automated retention cleanup.
 
 ## Vercel
 
-No Vercel deployment is required in Phase 6.
+No Vercel deployment is required in Phase 8.
 
 See `docs/vercel-setup.md` for planned env var and callback URL setup.
 
@@ -131,5 +132,6 @@ Later phases will add:
 
 ## Cost Guardrails
 
-Phase 6 adds no paid services. Do not add SMS, paid email, paid analytics, paid
-AI APIs, paid storage, queues, or observability without owner approval.
+Phase 8 adds private Supabase Storage usage for evidence photos, which can
+consume free-tier storage and egress. Do not add SMS, paid email, paid
+analytics, paid AI APIs, paid queues, or observability without owner approval.

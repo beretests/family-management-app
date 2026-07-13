@@ -75,15 +75,15 @@ export default async function DashboardPage() {
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
             className="inline-flex min-h-10 items-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-            href="/schedule"
+            href="/my-today"
           >
-            Open schedule
+            Open My Today
           </Link>
           <Link
             className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-            href="/settings/family"
+            href="/schedule"
           >
-            Manage family
+            Open schedule
           </Link>
         </div>
       </div>

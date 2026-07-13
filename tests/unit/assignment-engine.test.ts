@@ -95,6 +95,7 @@ function task(overrides: Partial<TaskInstance>): TaskInstance {
     createdByMemberId: null,
     difficultySnapshot: 2,
     dueAt: "2026-07-12T18:00:00.000Z",
+    evidenceTypeSnapshot: null,
     estimatedMinutesSnapshot: 20,
     familyId,
     id: "77777777-7777-4777-8777-777777777777",
@@ -104,12 +105,14 @@ function task(overrides: Partial<TaskInstance>): TaskInstance {
     rejectedAt: null,
     rejectionCount: 0,
     rejectionReason: null,
+    requiresEvidenceSnapshot: false,
     status: "assigned",
     submittedAt: null,
     subtasksSnapshot: [],
     templateId,
     titleSnapshot: "Clean Bathroom",
     updatedAt: "2026-07-12T00:00:00.000Z",
+    completionCheckTextSnapshot: null,
     ...overrides,
   };
 }

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createConfirmedParentUser } from "./supabase-local";
 
 test.describe("parent family setup smoke flow", () => {
-  test("creates family, child, schedule event, and generated chore templates", async ({
+  test("creates family, schedule, chore templates, assignments, and my today tasks", async ({
     page,
   }) => {
     test.slow();
@@ -45,7 +45,9 @@ test.describe("parent family setup smoke flow", () => {
       has: page.getByRole("heading", { name: childName }),
     });
     await expect(childCard).toBeVisible();
-    await expect(childCard.getByText("Dislikes cleaning bathrooms.").first()).toBeVisible();
+    await expect(
+      childCard.getByText("Dislikes cleaning bathrooms.").first(),
+    ).toBeVisible();
 
     await page.goto("/schedule?date=2026-07-12&view=day");
     await expect(
@@ -71,7 +73,9 @@ test.describe("parent family setup smoke flow", () => {
       .locator("xpath=ancestor::article[1]");
     await expect(eventCard).toBeVisible();
     await expect(eventCard.getByText("Community field").first()).toBeVisible();
-    await expect(eventCard.getByText("Bring water bottle.").first()).toBeVisible();
+    await expect(
+      eventCard.getByText("Bring water bottle.").first(),
+    ).toBeVisible();
     await expect(page.getByRole("heading", { name: childName })).toBeVisible();
 
     await page.goto("/chores");
@@ -79,7 +83,9 @@ test.describe("parent family setup smoke flow", () => {
       page.getByRole("heading", { name: "Build the family chore library" }),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: "Generate chore templates" }).click();
+    await page
+      .getByRole("button", { name: "Generate chore templates" })
+      .click();
     const familyTemplates = page.locator("section").filter({
       has: page.getByRole("heading", { name: "Family templates" }),
     });
@@ -88,6 +94,22 @@ test.describe("parent family setup smoke flow", () => {
     ).toBeVisible();
     await expect(
       familyTemplates.getByRole("heading", { name: "Sweep Kitchen" }),
+    ).toBeVisible();
+
+    await page.goto("/assignments");
+    await expect(
+      page.getByRole("heading", { name: "Plan daily chores" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Create assignments" }).click();
+    await expect(page.getByText("Assignments created.")).toBeVisible();
+
+    await page.goto("/my-today");
+    await expect(page.getByText("Family view")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Sweep Kitchen" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Sign in as the assigned child profile").first(),
     ).toBeVisible();
   });
 });
@@ -99,7 +121,9 @@ async function signInWithLocalSession(
 ) {
   await page.goto("/sign-in?next=/family/setup");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-  await expect(page.getByText("Supabase is not configured yet.")).toHaveCount(0);
+  await expect(page.getByText("Supabase is not configured yet.")).toHaveCount(
+    0,
+  );
 
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);

@@ -3,7 +3,9 @@
 Phase 3 adds the first Supabase Postgres schema for family-scoped app data.
 Phase 4 wires the identity and family-member tables into the app UI. Phase 5
 wires schedule events into app-facing day/week views. Phase 6 wires house
-profiles and chore templates into parent-managed setup UI.
+profiles and chore templates into parent-managed setup UI. Phase 8 wires
+assigned tasks, checklist updates, submissions, and private evidence metadata
+into the kid-facing task flow.
 
 ## Identity And Families
 
@@ -12,7 +14,7 @@ profiles and chore templates into parent-managed setup UI.
 - `family_members`: parent, caregiver, and child profiles inside a family.
   Children may have no Supabase Auth account in the MVP.
 - `family_member_auth_links`: optional link from an auth profile to a family
-  member, used later for older kids or caregiver linking.
+  member, used for older kids or caregiver linking.
 - `family_member_preferences`: disliked/preferred chores and notes.
 - `family_member_statuses`: normal, under-the-weather, sick, and rest-day
   status history.
@@ -70,13 +72,16 @@ Generation behavior:
 ## Tasks And Reviews
 
 - `task_instances`: generated or manual chore assignments with denormalized
-  snapshots for historical accuracy.
+  snapshots for historical accuracy. Phase 8 adds evidence and completion-check
+  snapshots used when kids submit work.
 - `task_instance_subtasks`: checklist items for task instances.
 - `task_submissions`: kid completion submissions.
-- `task_evidence_files`: private storage metadata for future evidence uploads.
+- `task_evidence_files`: private Supabase Storage metadata for evidence uploads.
 - `task_reviews`: parent approve/reject decisions and points awarded.
 
-Actual Supabase Storage bucket policies are not part of Phase 3.
+Phase 8 creates a private `task-evidence` Storage bucket with object policies
+that allow assigned members to upload evidence and task readers to create
+short-lived signed previews.
 
 ## Schedule
 

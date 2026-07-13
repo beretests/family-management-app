@@ -46,6 +46,11 @@ type StatusRow = {
   ends_at: string | null;
 };
 
+type MemberAuthLinkRow = {
+  family_id: string;
+  member_id: string;
+};
+
 function mapFamily(row: FamilyRow): Family {
   return {
     id: row.id,
@@ -110,7 +115,40 @@ export async function getFamilyContext(): Promise<FamilyContext> {
     throw new Error(membershipError.message);
   }
 
-  const currentMemberRow = membershipRows?.[0] as FamilyMemberRow | undefined;
+  let currentMemberRow = membershipRows?.[0] as FamilyMemberRow | undefined;
+
+  if (!currentMemberRow) {
+    const { data: linkRows, error: linkError } = await supabase
+      .from("family_member_auth_links")
+      .select("family_id,member_id")
+      .eq("profile_id", profileId)
+      .is("revoked_at", null)
+      .limit(1);
+
+    if (linkError) {
+      throw new Error(linkError.message);
+    }
+
+    const linkRow = linkRows?.[0] as MemberAuthLinkRow | undefined;
+
+    if (linkRow) {
+      const { data: linkedMemberRow, error: linkedMemberError } = await supabase
+        .from("family_members")
+        .select(
+          "id,family_id,profile_id,display_name,role,birthdate,age_years,ability_level,color,lifecycle_status,deactivated_at",
+        )
+        .eq("family_id", linkRow.family_id)
+        .eq("id", linkRow.member_id)
+        .eq("lifecycle_status", "active")
+        .maybeSingle();
+
+      if (linkedMemberError) {
+        throw new Error(linkedMemberError.message);
+      }
+
+      currentMemberRow = linkedMemberRow as FamilyMemberRow | undefined;
+    }
+  }
 
   if (!currentMemberRow) {
     return {

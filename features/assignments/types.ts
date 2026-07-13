@@ -37,6 +37,9 @@ export type TaskInstance = {
   assignmentReason: string | null;
   difficultySnapshot: number;
   estimatedMinutesSnapshot: number;
+  requiresEvidenceSnapshot: boolean;
+  evidenceTypeSnapshot: "photo" | "note" | null;
+  completionCheckTextSnapshot: string | null;
   isUndesirable: boolean;
   createdAt: string;
   updatedAt: string;

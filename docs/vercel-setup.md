@@ -41,6 +41,9 @@ the corresponding callback URLs in Supabase.
 - No paid analytics, queues, observability, email, or SMS providers are added.
 - Monitor Vercel usage before enabling features with background jobs or image
   optimization.
+- Phase 8 evidence uploads use Supabase Storage directly from server actions.
+  No extra Vercel service is required, but large uploads can still consume
+  function time and Supabase free-tier storage/egress.
 
 ## Build Command
 
