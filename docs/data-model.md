@@ -2,7 +2,8 @@
 
 Phase 3 adds the first Supabase Postgres schema for family-scoped app data.
 Phase 4 wires the identity and family-member tables into the app UI. Phase 5
-wires schedule events into app-facing day/week views.
+wires schedule events into app-facing day/week views. Phase 6 wires house
+profiles and chore templates into parent-managed setup UI.
 
 ## Identity And Families
 
@@ -49,8 +50,22 @@ Child profile management:
 - `chore_templates`: family-owned editable chore templates.
 - `chore_template_subtasks`: family-owned template checklist items.
 
-Starter templates are not family-owned. Later phases should copy starter rows
-into `chore_templates` when parents configure their house.
+Starter templates are not family-owned. Phase 6 copies matching starter rows
+into `chore_templates` when parents configure their house and run generation.
+The copy is editable by parents and includes subtasks, frequency, difficulty,
+points, minimum age, review/evidence flags, undesirable score, completion
+checks, and safety notes.
+
+Generation behavior:
+
+- `house_profiles` stores counts and feature flags used by deterministic rules.
+- The generator maps house features to currently seeded starter templates.
+- Existing family templates are skipped by exact title to avoid duplicate
+  generation.
+- Optional house features without seeded starter templates, such as yard,
+  garden, garage, car chores, grocery errands, and pets, are stored for future
+  expansion but do not currently generate extra templates.
+- Phase 6 does not create task instances or assignments.
 
 ## Tasks And Reviews
 

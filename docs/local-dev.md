@@ -1,9 +1,9 @@
 # Local Development
 
-This guide covers local development through Phase 5. Supabase Auth is wired for
+This guide covers local development through Phase 6. Supabase Auth is wired for
 parent and caregiver accounts, the initial schema/RLS policies are available
 through Supabase CLI migrations, and signed-in parents can create family and
-child profiles plus family schedule events.
+child profiles, family schedule events, and chore templates.
 
 ## Requirements
 
@@ -74,15 +74,15 @@ npm run test:e2e
 
 The E2E suite uses Playwright with system Chrome by default. Set
 `PLAYWRIGHT_BROWSER_CHANNEL` if you need a different installed browser channel.
-The Playwright-managed dev server enables `E2E_TEST_AUTH_ENABLED=true`, which
-turns on the guarded local-only test session route at `/api/test/session`.
-Without that flag, the route returns 404. The test runner reads local Supabase
-connection details from environment variables or `supabase status -o env`; do
-not commit service-role values.
+The Playwright-managed dev server runs on `http://127.0.0.1:3106` by default
+and enables `E2E_TEST_AUTH_ENABLED=true`, which turns on the guarded local-only
+test session route at `/api/test/session`. Without that flag, the route returns
+404. The test runner reads local Supabase connection details from environment
+variables or `supabase status -o env`; do not commit service-role values.
 
 ## Supabase
 
-Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 5
+Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 6
 also requires the local or remote database migrations to be applied.
 
 See:
@@ -100,7 +100,8 @@ supabase db reset
 
 After signing in locally, visit `/dashboard`. If no family exists yet, the app
 links to `/family/setup`; family management lives at `/settings/family`, and
-day/week schedule views live at `/schedule`.
+day/week schedule views live at `/schedule`. Chore template setup lives at
+`/chores`.
 
 This project uses non-default local Supabase ports to avoid conflicts with other
 local projects:
@@ -118,7 +119,7 @@ Later phases will add:
 
 ## Vercel
 
-No Vercel deployment is required in Phase 5.
+No Vercel deployment is required in Phase 6.
 
 See `docs/vercel-setup.md` for planned env var and callback URL setup.
 
@@ -130,5 +131,5 @@ Later phases will add:
 
 ## Cost Guardrails
 
-Phase 5 adds no paid services. Do not add SMS, paid email, paid analytics, paid
+Phase 6 adds no paid services. Do not add SMS, paid email, paid analytics, paid
 AI APIs, paid storage, queues, or observability without owner approval.
