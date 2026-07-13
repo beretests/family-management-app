@@ -5,7 +5,8 @@ Phase 4 wires the identity and family-member tables into the app UI. Phase 5
 wires schedule events into app-facing day/week views. Phase 6 wires house
 profiles and chore templates into parent-managed setup UI. Phase 8 wires
 assigned tasks, checklist updates, submissions, and private evidence metadata
-into the kid-facing task flow.
+into the kid-facing task flow. Phase 9 wires parent review decisions and points
+ledger entries into submitted task workflows.
 
 ## Identity And Families
 
@@ -78,10 +79,18 @@ Generation behavior:
 - `task_submissions`: kid completion submissions.
 - `task_evidence_files`: private Supabase Storage metadata for evidence uploads.
 - `task_reviews`: parent approve/reject decisions and points awarded.
+- `points_ledger`: immutable point entries written when approved task reviews
+  award points.
 
 Phase 8 creates a private `task-evidence` Storage bucket with object policies
 that allow assigned members to upload evidence and task readers to create
 short-lived signed previews.
+
+Phase 9 uses `task_reviews` for every parent decision. Approval sets
+`task_instances.status = 'approved'`, stores awarded points on the task, and
+adds a `points_ledger` row with `source = 'task_review'`. Rejection sets
+`task_instances.status = 'rejected'`, increments `rejection_count`, stores
+supportive feedback in `rejection_reason`, and keeps the task resubmittable.
 
 ## Schedule
 

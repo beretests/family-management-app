@@ -3,7 +3,7 @@ import type {
   TaskSubtaskSnapshot,
 } from "@/features/assignments/types";
 
-export type TaskSubmissionStatus = "submitted" | "approved" | "rejected";
+export type TaskSubmissionStatus = "submitted" | "superseded" | "withdrawn";
 
 export type TaskSubtask = {
   id: string;
