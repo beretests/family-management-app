@@ -2,87 +2,80 @@
 
 ## Current Phase
 
-Phase 6: Chore Templates and House-Based Generation
+Phase 7: Fair Assignment Engine
 
 ## Branch and Worktree
 
-- Branch: `phase/06-chore-templates`
-- Worktree: `../family-app-phase-06-chore-templates`
-- Base branch: local `main` at `f498461` (`Merge branch 'phase/05-schedule'`)
+- Branch: `phase/07-assignment-engine`
+- Worktree: `../family-app-phase-07-assignment-engine`
+- Base branch: local `main` at `9fdf62e` (`Merge branch 'phase/06-chore-templates'`)
 
 ## Implemented Features
 
-- Added `/chores` as a protected parent-facing chore template setup page.
-- Added house profile form for room counts and home-feature flags.
-- Added deterministic chore generation from existing seeded
-  `starter_chore_templates`.
-- Added duplicate prevention by skipping generated templates whose title already
-  exists in the family chore library.
-- Added parent-managed chore template create, update, and delete flows.
-- Added editable chore fields for subtasks, frequency, points, difficulty,
-  minimum/maximum age, parent review, evidence, undesirable score, completion
-  check, safety notes, category, location, and active state.
-- Added starter chore library display.
-- Added Chores to app navigation and dashboard summary.
-- Extended the Playwright smoke test to cover generated family chore templates.
-- Added unit tests for house/chore validation and deterministic generation.
-- Updated architecture, data model, and local development docs.
+- Added `/assignments` as a protected parent-facing assignment planning page.
+- Added a deterministic assignment engine for active chore templates and active
+  child profiles.
+- Scoring now considers age range, ability level, sick/rest/under-the-weather
+  status, schedule conflicts, recent workload, recent undesirable chores, and
+  preference notes that mention the chore or area.
+- Added explainable candidate scoring with parent-visible assignment reasons,
+  warnings, blockers, and candidate detail disclosure.
+- Added parent override support before assignments are created.
+- Added task creation from selected previews into `task_instances` with
+  `status = assigned`, due time, available-from time, point/difficulty/minute
+  snapshots, undesirable flag, subtask JSON snapshot, and `assignment_reason`.
+- Added `task_instance_subtasks` rows from template subtasks.
+- Added duplicate prevention for already-created active assignments for the
+  same template on the selected day.
+- Added audit event `task_assignments.created`.
+- Added Assignments to app navigation and dashboard summary.
+- Added focused unit tests for engine eligibility, schedule penalties, workload
+  balancing, undesirable rotation, preference notes, subtask snapshots, and
+  assignment form validation.
 
 ## Manual Setup Still Required
 
-- Apply existing migrations and seed data locally or remotely before using chore
-  generation:
-
-```bash
-supabase db reset
-```
-
-- For a linked remote project, review migrations and apply when ready:
-
-```bash
-supabase db push
-```
-
-- `supabase db reset` was not run during this phase handoff to avoid deleting
-  local development data without explicit approval.
+- No new Supabase migration is required for Phase 7.
+- Existing Phase 3 schema and RLS must already be applied because this phase
+  writes to `task_instances`, `task_instance_subtasks`, and `audit_events`.
 - No Supabase dashboard change is required for this phase.
 - No Vercel dashboard change is required for this phase.
-- E2E tests require local Supabase to be running with migrations and seed data
-  applied. Playwright starts the app on `http://127.0.0.1:3106` by default.
+- E2E tests still require local Supabase to be running with migrations and seed
+  data applied.
 
 ## Known Issues and Limitations
 
-- Optional profile flags for yard, garden, garage, car chores, grocery errands,
-  and pets are stored but do not generate templates yet because the current
-  starter seed does not include those chores.
-- Generation copies starter templates only; it does not create task instances or
-  assignments.
-- Deleting templates is allowed in Phase 6 because task history does not exist
-  yet. Later task phases may need soft-delete-only behavior.
-- Dependency links are populated only when the dependency starter is also
-  present in the family library.
-- E2E covers generation, but not manual template edit/delete.
+- Assignments are parent-facing only. Kid "My Today", checklist completion,
+  submissions, and evidence upload remain Phase 8 scope.
+- Completion history is represented by recent active task workload; richer
+  completion/rejection history weighting should come after submissions and
+  reviews exist.
+- Dependencies are not blocked yet beyond template availability; dependency
+  enforcement should be revisited when task execution states are implemented.
+- The page uses a fixed assignment window of 3:00 PM to 8:00 PM and fixed due
+  time of 6:00 PM for MVP simplicity.
+- Parent overrides are validated against active child profiles and active
+  templates, but the persisted reason comes from the preview text.
 
 ## Next Recommended Phase
 
-Phase 7: Fair Assignment Engine
+Phase 8: Kid Task Experience and Submissions
 
 Expected branch and worktree:
 
-- Branch: `phase/07-assignment-engine`
-- Worktree: `../family-app-phase-07-assignment-engine`
+- Branch: `phase/08-kid-submissions`
+- Worktree: `../family-app-phase-08-kid-submissions`
 
 ## Checks
 
-- `npm install` passed in the Phase 6 worktree. npm reported 2 moderate
+- `npm install` passed in the Phase 7 worktree. npm reported 2 moderate
   vulnerabilities in existing dependencies.
 - `npm run lint` passed.
-- `npm run typecheck` passed after dependency alignment.
-- `npm test` passed: 8 files, 26 tests.
-- `npm run test:e2e` passed: 1 browser smoke test covering family setup, child
-  creation, schedule event creation, and chore template generation.
+- `npm run typecheck` passed.
+- `npm test` passed: 10 files, 33 tests.
 - `npm run build` passed and included routes:
   - `/api/test/session`
+  - `/assignments`
   - `/chores`
   - `/dashboard`
   - `/family/setup`
@@ -90,9 +83,5 @@ Expected branch and worktree:
   - `/settings/family`
   - `/sign-in`
   - `/sign-up`
-- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f tests/sql/rls-verification.sql`
-  passed:
-  - app tables without RLS: 0
-  - family-owned tables missing `family_id`: 0
-  - starter chore templates seeded: 14
-  - authenticated initial parent bootstrap insert: passed and rolled back
+- `npm run test:e2e` was not run for this phase; Phase 7 coverage is focused on
+  unit-tested assignment rules and build verification.

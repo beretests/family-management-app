@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StatusPill } from "@/components/ui/status-pill";
+import { getTaskInstancesDueBetween } from "@/features/assignments/queries";
 import { getChoreTemplates } from "@/features/chores/queries";
 import { getFamilyContext } from "@/features/family/queries";
 import { scheduleEventTypeLabels } from "@/features/schedule/labels";
@@ -36,8 +37,7 @@ export default async function DashboardPage() {
   }
 
   const activeChildren = context.members.filter(
-    (member) =>
-      member.role === "child" && member.lifecycleStatus === "active",
+    (member) => member.role === "child" && member.lifecycleStatus === "active",
   );
   const childrenNeedingRest = activeChildren.filter((member) =>
     ["under_the_weather", "sick", "rest_day"].includes(
@@ -45,12 +45,21 @@ export default async function DashboardPage() {
     ),
   );
   const today = new Date();
-  const todayEvents = await getScheduleEvents({
-    endsAt: endOfDay(today),
-    familyId: context.family.id,
-    startsAt: startOfDay(today),
-  });
-  const choreTemplates = await getChoreTemplates(context.family.id);
+  const todayStart = startOfDay(today);
+  const todayEnd = endOfDay(today);
+  const [todayEvents, choreTemplates, todayTasks] = await Promise.all([
+    getScheduleEvents({
+      endsAt: todayEnd,
+      familyId: context.family.id,
+      startsAt: todayStart,
+    }),
+    getChoreTemplates(context.family.id),
+    getTaskInstancesDueBetween({
+      endsAt: todayEnd,
+      familyId: context.family.id,
+      startsAt: todayStart,
+    }),
+  ]);
 
   return (
     <section className="grid gap-5">
@@ -60,9 +69,8 @@ export default async function DashboardPage() {
           {context.family.name}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-          Parent-managed family profiles and schedules are connected to
-          Supabase RLS. Chores, rewards, and reviews arrive in later approved
-          phases.
+          Parent-managed family profiles and schedules are connected to Supabase
+          RLS. Chores, rewards, and reviews arrive in later approved phases.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
@@ -80,10 +88,11 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
         <MetricCard label="Active kids" value={activeChildren.length} />
         <MetricCard label="Rest flags" value={childrenNeedingRest.length} />
         <MetricCard label="Today events" value={todayEvents.length} />
+        <MetricCard label="Assigned today" value={todayTasks.length} />
         <MetricCard
           label="Active chores"
           value={choreTemplates.filter((template) => template.active).length}
@@ -102,9 +111,9 @@ export default async function DashboardPage() {
           </div>
           <Link
             className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-            href="/chores"
+            href="/assignments"
           >
-            Manage chores
+            Plan assignments
           </Link>
         </div>
       </div>
@@ -141,9 +150,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
-        <h2 className="text-xl font-semibold text-[var(--foreground)]">
-          Kids
-        </h2>
+        <h2 className="text-xl font-semibold text-[var(--foreground)]">Kids</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {activeChildren.length === 0 ? (
             <p className="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)] md:col-span-3">
