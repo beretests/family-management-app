@@ -4,9 +4,11 @@ import { useFormStatus } from "react-dom";
 
 export function SubmitButton({
   children,
+  disabled = false,
   tone = "primary",
 }: {
   children: React.ReactNode;
+  disabled?: boolean;
   tone?: "primary" | "secondary" | "danger";
 }) {
   const { pending } = useFormStatus();
@@ -18,7 +20,7 @@ export function SubmitButton({
         : "min-h-10 rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
-    <button className={className} disabled={pending} type="submit">
+    <button className={className} disabled={pending || disabled} type="submit">
       {pending ? "Saving..." : children}
     </button>
   );

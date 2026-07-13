@@ -4,6 +4,10 @@ import { getTaskInstancesDueBetween } from "@/features/assignments/queries";
 import { getChoreTemplates } from "@/features/chores/queries";
 import { getFamilyContext } from "@/features/family/queries";
 import { getPendingReviewCount } from "@/features/reviews/queries";
+import {
+  getActiveRewardCount,
+  getPendingRewardRedemptionCount,
+} from "@/features/rewards/queries";
 import { scheduleEventTypeLabels } from "@/features/schedule/labels";
 import { getScheduleEvents } from "@/features/schedule/queries";
 import type { ScheduleEvent } from "@/features/schedule/types";
@@ -48,21 +52,29 @@ export default async function DashboardPage() {
   const today = new Date();
   const todayStart = startOfDay(today);
   const todayEnd = endOfDay(today);
-  const [todayEvents, choreTemplates, todayTasks, pendingReviews] =
-    await Promise.all([
-      getScheduleEvents({
-        endsAt: todayEnd,
-        familyId: context.family.id,
-        startsAt: todayStart,
-      }),
-      getChoreTemplates(context.family.id),
-      getTaskInstancesDueBetween({
-        endsAt: todayEnd,
-        familyId: context.family.id,
-        startsAt: todayStart,
-      }),
-      getPendingReviewCount(context.family.id),
-    ]);
+  const [
+    todayEvents,
+    choreTemplates,
+    todayTasks,
+    pendingReviews,
+    activeRewards,
+    pendingRewardRequests,
+  ] = await Promise.all([
+    getScheduleEvents({
+      endsAt: todayEnd,
+      familyId: context.family.id,
+      startsAt: todayStart,
+    }),
+    getChoreTemplates(context.family.id),
+    getTaskInstancesDueBetween({
+      endsAt: todayEnd,
+      familyId: context.family.id,
+      startsAt: todayStart,
+    }),
+    getPendingReviewCount(context.family.id),
+    getActiveRewardCount(context.family.id),
+    getPendingRewardRedemptionCount(context.family.id),
+  ]);
 
   return (
     <section className="grid gap-5">
@@ -73,7 +85,8 @@ export default async function DashboardPage() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
           Parent-managed family profiles and schedules are connected to Supabase
-          RLS. Chores, rewards, and reviews arrive in later approved phases.
+          RLS. Chores, reviews, rewards, and family progress are now connected
+          to private family data.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
@@ -88,18 +101,41 @@ export default async function DashboardPage() {
           >
             Open schedule
           </Link>
+          <Link
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+            href="/rewards"
+          >
+            Open rewards
+          </Link>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-4">
         <MetricCard label="Active kids" value={activeChildren.length} />
         <MetricCard label="Rest flags" value={childrenNeedingRest.length} />
         <MetricCard label="Today events" value={todayEvents.length} />
         <MetricCard label="Assigned today" value={todayTasks.length} />
         <MetricCard label="Pending reviews" value={pendingReviews} />
+        <MetricCard label="Reward requests" value={pendingRewardRequests} />
+        <MetricCard label="Active rewards" value={activeRewards} />
         <MetricCard
           label="Active chores"
           value={choreTemplates.filter((template) => template.active).length}
+        />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <DashboardActionCard
+          body="Manage non-monetary rewards and parent review."
+          href="/rewards"
+          label="Open rewards"
+          title="Rewards"
+        />
+        <DashboardActionCard
+          body="Review a constructive progress board for the family."
+          href="/leaderboard"
+          label="View board"
+          title="Leaderboard"
         />
       </div>
 
@@ -244,5 +280,36 @@ function MetricCard({ label, value }: { label: string; value: number }) {
         {value}
       </p>
     </article>
+  );
+}
+
+function DashboardActionCard({
+  body,
+  href,
+  label,
+  title,
+}: {
+  body: string;
+  href: string;
+  label: string;
+  title: string;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">{body}</p>
+        </div>
+        <Link
+          className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+          href={href}
+        >
+          {label}
+        </Link>
+      </div>
+    </div>
   );
 }

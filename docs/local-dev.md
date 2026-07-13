@@ -1,10 +1,11 @@
 # Local Development
 
-This guide covers local development through Phase 9. Supabase Auth is wired for
+This guide covers local development through Phase 10. Supabase Auth is wired for
 parent and caregiver accounts, the initial schema/RLS policies are available
 through Supabase CLI migrations, and signed-in parents can create family and
 child profiles, family schedule events, chore templates, assignments, and kid
-task submissions, then review submitted chores and award points.
+task submissions, review submitted chores and award points, manage rewards, and
+view the family leaderboard.
 
 ## Requirements
 
@@ -102,7 +103,8 @@ After signing in locally, visit `/dashboard`. If no family exists yet, the app
 links to `/family/setup`; family management lives at `/settings/family`, day/week
 schedule views live at `/schedule`, chore template setup lives at `/chores`,
 assignment planning lives at `/assignments`, and kid task submission lives at
-`/my-today`. Parent review lives at `/approvals`.
+`/my-today`. Parent review lives at `/approvals`, rewards live at `/rewards`,
+and the constructive family leaderboard lives at `/leaderboard`.
 
 This project uses non-default local Supabase ports to avoid conflicts with other
 local projects:
@@ -120,7 +122,7 @@ Later phases will add automated retention cleanup.
 
 ## Vercel
 
-No Vercel deployment is required in Phase 9.
+No Vercel deployment is required in Phase 10.
 
 See `docs/vercel-setup.md` for planned env var and callback URL setup.
 
@@ -132,6 +134,7 @@ Later phases will add:
 
 ## Cost Guardrails
 
-Phase 9 adds no paid services. Phase 8 added private Supabase Storage usage for evidence photos, which can
+Phase 10 adds no paid services, gift cards, payment integrations, analytics, or
+external reward providers. Phase 8 added private Supabase Storage usage for evidence photos, which can
 consume free-tier storage and egress. Do not add SMS, paid email, paid
 analytics, paid AI APIs, paid queues, or observability without owner approval.
