@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createConfirmedParentUser } from "./supabase-local";
 
-test.describe("parent family schedule smoke flow", () => {
-  test("establishes a local parent session, creates a family, adds a child, and creates a schedule event", async ({
+test.describe("parent family setup smoke flow", () => {
+  test("creates family, child, schedule event, and generated chore templates", async ({
     page,
   }) => {
     test.slow();
@@ -73,6 +73,22 @@ test.describe("parent family schedule smoke flow", () => {
     await expect(eventCard.getByText("Community field").first()).toBeVisible();
     await expect(eventCard.getByText("Bring water bottle.").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: childName })).toBeVisible();
+
+    await page.goto("/chores");
+    await expect(
+      page.getByRole("heading", { name: "Build the family chore library" }),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Generate chore templates" }).click();
+    const familyTemplates = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Family templates" }),
+    });
+    await expect(
+      familyTemplates.getByRole("heading", { name: "Wash Dishes" }),
+    ).toBeVisible();
+    await expect(
+      familyTemplates.getByRole("heading", { name: "Sweep Kitchen" }),
+    ).toBeVisible();
   });
 });
 

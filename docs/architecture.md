@@ -1,8 +1,8 @@
 # Architecture
 
-This document reflects the Phase 5 auth, database, family profile, and schedule
-foundation. It should be updated whenever a later phase adds app-facing storage,
-cron, or deployment behavior.
+This document reflects the Phase 6 auth, database, family profile, schedule,
+and chore-template foundation. It should be updated whenever a later phase adds
+app-facing storage, cron, or deployment behavior.
 
 ## Current Shape
 
@@ -15,6 +15,7 @@ app/
     dashboard/
     family/
       setup/
+    chores/
     schedule/
     settings/
       family/
@@ -28,12 +29,14 @@ app/
 components/
   auth/
   family/
+  chores/
   layout/
   schedule/
   ui/
 features/
   auth/
   family/
+  chores/
   schedule/
 lib/
   auth/
@@ -53,8 +56,8 @@ docs/
 
 The app renders a public landing page, Supabase Auth entry points, a protected
 dashboard, family setup, parent-managed child profile settings, and family
-schedule day/week views. Phase 5 connects schedule UI to the existing
-`schedule_events` table.
+schedule day/week views, and parent-managed chore templates. Phase 6 connects
+house-profile and chore-template UI to the existing house/chore tables.
 
 ## Request Flow
 
@@ -113,6 +116,18 @@ Schedule flow:
 5. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
    events assigned to the same family member.
 
+Chore template flow:
+
+1. `/chores` loads family context, house profile, starter templates, and family
+   chore templates.
+2. Parents save a house profile through `features/chores/actions.ts`.
+3. The deterministic generator maps the house profile to seeded starter chore
+   templates and skips family templates that already exist by title.
+4. Generated templates are copied into `chore_templates` and
+   `chore_template_subtasks` for parent review and editing.
+5. Parents can create, update, and delete family templates. Assignment and task
+   instance generation remain future phases.
+
 Client provided `family_id`, `member_id`, and role values must be treated as
 untrusted. Server-side code should resolve permissions from the authenticated
 session and database membership.
@@ -128,8 +143,8 @@ session and database membership.
 
 ## Security Posture
 
-Phase 5 adds app-facing CRUD for family schedule records. It still has no file
-storage or cron route.
+Phase 6 adds app-facing CRUD for house profiles and family chore templates. It
+still has no file storage or cron route.
 
 Auth security decisions:
 
@@ -147,6 +162,9 @@ Auth security decisions:
 - resolves active parent membership server-side before schedule management
   writes
 - checks assigned schedule members server-side before write attempts
+- validates house profile and chore template mutations with Zod Server Actions
+- resolves active parent membership server-side before house/chore writes
+- keeps chore generation deterministic and free of paid AI/API calls
 - guards the test-only session route behind `E2E_TEST_AUTH_ENABLED=true`
 
 The project reserves these environment variables:
@@ -163,7 +181,7 @@ Only `NEXT_PUBLIC_*` variables may be read in browser code.
 
 ## Free-Tier Posture
 
-Phase 5 runs locally and is compatible with Vercel Hobby deployment, but no
+Phase 6 runs locally and is compatible with Vercel Hobby deployment, but no
 deployment has been performed.
 
 The app does not include paid services, analytics, AI APIs, SMS, storage,
@@ -171,9 +189,10 @@ queues, or external cron providers.
 
 ## Testing Strategy
 
-Phase 5 includes unit coverage for schedule validation and same-member conflict
-detection. It also includes a Playwright smoke test for local parent session
-setup, family setup, child creation, and schedule event creation. SQL
+Phase 6 includes unit coverage for schedule validation, same-member conflict
+detection, chore validation, and deterministic chore generation. It also
+includes a Playwright smoke test for local parent session setup, family setup,
+child creation, schedule event creation, and generated chore templates. SQL
 verification notes still cover RLS, family-owned table shape, seed data, and the
 initial parent bootstrap policy.
 Later phases should add tests for:
@@ -182,6 +201,6 @@ Later phases should add tests for:
 - parent/child permissions
 - RLS policy behavior
 - additional E2E coverage for edit/delete flows
-- deterministic chore generation and assignment
+- deterministic assignment
 - points ledger calculations
 - evidence cleanup selection

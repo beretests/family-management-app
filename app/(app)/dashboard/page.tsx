@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StatusPill } from "@/components/ui/status-pill";
+import { getChoreTemplates } from "@/features/chores/queries";
 import { getFamilyContext } from "@/features/family/queries";
 import { scheduleEventTypeLabels } from "@/features/schedule/labels";
 import { getScheduleEvents } from "@/features/schedule/queries";
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
     familyId: context.family.id,
     startsAt: startOfDay(today),
   });
+  const choreTemplates = await getChoreTemplates(context.family.id);
 
   return (
     <section className="grid gap-5">
@@ -78,10 +80,33 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-4">
         <MetricCard label="Active kids" value={activeChildren.length} />
         <MetricCard label="Rest flags" value={childrenNeedingRest.length} />
         <MetricCard label="Today events" value={todayEvents.length} />
+        <MetricCard
+          label="Active chores"
+          value={choreTemplates.filter((template) => template.active).length}
+        />
+      </div>
+
+      <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[var(--foreground)]">
+              Chore templates
+            </h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Build the library before daily assignment starts.
+            </p>
+          </div>
+          <Link
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+            href="/chores"
+          >
+            Manage chores
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
