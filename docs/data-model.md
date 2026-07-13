@@ -6,7 +6,9 @@ wires schedule events into app-facing day/week views. Phase 6 wires house
 profiles and chore templates into parent-managed setup UI. Phase 8 wires
 assigned tasks, checklist updates, submissions, and private evidence metadata
 into the kid-facing task flow. Phase 9 wires parent review decisions and points
-ledger entries into submitted task workflows.
+ledger entries into submitted task workflows. Phase 10 wires non-monetary
+rewards, redemption review, point deductions, and a constructive family
+leaderboard into the app UI.
 
 ## Identity And Families
 
@@ -117,6 +119,18 @@ entry remains future scope.
 - `leaderboard_snapshots`: family-private constructive scoring snapshots.
 - `reminders`: in-app reminder records.
 
+Phase 10 uses the existing reward tables without a migration. Parents manage
+the reward catalog, kids with linked child auth profiles can request active
+rewards when their current `points_ledger` balance is high enough, and parents
+approve or reject each redemption. Approval writes a negative immutable
+`points_ledger` row with `source = 'reward_redemption'`.
+
+The Phase 10 leaderboard is computed live from readable ledger entries and
+active child profiles. It blends approved chore count, earned task points,
+saved balance, and reward use into a private progress score instead of ranking
+only by raw point totals. The `leaderboard_snapshots` table remains reserved for
+future periodic snapshots.
+
 ## Settings And Audit
 
 - `app_settings`: family-scoped JSON settings.
@@ -146,4 +160,6 @@ Policy intent:
 - caregivers can read broad family data where allowed
 - children read family schedule and their own task/submission data
 - children can submit their own assigned tasks and evidence metadata
+- children with linked auth profiles can request their own rewards through
+  existing redemption insert policy and read their own redemption/ledger rows
 - children cannot approve submissions or manage chore templates/settings

@@ -1,7 +1,8 @@
 # Supabase Setup
 
-This document covers Supabase setup through Phase 8: Auth, database schema/RLS
-policies, family profile setup, assignments, and private evidence storage.
+This document covers Supabase setup through Phase 10: Auth, database schema/RLS
+policies, family profile setup, assignments, private evidence storage, rewards,
+and leaderboard reads.
 
 ## Phase 2: Auth
 
@@ -182,3 +183,27 @@ The migration creates the bucket as private and limits uploads to:
 - 5 MB max file size
 
 Do not make the `task-evidence` bucket public.
+
+## Phase 10: Rewards And Leaderboard
+
+Phase 10 uses reward and points tables created in the initial schema:
+
+- `reward_catalog`
+- `reward_redemptions`
+- `points_ledger`
+- `leaderboard_snapshots`
+- `audit_events`
+
+No new migration or Supabase dashboard change is required. After applying the
+existing migrations, verify the existing policies still match the intended
+boundaries:
+
+- authenticated family members can read active/inactive family rewards
+- parents can create and update reward catalog entries
+- child-linked auth profiles can insert their own reward redemption requests
+- parents can approve or reject redemption requests
+- point deductions are written by parent actions to `points_ledger`
+
+The leaderboard is computed live from ledger rows the signed-in user is allowed
+to read. `leaderboard_snapshots` remains available for a future scheduled
+snapshot phase.
