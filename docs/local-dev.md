@@ -1,10 +1,10 @@
 # Local Development
 
-This guide covers local development through Phase 8. Supabase Auth is wired for
+This guide covers local development through Phase 9. Supabase Auth is wired for
 parent and caregiver accounts, the initial schema/RLS policies are available
 through Supabase CLI migrations, and signed-in parents can create family and
 child profiles, family schedule events, chore templates, assignments, and kid
-task submissions.
+task submissions, then review submitted chores and award points.
 
 ## Requirements
 
@@ -82,7 +82,7 @@ variables or `supabase status -o env`; do not commit service-role values.
 
 ## Supabase
 
-Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 8
+Supabase dashboard setup is required to test real sign-up/sign-in flows. Phase 9
 also requires the local or remote database and Storage migrations to be applied.
 
 See:
@@ -102,7 +102,7 @@ After signing in locally, visit `/dashboard`. If no family exists yet, the app
 links to `/family/setup`; family management lives at `/settings/family`, day/week
 schedule views live at `/schedule`, chore template setup lives at `/chores`,
 assignment planning lives at `/assignments`, and kid task submission lives at
-`/my-today`.
+`/my-today`. Parent review lives at `/approvals`.
 
 This project uses non-default local Supabase ports to avoid conflicts with other
 local projects:
@@ -120,7 +120,7 @@ Later phases will add automated retention cleanup.
 
 ## Vercel
 
-No Vercel deployment is required in Phase 8.
+No Vercel deployment is required in Phase 9.
 
 See `docs/vercel-setup.md` for planned env var and callback URL setup.
 
@@ -132,6 +132,6 @@ Later phases will add:
 
 ## Cost Guardrails
 
-Phase 8 adds private Supabase Storage usage for evidence photos, which can
+Phase 9 adds no paid services. Phase 8 added private Supabase Storage usage for evidence photos, which can
 consume free-tier storage and egress. Do not add SMS, paid email, paid
 analytics, paid AI APIs, paid queues, or observability without owner approval.

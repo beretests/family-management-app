@@ -3,6 +3,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { getTaskInstancesDueBetween } from "@/features/assignments/queries";
 import { getChoreTemplates } from "@/features/chores/queries";
 import { getFamilyContext } from "@/features/family/queries";
+import { getPendingReviewCount } from "@/features/reviews/queries";
 import { scheduleEventTypeLabels } from "@/features/schedule/labels";
 import { getScheduleEvents } from "@/features/schedule/queries";
 import type { ScheduleEvent } from "@/features/schedule/types";
@@ -47,19 +48,21 @@ export default async function DashboardPage() {
   const today = new Date();
   const todayStart = startOfDay(today);
   const todayEnd = endOfDay(today);
-  const [todayEvents, choreTemplates, todayTasks] = await Promise.all([
-    getScheduleEvents({
-      endsAt: todayEnd,
-      familyId: context.family.id,
-      startsAt: todayStart,
-    }),
-    getChoreTemplates(context.family.id),
-    getTaskInstancesDueBetween({
-      endsAt: todayEnd,
-      familyId: context.family.id,
-      startsAt: todayStart,
-    }),
-  ]);
+  const [todayEvents, choreTemplates, todayTasks, pendingReviews] =
+    await Promise.all([
+      getScheduleEvents({
+        endsAt: todayEnd,
+        familyId: context.family.id,
+        startsAt: todayStart,
+      }),
+      getChoreTemplates(context.family.id),
+      getTaskInstancesDueBetween({
+        endsAt: todayEnd,
+        familyId: context.family.id,
+        startsAt: todayStart,
+      }),
+      getPendingReviewCount(context.family.id),
+    ]);
 
   return (
     <section className="grid gap-5">
@@ -88,11 +91,12 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-6">
         <MetricCard label="Active kids" value={activeChildren.length} />
         <MetricCard label="Rest flags" value={childrenNeedingRest.length} />
         <MetricCard label="Today events" value={todayEvents.length} />
         <MetricCard label="Assigned today" value={todayTasks.length} />
+        <MetricCard label="Pending reviews" value={pendingReviews} />
         <MetricCard
           label="Active chores"
           value={choreTemplates.filter((template) => template.active).length}
@@ -114,6 +118,25 @@ export default async function DashboardPage() {
             href="/assignments"
           >
             Plan assignments
+          </Link>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[var(--foreground)]">
+              Approvals
+            </h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Review submitted chores and award points.
+            </p>
+          </div>
+          <Link
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+            href="/approvals"
+          >
+            Review submissions
           </Link>
         </div>
       </div>
