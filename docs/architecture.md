@@ -198,6 +198,9 @@ Auth security decisions:
 - uses security-definer helpers to avoid trusting client role values
 - validates family profile mutations with Zod Server Actions
 - resolves active parent membership server-side before child management writes
+- signs Kid Mode child-profile cookies with `CHILD_SESSION_SECRET`
+- uses `SUPABASE_SECRET_KEY` for validated child-mode task writes because
+  Supabase RLS cannot inspect app cookies
 - validates schedule mutations with Zod Server Actions
 - resolves active parent membership server-side before schedule management
   writes
@@ -215,6 +218,7 @@ The project reserves these environment variables:
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_ENABLE_PHONE_AUTH`
 - `SUPABASE_SECRET_KEY`
+- `CHILD_SESSION_SECRET`
 - `CRON_SECRET`
 
 Only `NEXT_PUBLIC_*` variables may be read in browser code.

@@ -11,7 +11,14 @@ import {
   TASK_EVIDENCE_BUCKET,
   validateEvidenceFile,
 } from "@/lib/storage/evidence";
+import {
+  getCurrentActorMemberIds,
+  getVerifiedChildSessionContext,
+} from "@/lib/permissions/family";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+type AppSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
 export type TaskActionState = {
   error?: string;
@@ -44,23 +51,10 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
 
-async function getCurrentMemberIds(familyId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("current_user_member_ids", {
-    p_family_id: familyId,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Array.isArray(data)
-    ? data.filter((id): id is string => typeof id === "string")
-    : [];
-}
-
-async function requireSubmitContext(taskId: string) {
-  const supabase = await createClient();
+async function requireSubmitContext(
+  supabase: AppSupabaseClient,
+  taskId: string,
+) {
   const { data, error } = await supabase
     .from("task_instances")
     .select(
@@ -85,7 +79,7 @@ async function requireSubmitContext(taskId: string) {
     requiresEvidenceSnapshot: Boolean(data.requires_evidence_snapshot),
     status: data.status as string,
   } satisfies TaskSubmitContext;
-  const memberIds = await getCurrentMemberIds(task.familyId);
+  const memberIds = await getCurrentActorMemberIds(supabase, task.familyId);
 
   if (!memberIds.includes(task.assignedToMemberId)) {
     throw new Error("Only the assigned family member can update this task.");
@@ -95,7 +89,17 @@ async function requireSubmitContext(taskId: string) {
     throw new Error("This task is not open for submission.");
   }
 
-  return task;
+  const childSession = await getVerifiedChildSessionContext(
+    supabase,
+    task.familyId,
+  );
+  const useAdminWriteClient =
+    childSession?.memberId === task.assignedToMemberId;
+
+  return {
+    ...task,
+    writeClient: useAdminWriteClient ? createAdminClient() : supabase,
+  };
 }
 
 export async function updateSubtaskCompletion(
@@ -115,9 +119,9 @@ export async function updateSubtaskCompletion(
   const supabase = await createClient();
 
   try {
-    const task = await requireSubmitContext(parsed.data.taskId);
+    const task = await requireSubmitContext(supabase, parsed.data.taskId);
     const completed = parsed.data.completed === "true";
-    const { error } = await supabase
+    const { error } = await task.writeClient
       .from("task_instance_subtasks")
       .update({
         completed,
@@ -158,8 +162,9 @@ export async function submitTask(
   const supabase = await createClient();
 
   try {
-    const task = await requireSubmitContext(parsed.data.taskId);
-    const { data: subtaskRows, error: subtaskError } = await supabase
+    const task = await requireSubmitContext(supabase, parsed.data.taskId);
+    const writeClient = task.writeClient;
+    const { data: subtaskRows, error: subtaskError } = await writeClient
       .from("task_instance_subtasks")
       .select("completed")
       .eq("family_id", task.familyId)
@@ -175,7 +180,7 @@ export async function submitTask(
 
     const evidenceFile = getEvidenceFile(formData);
     const { data: existingEvidence, error: evidenceLookupError } =
-      await supabase
+      await writeClient
         .from("task_evidence_files")
         .select("id")
         .eq("family_id", task.familyId)
@@ -231,7 +236,7 @@ export async function submitTask(
         taskId: parsed.data.taskId,
         type: evidenceFile.type,
       });
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await writeClient.storage
         .from(TASK_EVIDENCE_BUCKET)
         .upload(path, evidenceFile, {
           cacheControl: "3600",
@@ -251,7 +256,7 @@ export async function submitTask(
       };
     }
 
-    const { data: submissionRow, error: submissionError } = await supabase
+    const { data: submissionRow, error: submissionError } = await writeClient
       .from("task_submissions")
       .insert({
         family_id: task.familyId,
@@ -267,7 +272,7 @@ export async function submitTask(
     }
 
     if (uploadedEvidence) {
-      const { error: metadataError } = await supabase
+      const { error: metadataError } = await writeClient
         .from("task_evidence_files")
         .insert({
           content_type: uploadedEvidence.contentType,
@@ -285,10 +290,13 @@ export async function submitTask(
       }
     }
 
-    const { error: submitError } = await supabase.rpc("submit_task_instance", {
-      p_submitted_by_member_id: task.assignedToMemberId,
-      p_task_instance_id: parsed.data.taskId,
-    });
+    const { error: submitError } = await writeClient.rpc(
+      "submit_task_instance",
+      {
+        p_submitted_by_member_id: task.assignedToMemberId,
+        p_task_instance_id: parsed.data.taskId,
+      },
+    );
 
     if (submitError) {
       return { error: submitError.message };

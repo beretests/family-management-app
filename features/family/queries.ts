@@ -6,7 +6,10 @@ import type {
   FamilyMemberPreference,
   FamilyMemberStatus,
 } from "@/features/family/types";
-import { getAuthenticatedProfileId } from "@/lib/permissions/family";
+import {
+  getAuthenticatedProfileId,
+  getVerifiedChildSessionContext,
+} from "@/lib/permissions/family";
 
 type FamilyRow = {
   id: string;
@@ -48,6 +51,10 @@ type StatusRow = {
 
 type MemberAuthLinkRow = {
   family_id: string;
+  member_id: string;
+};
+
+type PinCredentialRow = {
   member_id: string;
 };
 
@@ -100,22 +107,44 @@ function mapStatus(row: StatusRow): FamilyMemberStatus {
 export async function getFamilyContext(): Promise<FamilyContext> {
   const supabase = await createClient();
   const profileId = await getAuthenticatedProfileId(supabase);
+  const childSession = await getVerifiedChildSessionContext(supabase);
+  let currentMemberRow: FamilyMemberRow | undefined;
 
-  const { data: membershipRows, error: membershipError } = await supabase
-    .from("family_members")
-    .select(
-      "id,family_id,profile_id,display_name,role,birthdate,age_years,ability_level,color,lifecycle_status,deactivated_at",
-    )
-    .eq("profile_id", profileId)
-    .eq("lifecycle_status", "active")
-    .order("created_at", { ascending: true })
-    .limit(1);
+  if (childSession) {
+    const { data: childMemberRow, error: childMemberError } = await supabase
+      .from("family_members")
+      .select(
+        "id,family_id,profile_id,display_name,role,birthdate,age_years,ability_level,color,lifecycle_status,deactivated_at",
+      )
+      .eq("family_id", childSession.familyId)
+      .eq("id", childSession.memberId)
+      .eq("lifecycle_status", "active")
+      .maybeSingle();
 
-  if (membershipError) {
-    throw new Error(membershipError.message);
+    if (childMemberError) {
+      throw new Error(childMemberError.message);
+    }
+
+    currentMemberRow = childMemberRow as FamilyMemberRow | undefined;
   }
 
-  let currentMemberRow = membershipRows?.[0] as FamilyMemberRow | undefined;
+  if (!currentMemberRow) {
+    const { data: membershipRows, error: membershipError } = await supabase
+      .from("family_members")
+      .select(
+        "id,family_id,profile_id,display_name,role,birthdate,age_years,ability_level,color,lifecycle_status,deactivated_at",
+      )
+      .eq("profile_id", profileId)
+      .eq("lifecycle_status", "active")
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    if (membershipError) {
+      throw new Error(membershipError.message);
+    }
+
+    currentMemberRow = membershipRows?.[0] as FamilyMemberRow | undefined;
+  }
 
   if (!currentMemberRow) {
     const { data: linkRows, error: linkError } = await supabase
@@ -210,6 +239,21 @@ export async function getFamilyContext(): Promise<FamilyContext> {
     throw new Error(statusesError.message);
   }
 
+  let pinCredentialRows: PinCredentialRow[] = [];
+
+  if (currentMemberRow.role === "parent") {
+    const { data: credentialRows, error: credentialError } = await supabase
+      .from("family_member_pin_credentials")
+      .select("member_id")
+      .eq("family_id", familyId);
+
+    if (credentialError) {
+      throw new Error(credentialError.message);
+    }
+
+    pinCredentialRows = (credentialRows ?? []) as PinCredentialRow[];
+  }
+
   const preferencesByMember = new Map(
     ((preferenceRows ?? []) as PreferenceRow[]).map((row) => [
       row.member_id,
@@ -223,6 +267,7 @@ export async function getFamilyContext(): Promise<FamilyContext> {
       statusesByMember.set(row.member_id, mapStatus(row));
     }
   }
+  const pinMemberIds = new Set(pinCredentialRows.map((row) => row.member_id));
 
   return {
     family: mapFamily(familyRow as FamilyRow),
@@ -231,6 +276,7 @@ export async function getFamilyContext(): Promise<FamilyContext> {
       ...mapMember(row),
       preferences: preferencesByMember.get(row.id) ?? null,
       currentStatus: statusesByMember.get(row.id) ?? null,
+      hasKidModePin: pinMemberIds.has(row.id),
     })),
   };
 }

@@ -4,12 +4,13 @@ This document records product rules reflected in the Phase 3 schema.
 
 ## Child Accounts
 
-MVP children are `family_members` first, not required Supabase Auth users.
-`family_member_auth_links` exists for later phases where older kids or
-caregivers may link a Supabase Auth account to a family member.
+Children are `family_members` first, not required Supabase Auth users.
+`family_member_auth_links` supports older kids or caregivers who link a
+Supabase Auth account to a family member.
 
-Kid Mode/PIN is not implemented in Phase 3. When implemented later, PINs must be
-hashed and must not be treated as full account security.
+Kid Mode/PIN is parent-managed household profile switching. PINs are hashed in
+`family_member_pin_credentials`, the active child profile is stored in a signed
+HttpOnly cookie, and PINs must not be treated as full account security.
 
 ## Starter Chores
 

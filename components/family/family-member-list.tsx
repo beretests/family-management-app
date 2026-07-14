@@ -8,6 +8,7 @@ import {
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
 import { EditChildMemberForm } from "@/components/family/family-member-form";
+import { KidModePinForm } from "@/components/family/kid-mode-pin-form";
 import { MemberStatusForm } from "@/components/family/member-status-form";
 import { StatusPill } from "@/components/ui/status-pill";
 
@@ -91,6 +92,7 @@ function ChildCard({
   member: FamilyMemberWithDetails;
 }) {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingPin, setIsEditingPin] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const isInactive = member.lifecycleStatus === "inactive";
   const statusNote = member.currentStatus?.note?.trim();
@@ -110,6 +112,9 @@ function ChildCard({
               </StatusPill>
               <StatusPill tone="info">
                 {statusLabels[member.currentStatus?.status ?? "normal"]}
+              </StatusPill>
+              <StatusPill tone={member.hasKidModePin ? "success" : "warning"}>
+                {member.hasKidModePin ? "Kid PIN set" : "No Kid PIN"}
               </StatusPill>
             </div>
             <p className="mt-1 text-sm text-[var(--muted)]">
@@ -144,12 +149,19 @@ function ChildCard({
             >
               {isEditingStatus ? "Cancel status" : "Set status"}
             </button>
+            <button
+              className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+              onClick={() => setIsEditingPin((current) => !current)}
+              type="button"
+            >
+              {isEditingPin ? "Cancel PIN" : "Kid PIN"}
+            </button>
             <DeactivateChildForm familyId={familyId} memberId={member.id} />
           </div>
         ) : null}
       </div>
 
-      {!isInactive && (isEditingProfile || isEditingStatus) ? (
+      {!isInactive && (isEditingProfile || isEditingStatus || isEditingPin) ? (
         <div className="mt-5 grid gap-5 border-t border-[var(--line)] pt-5">
           {isEditingProfile ? (
             <section className="rounded-md bg-[var(--background)] p-4">
@@ -165,6 +177,18 @@ function ChildCard({
                 Update status
               </h4>
               <MemberStatusForm familyId={familyId} member={member} />
+            </section>
+          ) : null}
+          {isEditingPin ? (
+            <section className="rounded-md bg-[var(--background)] p-4">
+              <h4 className="text-sm font-semibold uppercase text-[var(--muted)]">
+                Kid Mode PIN
+              </h4>
+              <KidModePinForm
+                familyId={familyId}
+                hasPin={member.hasKidModePin}
+                memberId={member.id}
+              />
             </section>
           ) : null}
         </div>

@@ -11,13 +11,14 @@ Implemented auth paths:
 - sign-out
 - protected app routes
 - SSR cookie handling through `@supabase/ssr`
+- parent-managed Kid Mode/PIN profile switching
+- optional linked child auth profiles for older kids
 - guarded local-only E2E session helper
 
 Not implemented by default:
 
 - phone/SMS auth
 - paid email provider
-- parent-managed Kid Mode/PIN profile switching
 
 ## Environment Variables
 
@@ -29,6 +30,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 SUPABASE_SECRET_KEY=
+CHILD_SESSION_SECRET=
 CRON_SECRET=
 ```
 
@@ -39,6 +41,8 @@ Rules:
   publishable key.
 - Use Supabase's current `sb_secret_...` key for server-only maintenance.
 - Do not use the legacy `service_role` key for production app deployment.
+- Set `CHILD_SESSION_SECRET` to a long random value. It signs HttpOnly Kid Mode
+  cookies and must be server-only.
 - Do not commit real secret values.
 - Keep `NEXT_PUBLIC_ENABLE_PHONE_AUTH=false` unless the owner approves SMS
   provider setup and possible cost.
@@ -83,6 +87,7 @@ https://your-custom-domain.example/callback
 - `/sign-up`: parent/caregiver email/password sign-up.
 - `/callback`: exchanges Supabase auth codes for a server-managed session.
 - `/dashboard`: protected family dashboard.
+- `/kid-mode`: unlocks or exits a parent-managed child profile.
 
 Redirect safety:
 
@@ -101,6 +106,24 @@ With Supabase env vars configured:
 6. Sign in and confirm `/dashboard` renders.
 7. Sign out and confirm you return to `/`.
 8. Test Google sign-in after Google provider setup is complete.
+9. As a parent, add a child, set a Kid Mode PIN in Family settings, unlock the
+   child from `/kid-mode`, and confirm parent-only routes redirect away.
+
+## Kid Mode Security
+
+Kid Mode is household profile switching under a signed-in parent account. It is
+not equivalent to a separate child password.
+
+- PINs are hashed in `family_member_pin_credentials`; plaintext PINs are never
+  stored.
+- The selected child profile is stored in a short-lived HttpOnly cookie signed
+  with `CHILD_SESSION_SECRET`.
+- Server actions validate the parent Supabase session, the signed child cookie,
+  and the target task/member before allowing child actions.
+- Task writes in Kid Mode use `SUPABASE_SECRET_KEY` server-side after validation
+  because Supabase RLS can only see the parent JWT, not the app's child cookie.
+- Older kids can use real Supabase Auth accounts linked through
+  `family_member_auth_links`; those sessions continue through normal RLS.
 
 Without Supabase env vars configured:
 

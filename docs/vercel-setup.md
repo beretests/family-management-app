@@ -29,6 +29,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 SUPABASE_SECRET_KEY=
+CHILD_SESSION_SECRET=
 CRON_SECRET=
 ```
 
@@ -40,6 +41,7 @@ Rules:
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - Use Supabase's `sb_secret_...` key for `SUPABASE_SECRET_KEY`.
 - Do not configure the legacy `service_role` key for production app use.
+- Set `CHILD_SESSION_SECRET` to a long random value for Kid Mode cookie signing.
 - Keep `CRON_SECRET` server-only.
 - Changing Vercel env vars requires a new deployment.
 

@@ -29,6 +29,7 @@ function child(
     deactivatedAt: null,
     displayName,
     familyId,
+    hasKidModePin: false,
     id,
     lifecycleStatus: "active",
     preferences: null,

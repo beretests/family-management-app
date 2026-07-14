@@ -2,87 +2,72 @@
 
 ## Current Phase
 
-Phase 12: Deployment Polish
+Phase 13: Secure Kid Access
 
 ## Branch and Worktree
 
-- Branch: `phase/12-deployment-polish`
-- Worktree: `../family-app-phase-12-deployment-polish`
-- Base branch: local `main` at `0b44e44` (`Merge branch 'phase/11-reminders-cleanup'`)
+- Branch: `phase/13-kid-mode-pin`
+- Worktree: `../family-app-phase-13-kid-mode-pin`
+- Base branch: `main` at `407e13a` (`fix: header layout`)
 
 ## Implemented Features
 
-- Updated deployment documentation for Vercel and Supabase.
-- Added `docs/deployment-checklist.md` with local, Supabase, Vercel, smoke-test,
-  free-tier, and rollback steps.
-- Updated `.env.example` to use current Supabase `SUPABASE_SECRET_KEY` guidance
-  and stop advertising `SUPABASE_SERVICE_ROLE_KEY`.
-- Updated server maintenance admin client to require `SUPABASE_SECRET_KEY`.
-- Updated E2E local Supabase helper to prefer `SUPABASE_SECRET_KEY`, while still
-  allowing local CLI admin-key parsing for local-only tests.
-- Refreshed README, architecture, auth setup, local development, storage
-  retention, Supabase setup, and Vercel setup docs for the completed MVP.
-- Updated project guidance docs so future work does not recommend the legacy
-  Supabase `service_role` key for production app deployment.
+- Added parent-managed Kid Mode with hashed child PIN credentials.
+- Added `family_member_pin_credentials` with parent-only RLS.
+- Added signed HttpOnly child-session cookie utilities backed by
+  `CHILD_SESSION_SECRET`.
+- Added `/kid-mode` for parent unlock and child-mode exit.
+- Added Family settings PIN setup/reset controls for active child profiles.
+- Updated family context so a verified Kid Mode cookie makes the active app
+  member the selected child while keeping the parent Supabase session.
+- Updated child task checklist/submission actions to allow only the acting child
+  and to use server-only admin writes for validated Kid Mode task writes.
+- Added route-level parent gates for family settings, chore templates, and
+  assignment generation.
+- Documented Kid Mode setup, env vars, data model, and older child linked auth
+  account support through `family_member_auth_links`.
 
 ## Manual Setup Still Required
 
-- Configure Supabase project URL, publishable key, and secret key.
-- Apply Supabase migrations and seed data.
-- Configure Supabase Auth Site URL and Redirect URLs.
-- Configure Google OAuth if used.
-- Configure Vercel environment variables.
-- Configure `CRON_SECRET` in Vercel.
-- Deploy to Vercel and run the deployment smoke checklist.
-- No production deployment was performed by Codex.
+- Apply Supabase migrations, including
+  `20260714160000_kid_mode_pin_credentials.sql`.
+- Set `CHILD_SESSION_SECRET` in local `.env.local` and Vercel.
+- Keep `SUPABASE_SECRET_KEY` server-only; Kid Mode task writes require it after
+  server-side validation.
+- Redeploy after setting Vercel env vars.
+- Parent must set a PIN for each child before that child can use Kid Mode.
 
 ## Known Issues and Limitations
 
-- The local Supabase CLI still exposes a `SERVICE_ROLE_KEY` value for local test
-  automation; production app deployment should use `SUPABASE_SECRET_KEY`.
-- Browser notifications remain local browser alerts only; background push is not
-  implemented.
-- SMS, paid email, paid analytics, paid AI, queues, and external worker services
-  remain intentionally out of scope.
-- Vercel Hobby cron is low-frequency and not minute-precise.
+- Kid Mode is household profile switching, not independent child authentication.
+- A child with access to an unlocked parent browser still depends on app-level
+  server checks; do not treat the PIN as a full account password.
+- Older child Supabase Auth accounts are supported by the existing
+  `family_member_auth_links` lookup path, but this phase does not add a full
+  email invitation UI.
+- Reward redemption and child schedule mutation under Kid Mode may need future
+  server-action updates if those flows should write as the child through the
+  parent session.
 
 ## Next Recommended Phase
 
-Post-MVP maintenance or owner-directed production deployment.
+Owner-directed hardening after merge:
 
-Suggested follow-up branches only after owner approval:
-
-- `phase/13-production-smoke`
-- `phase/13-kid-mode-pin`
-- `phase/13-swap-requests`
+- `phase/14-kid-mode-e2e`: browser smoke tests for PIN unlock, child task
+  submission, parent-only redirects, and exit.
+- `phase/14-child-auth-invites`: parent-managed invitation/linking UI for older
+  kids with their own Supabase Auth accounts.
 
 ## Checks
 
-- `npm install` passed in the Phase 12 worktree. npm reported 2 moderate
+- `npm install` passed in the Phase 13 worktree. npm reported 2 moderate
   vulnerabilities in existing dependencies.
-- `npx prettier --write ...` formatted Phase 12 files. `.env.example` was not
-  passed to Prettier because it has no inferred parser.
-- `npx prettier --check ...` passed for supported Phase 12 files.
-- `npm run lint` passed.
+- Initial `npm run lint` and `npm run typecheck` failed before local
+  dependencies were installed in this sibling worktree.
+- `npm run lint` passed after dependency install.
 - `npm run typecheck` passed with worktree write permission for
   `tsconfig.tsbuildinfo`.
-- `npm test` passed: 19 files, 63 tests.
-- `npm run build` passed and included routes:
-  - `/api/cron/daily-maintenance`
-  - `/api/test/session`
-  - `/approvals`
-  - `/assignments`
-  - `/chores`
-  - `/dashboard`
-  - `/family/setup`
-  - `/leaderboard`
-  - `/my-today`
-  - `/reminders`
-  - `/rewards`
-  - `/schedule`
-  - `/settings/family`
-  - `/sign-in`
-  - `/sign-up`
-- `npm run test:e2e` was not run for Phase 12 because this phase focused on
-  deployment docs and readiness checks; the existing E2E flow remains available
-  for local Supabase smoke testing.
+- `npm test` passed: 21 files, 69 tests.
+- Initial `npm run build` failed because the sandbox could not create `.next` in
+  the sibling worktree.
+- `npm run build` passed with worktree write permission and included `/kid-mode`.

@@ -63,7 +63,23 @@ export const memberStatusSchema = z.object({
   note: optionalTrimmedString(300, "Use 300 characters or fewer."),
 });
 
+export const childPinSchema = z
+  .object({
+    familyId: z.string().uuid("Missing family."),
+    memberId: z.string().uuid("Missing child profile."),
+    pin: z
+      .string()
+      .trim()
+      .regex(/^\d{4,8}$/, "Use a 4 to 8 digit PIN."),
+    confirmPin: z.string().trim(),
+  })
+  .refine((value) => value.pin === value.confirmPin, {
+    message: "PINs do not match.",
+    path: ["confirmPin"],
+  });
+
 export type FamilySetupInput = z.infer<typeof familySetupSchema>;
 export type ChildMemberInput = z.infer<typeof childMemberSchema>;
 export type UpdateChildMemberInput = z.infer<typeof updateChildMemberSchema>;
 export type MemberStatusInput = z.infer<typeof memberStatusSchema>;
+export type ChildPinInput = z.infer<typeof childPinSchema>;

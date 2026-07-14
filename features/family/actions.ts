@@ -3,13 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  childPinSchema,
   childMemberSchema,
   deactivateChildMemberSchema,
   familySetupSchema,
   memberStatusSchema,
   updateChildMemberSchema,
 } from "@/features/family/schemas";
-import { getAuthenticatedProfileId, requireParentContext } from "@/lib/permissions/family";
+import { hashChildPin } from "@/lib/auth/pin";
+import {
+  getAuthenticatedProfileId,
+  requireParentContext,
+} from "@/lib/permissions/family";
 import { createClient } from "@/lib/supabase/server";
 
 export type FamilyActionState = {
@@ -267,6 +272,75 @@ export async function updateChildMember(
   revalidatePath("/dashboard");
   revalidatePath("/settings/family");
   return { success: `${parsed.data.displayName} was updated.` };
+}
+
+export async function setChildPin(
+  _previousState: FamilyActionState,
+  formData: FormData,
+): Promise<FamilyActionState> {
+  const parsed = childPinSchema.safeParse({
+    confirmPin: getString(formData, "confirmPin"),
+    familyId: getString(formData, "familyId"),
+    memberId: getString(formData, "memberId"),
+    pin: getString(formData, "pin"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    const parent = await requireParentContext(supabase, parsed.data.familyId);
+    const { data: member, error: memberLookupError } = await supabase
+      .from("family_members")
+      .select("id")
+      .eq("family_id", parent.familyId)
+      .eq("id", parsed.data.memberId)
+      .eq("role", "child")
+      .eq("lifecycle_status", "active")
+      .maybeSingle();
+
+    if (memberLookupError) {
+      return { error: memberLookupError.message };
+    }
+
+    if (!member) {
+      return { error: "Active child profile not found." };
+    }
+
+    const { error: credentialError } = await supabase
+      .from("family_member_pin_credentials")
+      .upsert(
+        {
+          failed_attempts: 0,
+          family_id: parent.familyId,
+          locked_until: null,
+          member_id: parsed.data.memberId,
+          pin_hash: await hashChildPin(parsed.data.pin),
+          updated_by_member_id: parent.memberId,
+        },
+        { onConflict: "member_id" },
+      );
+
+    if (credentialError) {
+      return { error: credentialError.message };
+    }
+
+    await insertAuditEvent({
+      action: "kid_mode.pin_set",
+      actorMemberId: parent.memberId,
+      familyId: parent.familyId,
+      target: { memberId: parsed.data.memberId },
+    });
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+
+  revalidatePath("/settings/family");
+  revalidatePath("/kid-mode");
+  return { success: "Kid Mode PIN was saved." };
 }
 
 export async function deactivateChildMember(

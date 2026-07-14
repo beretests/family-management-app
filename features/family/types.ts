@@ -47,6 +47,7 @@ export type FamilyMemberStatus = {
 export type FamilyMemberWithDetails = FamilyMember & {
   preferences: FamilyMemberPreference | null;
   currentStatus: FamilyMemberStatus | null;
+  hasKidModePin: boolean;
 };
 
 export type FamilyContext = {

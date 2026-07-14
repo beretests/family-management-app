@@ -10,6 +10,7 @@ Use Supabase's current API key model:
 ```bash
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SECRET_KEY=sb_secret_...
+CHILD_SESSION_SECRET=<long-random-server-secret>
 ```
 
 Do not use the legacy JWT `service_role` key for production app deployment.
@@ -18,6 +19,11 @@ and never expose it in browser code, logs, query strings, screenshots, or docs.
 
 The local Supabase CLI may still output a `SERVICE_ROLE_KEY` for local-only test
 automation. Treat that as a local tooling detail, not the production app key.
+
+Kid Mode uses `CHILD_SESSION_SECRET` to sign app cookies and
+`SUPABASE_SECRET_KEY` only after server-side parent/session/member validation
+for child-mode task writes. Supabase RLS cannot inspect the app's child cookie,
+so these writes must stay in server actions and route handlers only.
 
 ## Auth
 
@@ -111,6 +117,8 @@ After migrations, verify:
 - Family-owned tables include `family_id`.
 - Parents can manage family settings, members, templates, tasks, rewards,
   reviews, reminders, and audit records.
+- Parents can select and manage `family_member_pin_credentials`; child accounts
+  cannot read PIN hashes.
 - Children can read family schedule and their own assignments/submissions.
 - Children cannot approve submissions or manage parent settings/templates.
 - Global starter chore templates are read-only reference data.
