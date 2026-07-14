@@ -28,6 +28,15 @@ export default async function MyTodayPage() {
   const openTaskCount = tasks.filter((task) =>
     ["assigned", "in_progress", "rejected"].includes(task.status),
   ).length;
+  const description = isParentView
+    ? "Review today’s assigned chores, progress, submissions, and blockers."
+    : "Check off each step, add a note or photo when needed, and submit chores for parent review.";
+  const emptyMessage = isParentView
+    ? "No family chores are scheduled for today. Generate assignments or add tasks from Assignments."
+    : "No chores are assigned for today.";
+  const unavailableMessage = isParentView
+    ? "Children update and submit chores from their own profiles."
+    : "Sign in as the assigned child profile to update and submit this task.";
 
   return (
     <section className="grid gap-5">
@@ -38,11 +47,12 @@ export default async function MyTodayPage() {
               {isParentView ? "Family view" : "My chores"}
             </StatusPill>
             <h1 className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
-              {formatDateHeading(today)}
+              {isParentView
+                ? `Family chores for ${formatDateHeading(today)}`
+                : formatDateHeading(today)}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Check off each step, add a note or photo when needed, and submit
-              chores for parent review.
+              {description}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -52,7 +62,12 @@ export default async function MyTodayPage() {
         </div>
       </div>
 
-      <KidTaskList currentMember={context.currentMember} tasks={tasks} />
+      <KidTaskList
+        currentMember={context.currentMember}
+        emptyMessage={emptyMessage}
+        tasks={tasks}
+        unavailableMessage={unavailableMessage}
+      />
     </section>
   );
 }

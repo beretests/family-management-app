@@ -18,9 +18,11 @@ const statusTone: Record<string, StatusTone> = {
 export function KidTaskCard({
   canSubmit,
   task,
+  unavailableMessage = "Sign in as the assigned child profile to update and submit this task.",
 }: {
   canSubmit: boolean;
   task: TodayTask;
+  unavailableMessage?: string;
 }) {
   const completedCount = task.subtasks.filter(
     (subtask) => subtask.completed,
@@ -91,7 +93,7 @@ export function KidTaskCard({
         <TaskSubmitForm task={task} />
       ) : (
         <p className="mt-4 rounded-md border border-dashed border-[var(--line)] p-3 text-sm text-[var(--muted)]">
-          Sign in as the assigned child profile to update and submit this task.
+          {unavailableMessage}
         </p>
       )}
     </article>
