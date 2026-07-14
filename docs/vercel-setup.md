@@ -1,12 +1,27 @@
 # Vercel Setup
 
-Phase 2 does not deploy the app, but auth configuration needs Vercel-compatible
-environment planning.
+This app targets Vercel Hobby/free tier.
+
+## Project Import
+
+1. Import the GitHub repository into Vercel.
+2. Use the Next.js framework preset.
+3. Keep the install command as `npm install`.
+4. Keep the build command as:
+
+```bash
+npm run build
+```
+
+5. Deploy from the production branch, normally `main`.
+
+No production deployment is performed by Codex unless the owner explicitly
+requests it.
 
 ## Environment Variables
 
-When a Vercel project exists, add these variables for Preview and Production as
-appropriate:
+Add these variables for Production. Add them for Preview only if preview auth
+testing is needed.
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
@@ -14,49 +29,41 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 SUPABASE_SECRET_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 CRON_SECRET=
 ```
 
-For production, `NEXT_PUBLIC_APP_URL` should be the public app URL, for example:
+Rules:
 
-```text
-https://your-app.vercel.app
-```
+- `NEXT_PUBLIC_APP_URL` must be the deployed app origin, for example
+  `https://your-app.vercel.app` or the custom domain.
+- Use Supabase's `sb_publishable_...` key for
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- Use Supabase's `sb_secret_...` key for `SUPABASE_SECRET_KEY`.
+- Do not configure the legacy `service_role` key for production app use.
+- Keep `CRON_SECRET` server-only.
+- Changing Vercel env vars requires a new deployment.
 
 ## Supabase Redirect URLs
 
-Add the deployed callback URL to Supabase:
+Add each deployed callback URL in Supabase Auth URL configuration:
 
 ```text
 https://your-app.vercel.app/callback
+https://your-custom-domain.example/callback
 ```
 
-If you use custom domains or Vercel preview deployments for auth testing, add
-the corresponding callback URLs in Supabase.
-
-## Free-Tier Notes
-
-- No Vercel Cron jobs are configured in Phase 2.
-- No paid analytics, queues, observability, email, or SMS providers are added.
-- Monitor Vercel usage before enabling features with background jobs or image
-  optimization.
-- Phase 8 evidence uploads use Supabase Storage directly from server actions.
-  No extra Vercel service is required, but large uploads can still consume
-  function time and Supabase free-tier storage/egress.
-- Phase 10 rewards and leaderboard use existing Supabase tables and Next.js
-  server actions/pages. No Vercel Cron, paid reward provider, or payment
-  integration is required.
-- Phase 11 adds one Vercel Cron route for daily maintenance:
-  `/api/cron/daily-maintenance`. Set `CRON_SECRET` in Vercel and keep the
-  generated value server-only. The route expects Vercel's cron request
-  authorization header: `Authorization: Bearer <CRON_SECRET>`.
-- Hobby cron should be treated as daily/low-frequency and not exact to the
-  minute. The maintenance route is idempotent and batch-limited.
+For preview auth testing, add a tightly scoped preview callback URL. Avoid broad
+wildcards unless the risk is understood.
 
 ## Cron
 
-Phase 11 includes this `vercel.json` entry:
+Phase 11 added one daily maintenance route:
+
+```text
+/api/cron/daily-maintenance
+```
+
+`vercel.json` configures:
 
 ```json
 {
@@ -69,13 +76,37 @@ Phase 11 includes this `vercel.json` entry:
 }
 ```
 
-Do not add high-frequency cron jobs or external worker services on the free-tier
-plan without explicit approval.
+The route expects:
 
-## Build Command
-
-The standard build command is:
-
-```bash
-npm run build
+```text
+Authorization: Bearer <CRON_SECRET>
 ```
+
+Vercel Hobby cron is low-frequency and not minute-precise. The maintenance route
+is idempotent and batch-limited, so it is safe to rerun.
+
+## Free-Tier Guardrails
+
+- Do not add paid analytics, queues, observability, email, SMS, AI APIs, or
+  external worker services without owner approval.
+- Monitor Vercel usage after enabling cron and evidence uploads.
+- Keep cron daily or low-frequency.
+- Watch function logs for maintenance failures, especially evidence cleanup
+  errors caused by missing `SUPABASE_SECRET_KEY`.
+- Large evidence uploads can still consume function time and Supabase
+  storage/egress.
+
+## Deployment Smoke Test
+
+After deployment:
+
+1. Open `NEXT_PUBLIC_APP_URL`.
+2. Confirm the landing page loads.
+3. Sign in with a test parent account.
+4. Confirm `/dashboard` loads.
+5. Confirm `/schedule`, `/chores`, `/assignments`, `/my-today`, `/approvals`,
+   `/rewards`, `/leaderboard`, and `/reminders` load for the test family.
+6. Confirm Supabase redirects return through `/callback`.
+7. Confirm `/api/cron/daily-maintenance` returns `401` without the cron secret.
+8. Trigger the cron route manually only with the correct secret from a trusted
+   environment.

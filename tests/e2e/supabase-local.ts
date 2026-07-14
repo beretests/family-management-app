@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 type SupabaseLocalEnv = {
   apiUrl: string;
-  serviceRoleKey: string;
+  adminKey: string;
 };
 
 export async function createConfirmedParentUser({
@@ -13,8 +13,8 @@ export async function createConfirmedParentUser({
   email: string;
   password: string;
 }) {
-  const { apiUrl, serviceRoleKey } = getSupabaseLocalEnv();
-  const supabase = createClient(apiUrl, serviceRoleKey, {
+  const { adminKey, apiUrl } = getSupabaseLocalEnv();
+  const supabase = createClient(apiUrl, adminKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -34,10 +34,10 @@ export async function createConfirmedParentUser({
 
 function getSupabaseLocalEnv(): SupabaseLocalEnv {
   const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (apiUrl && serviceRoleKey) {
-    return { apiUrl, serviceRoleKey };
+  if (apiUrl && adminKey) {
+    return { adminKey, apiUrl };
   }
 
   return parseSupabaseStatusEnv();
@@ -53,7 +53,7 @@ function parseSupabaseStatusEnv(): SupabaseLocalEnv {
     });
   } catch {
     throw new Error(
-      "E2E tests need local Supabase running, or NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY set.",
+      "E2E tests need local Supabase running, or NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY set.",
     );
   }
 
@@ -68,11 +68,11 @@ function parseSupabaseStatusEnv(): SupabaseLocalEnv {
   }
 
   const apiUrl = values.get("API_URL");
-  const serviceRoleKey = values.get("SERVICE_ROLE_KEY");
+  const adminKey = values.get("SERVICE_ROLE_KEY");
 
-  if (!apiUrl || !serviceRoleKey) {
-    throw new Error("Could not read local Supabase API URL and service role key.");
+  if (!apiUrl || !adminKey) {
+    throw new Error("Could not read local Supabase API URL and admin key.");
   }
 
-  return { apiUrl, serviceRoleKey };
+  return { adminKey, apiUrl };
 }

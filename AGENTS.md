@@ -191,7 +191,7 @@ Before platform-sensitive work, review the current official docs for the task:
 - Supabase Auth with Next.js SSR, auth providers, email/password, OTP/magic link, phone auth, RLS, Storage policies, and current API key guidance.
 - Supabase pricing/free-tier limits: database size, storage size, egress, auth limits, functions, project pausing, and active project limits.
 - Vercel Hobby plan, Functions, Cron Jobs, environment variables, deployment limits, image optimization, and usage monitoring.
-- Current security guidance for service-role keys, secret keys, cookies, redirects, and private file access.
+- Current security guidance for Supabase secret keys, legacy service-role keys, cookies, redirects, and private file access.
 
 If internet access is unavailable, state that limitation in the plan and avoid making unverifiable platform assumptions.
 
@@ -259,7 +259,7 @@ Auth requirements:
 - Implement phone auth only as optional, disabled-by-default, and documented.
 - Younger kids may use a parent-managed Kid Mode/PIN profile switcher; PINs must be hashed and must not be treated as full account security.
 - Older kids may later be invited to create their own Supabase Auth account linked to a family member profile.
-- Never expose Supabase service-role or secret keys in the browser.
+- Never expose Supabase secret or admin keys in the browser.
 - Use RLS and server-side permission checks for family data access.
 
 Recommended environment variables:
@@ -268,13 +268,12 @@ Recommended environment variables:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 CRON_SECRET=
 ```
 
-Use `SUPABASE_SERVICE_ROLE_KEY` only server-side for carefully reviewed admin operations, migrations, cleanup jobs, or child-mode route handlers that cannot rely on a user JWT. Prefer user-scoped Supabase clients and RLS wherever possible.
+Use `SUPABASE_SECRET_KEY` only server-side for carefully reviewed admin operations, cleanup jobs, or child-mode route handlers that cannot rely on a user JWT. Prefer user-scoped Supabase clients and RLS wherever possible. Do not use Supabase's legacy `service_role` key for production app deployment unless a documented tool limitation requires it.
 
 ---
 

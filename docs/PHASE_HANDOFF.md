@@ -2,68 +2,71 @@
 
 ## Current Phase
 
-Phase 11: Reminders and Evidence Cleanup
+Phase 12: Deployment Polish
 
 ## Branch and Worktree
 
-- Branch: `phase/11-reminders-cleanup`
-- Worktree: `../family-app-phase-11-reminders-cleanup`
-- Base branch: local `main` at `0941b21` (`Merge branch 'phase/10-rewards-leaderboard'`)
+- Branch: `phase/12-deployment-polish`
+- Worktree: `../family-app-phase-12-deployment-polish`
+- Base branch: local `main` at `0b44e44` (`Merge branch 'phase/11-reminders-cleanup'`)
 
 ## Implemented Features
 
-- Added `/reminders` as an in-app reminder center.
-- Added reminder generation for due-soon chores, overdue chores, submitted
-  chores waiting for parent review, rejected chores needing correction, and
-  reward redemptions waiting for approval.
-- Added optional browser Notification API prompt without SMS, email, paid push,
-  or external messaging providers.
-- Added dashboard reminder count and today/tomorrow reminder summary.
-- Added secured daily maintenance route at `/api/cron/daily-maintenance`.
-- Added `vercel.json` with one daily Vercel Cron entry.
-- Added evidence cleanup utilities that delete old reviewed evidence from the
-  private `task-evidence` bucket and remove matching metadata.
-- Added unit tests for reminder generation and evidence cleanup eligibility.
+- Updated deployment documentation for Vercel and Supabase.
+- Added `docs/deployment-checklist.md` with local, Supabase, Vercel, smoke-test,
+  free-tier, and rollback steps.
+- Updated `.env.example` to use current Supabase `SUPABASE_SECRET_KEY` guidance
+  and stop advertising `SUPABASE_SERVICE_ROLE_KEY`.
+- Updated server maintenance admin client to require `SUPABASE_SECRET_KEY`.
+- Updated E2E local Supabase helper to prefer `SUPABASE_SECRET_KEY`, while still
+  allowing local CLI admin-key parsing for local-only tests.
+- Refreshed README, architecture, auth setup, local development, storage
+  retention, Supabase setup, and Vercel setup docs for the completed MVP.
+- Updated project guidance docs so future work does not recommend the legacy
+  Supabase `service_role` key for production app deployment.
 
 ## Manual Setup Still Required
 
-- No new Supabase migration is required for Phase 11.
-- Existing migrations must be applied before reminders and evidence cleanup work.
-- No Supabase dashboard change is required for this phase.
-- Vercel requires `CRON_SECRET` and a server-only Supabase admin key before the
-  daily maintenance route can run after deployment.
-- No production deployment was performed.
+- Configure Supabase project URL, publishable key, and secret key.
+- Apply Supabase migrations and seed data.
+- Configure Supabase Auth Site URL and Redirect URLs.
+- Configure Google OAuth if used.
+- Configure Vercel environment variables.
+- Configure `CRON_SECRET` in Vercel.
+- Deploy to Vercel and run the deployment smoke checklist.
+- No production deployment was performed by Codex.
 
 ## Known Issues and Limitations
 
-- Cron timing is daily/low-frequency and should not be treated as exact on
-  Vercel Hobby.
-- Reminder dismissal uses server-side permission checks and the server-only
-  Supabase admin key because existing RLS only allows parents to update
-  reminders.
-- Evidence cleanup is batch-limited and deletes Storage objects before metadata.
-- Browser notifications are local browser alerts only; background push is not
+- The local Supabase CLI still exposes a `SERVICE_ROLE_KEY` value for local test
+  automation; production app deployment should use `SUPABASE_SECRET_KEY`.
+- Browser notifications remain local browser alerts only; background push is not
   implemented.
-- Email and SMS reminders are intentionally not implemented.
+- SMS, paid email, paid analytics, paid AI, queues, and external worker services
+  remain intentionally out of scope.
+- Vercel Hobby cron is low-frequency and not minute-precise.
 
 ## Next Recommended Phase
 
-Phase 12: Deployment Polish
+Post-MVP maintenance or owner-directed production deployment.
 
-Expected branch and worktree:
+Suggested follow-up branches only after owner approval:
 
-- Branch: `phase/12-deployment-polish`
-- Worktree: `../family-app-phase-12-deployment-polish`
+- `phase/13-production-smoke`
+- `phase/13-kid-mode-pin`
+- `phase/13-swap-requests`
 
 ## Checks
 
-- `npm install` passed in the Phase 11 worktree. npm reported 2 moderate
+- `npm install` passed in the Phase 12 worktree. npm reported 2 moderate
   vulnerabilities in existing dependencies.
-- `npm run lint` passed after fixing browser notification component React purity
-  issues.
+- `npx prettier --write ...` formatted Phase 12 files. `.env.example` was not
+  passed to Prettier because it has no inferred parser.
+- `npx prettier --check ...` passed for supported Phase 12 files.
+- `npm run lint` passed.
 - `npm run typecheck` passed with worktree write permission for
   `tsconfig.tsbuildinfo`.
-- `npm test` passed: 18 files, 61 tests.
+- `npm test` passed: 19 files, 63 tests.
 - `npm run build` passed and included routes:
   - `/api/cron/daily-maintenance`
   - `/api/test/session`
@@ -80,5 +83,6 @@ Expected branch and worktree:
   - `/settings/family`
   - `/sign-in`
   - `/sign-up`
-- `npm run test:e2e` was not run for Phase 11 because the existing E2E smoke
-  flow does not seed or exercise generated reminder rows or cron execution.
+- `npm run test:e2e` was not run for Phase 12 because this phase focused on
+  deployment docs and readiness checks; the existing E2E flow remains available
+  for local Supabase smoke testing.

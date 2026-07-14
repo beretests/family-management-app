@@ -1,24 +1,32 @@
 # Architecture
 
-This document reflects the Phase 6 auth, database, family profile, schedule,
-and chore-template foundation. It should be updated whenever a later phase adds
-app-facing storage, cron, or deployment behavior.
+This document reflects the MVP implementation through Phase 12 deployment
+polish. It should be updated whenever a later phase changes app-facing storage,
+cron, auth, database, or deployment behavior.
 
 ## Current Shape
 
 ```text
 app/
-  api/
-    test/
-      session/
   (app)/
+    approvals/
+    assignments/
+    chores/
     dashboard/
     family/
       setup/
-    chores/
+    leaderboard/
+    my-today/
+    reminders/
+    rewards/
     schedule/
     settings/
       family/
+  api/
+    cron/
+      daily-maintenance/
+    test/
+      session/
   (auth)/
     callback/
     sign-in/
@@ -27,21 +35,36 @@ app/
   layout.tsx
   page.tsx
 components/
+  assignments/
   auth/
-  family/
   chores/
+  family/
+  leaderboard/
   layout/
+  reminders/
+  reviews/
+  rewards/
   schedule/
+  tasks/
   ui/
 features/
+  assignments/
   auth/
-  family/
   chores/
+  family/
+  leaderboard/
+  points/
+  reminders/
+  reviews/
+  rewards/
   schedule/
+  tasks/
 lib/
   auth/
+  cron/
   dates/
   permissions/
+  storage/
   supabase/
 supabase/
   config.toml
@@ -54,10 +77,10 @@ tests/
 docs/
 ```
 
-The app renders a public landing page, Supabase Auth entry points, a protected
-dashboard, family setup, parent-managed child profile settings, and family
-schedule day/week views, and parent-managed chore templates. Phase 6 connects
-house-profile and chore-template UI to the existing house/chore tables.
+The app renders a public landing page, Supabase Auth entry points, protected
+family app pages, family setup, parent-managed child profiles, schedule
+day/week views, chore templates, assignments, kid task submission, parent
+review, rewards, leaderboard, reminders, and daily maintenance.
 
 ## Request Flow
 
@@ -125,8 +148,24 @@ Chore template flow:
    templates and skips family templates that already exist by title.
 4. Generated templates are copied into `chore_templates` and
    `chore_template_subtasks` for parent review and editing.
-5. Parents can create, update, and delete family templates. Assignment and task
-   instance generation remain future phases.
+5. Parents can create, update, and delete family templates.
+
+Assignment and task flow:
+
+1. `/assignments` previews and creates deterministic fair assignments.
+2. `/my-today` shows assigned chores and checklists.
+3. Kids with linked auth can submit task completion and private evidence when
+   required.
+4. `/approvals` lets parents approve/reject submissions and write points ledger
+   entries.
+
+Rewards and reminders flow:
+
+1. `/rewards` lets parents manage non-monetary rewards and review redemptions.
+2. `/leaderboard` computes a constructive family-private progress board.
+3. `/reminders` shows in-app reminders.
+4. `/api/cron/daily-maintenance` generates reminders and cleans old reviewed
+   evidence when called with `CRON_SECRET`.
 
 Client provided `family_id`, `member_id`, and role values must be treated as
 untrusted. Server-side code should resolve permissions from the authenticated
@@ -143,16 +182,17 @@ session and database membership.
 
 ## Security Posture
 
-Phase 6 adds app-facing CRUD for house profiles and family chore templates. It
-still has no file storage or cron route.
+The MVP uses Supabase Auth, Postgres RLS, private Storage, and one secured
+Vercel Cron route.
 
 Auth security decisions:
 
 - uses `@supabase/ssr` with `getAll` and `setAll` cookie handlers
 - uses `getClaims()` for protected route checks
 - validates redirect targets so auth redirects stay on local app paths
-- keeps service-role and secret keys out of browser code
-- keeps the E2E service-role lookup in Node test code only
+- keeps Supabase secret keys out of browser code
+- uses `SUPABASE_SECRET_KEY` for server-only maintenance
+- keeps local Supabase CLI admin-key lookup in Node test code only
 - keeps phone auth disabled by default
 - enables RLS on app tables
 - uses security-definer helpers to avoid trusting client role values
@@ -166,6 +206,7 @@ Auth security decisions:
 - resolves active parent membership server-side before house/chore writes
 - keeps chore generation deterministic and free of paid AI/API calls
 - guards the test-only session route behind `E2E_TEST_AUTH_ENABLED=true`
+- guards cron maintenance behind `CRON_SECRET`
 
 The project reserves these environment variables:
 
@@ -174,33 +215,25 @@ The project reserves these environment variables:
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_ENABLE_PHONE_AUTH`
 - `SUPABASE_SECRET_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
 - `CRON_SECRET`
 
 Only `NEXT_PUBLIC_*` variables may be read in browser code.
 
 ## Free-Tier Posture
 
-Phase 6 runs locally and is compatible with Vercel Hobby deployment, but no
-deployment has been performed.
+The MVP is compatible with Vercel Hobby deployment, but no deployment has been
+performed by Codex.
 
-The app does not include paid services, analytics, AI APIs, SMS, storage,
-queues, or external cron providers.
+The app does not include paid services, analytics, AI APIs, SMS, paid email,
+queues, or external worker providers. Supabase Storage is used for private
+evidence photos and is controlled by size limits and retention cleanup.
 
 ## Testing Strategy
 
-Phase 6 includes unit coverage for schedule validation, same-member conflict
-detection, chore validation, and deterministic chore generation. It also
-includes a Playwright smoke test for local parent session setup, family setup,
-child creation, schedule event creation, and generated chore templates. SQL
-verification notes still cover RLS, family-owned table shape, seed data, and the
-initial parent bootstrap policy.
-Later phases should add tests for:
-
-- Supabase auth flows
-- parent/child permissions
-- RLS policy behavior
-- additional E2E coverage for edit/delete flows
-- deterministic assignment
-- points ledger calculations
-- evidence cleanup selection
+Unit coverage includes auth schemas, family schemas, schedule validation,
+conflicts, chore generation, assignment scoring, task submission schemas,
+points, rewards, leaderboard scoring, reminders, and evidence cleanup
+selection. The Playwright smoke test covers local parent session setup, family
+setup, child creation, schedule event creation, chore generation, assignments,
+and My Today rendering. SQL verification notes cover RLS, family-owned table
+shape, seed data, and the initial parent bootstrap policy.
