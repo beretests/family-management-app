@@ -21,7 +21,7 @@ export function ScheduleBoard({
   const activeMembers = members.filter(
     (member) => member.lifecycleStatus === "active",
   );
-  const wholeFamilyEvents = events.filter((event) => !event.memberId);
+  const wholeFamilyEvents = events.filter((event) => event.memberIds.length === 0);
 
   return (
     <section className="grid gap-4">
@@ -38,7 +38,7 @@ export function ScheduleBoard({
           canManage={canManage}
           color={member.color ?? "#047857"}
           conflicts={conflicts}
-          events={events.filter((event) => event.memberId === member.id)}
+          events={events.filter((event) => event.memberIds.includes(member.id))}
           familyId={familyId}
           key={member.id}
           member={member}
@@ -145,6 +145,9 @@ function ScheduleEventCard({
   members: FamilyMemberWithDetails[];
 }) {
   const color = event.color ?? memberColor ?? "#047857";
+  const attendeeNames = members
+    .filter((member) => event.memberIds.includes(member.id))
+    .map((member) => member.displayName);
 
   return (
     <article
@@ -159,6 +162,9 @@ function ScheduleEventCard({
           <p className="mt-1 text-sm text-[var(--muted)]">
             {formatTimeRange(event.startsAt, event.endsAt, event.allDay)} ·{" "}
             {scheduleEventTypeLabels[event.eventType]}
+          </p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            {attendeeNames.length > 0 ? attendeeNames.join(", ") : "Whole family"}
           </p>
           {event.location ? (
             <p className="mt-1 text-sm text-[var(--muted)]">

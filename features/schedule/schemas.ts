@@ -7,6 +7,8 @@ export const scheduleEventTypes = [
   "family_event",
   "rest_sick",
   "parent_work",
+  "parent_away",
+  "parent_activity",
   "chore_task",
 ] as const;
 
@@ -18,12 +20,10 @@ const optionalTrimmedString = (maxLength: number, message: string) =>
     .optional()
     .transform((value) => (value ? value : undefined));
 
-const optionalUuid = z
-  .string()
-  .trim()
-  .optional()
-  .transform((value) => (value ? value : undefined))
-  .pipe(z.string().uuid("Choose a family member.").optional());
+const memberIds = z
+  .array(z.string().uuid("Choose valid family members."))
+  .default([])
+  .transform((values) => [...new Set(values)]);
 
 const dateTimeLocal = z
   .string()
@@ -36,7 +36,8 @@ const dateTimeLocal = z
 const scheduleEventBaseSchema = z
   .object({
     familyId: z.string().uuid("Missing family."),
-    memberId: optionalUuid,
+    memberIds,
+    wholeFamily: z.coerce.boolean(),
     eventType: z.enum(scheduleEventTypes, { error: "Choose an event type." }),
     title: z
       .string()
@@ -66,7 +67,11 @@ const scheduleEventBaseSchema = z
       message: "End time must be after start time.",
       path: ["endsAt"],
     },
-  );
+  )
+  .refine((value) => value.wholeFamily || value.memberIds.length > 0, {
+    message: "Choose whole family or at least one family member.",
+    path: ["memberIds"],
+  });
 
 export const createScheduleEventSchema = scheduleEventBaseSchema;
 

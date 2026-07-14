@@ -253,8 +253,10 @@ export default async function DashboardPage() {
               event={event}
               key={event.id}
               memberName={
-                context.members.find((member) => member.id === event.memberId)
-                  ?.displayName ?? "Whole family"
+                context.members
+                  .filter((member) => event.memberIds.includes(member.id))
+                  .map((member) => member.displayName)
+                  .join(", ") || "Whole family"
               }
             />
           ))}

@@ -316,6 +316,33 @@ approved phase scope.
 - Recommended commit message:
   `feat(auth): add parent-managed kid mode with PIN sessions`
 
+## Phase 14: Schedule and Parent Profile Polish
+
+- Branch: `phase/14-schedule-parent-profile`
+- Worktree: `../family-app-phase-14-schedule-parent-profile`
+- Intended changes: add parent-away and parent-activity schedule event types,
+  allow parent-managed events to target multiple family members, count unique
+  events in schedule metrics, collapse the add-schedule form by default,
+  validate end time after start time with a one-hour default duration, and let a
+  signed-in parent edit their own display name.
+- Acceptance criteria: parents can create schedule events for the whole family
+  or selected members; multi-member events display in each relevant lane but
+  count once in summary metrics; end date/time cannot be before the start and
+  defaults to one hour later; the schedule create form starts collapsed; only
+  the current parent can edit their own parent profile name.
+- Checks to run: `npm run lint`, `npm run typecheck`, `npm test`,
+  `npm run build`.
+- Supabase setup impact: apply the `schedule_event_members` migration, verify
+  RLS policies for family reads and parent writes, and confirm the enum values
+  `parent_away` and `parent_activity` are present.
+- Vercel setup impact: none beyond redeploying after the database migration is
+  applied.
+- Free-tier risks: minimal; the join table adds small schedule rows only. Keep
+  schedule queries date-scoped so family event growth does not waste database
+  reads.
+- Recommended commit message:
+  `feat(schedule): support multi-member events and parent profile edits`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:
@@ -348,13 +375,10 @@ Use a GitHub pull request instead of local merge if preferred. Never force-remov
 a worktree or branch without explicit approval and a clear explanation of what
 would be lost.
 
-## Phase 1 Approval Gate
+## Next Phase Approval Gate
 
-Next action after this roadmap is owner approval for Phase 1 planning and then
-implementation in:
+Next action after each completed phase is owner approval for the next
+phase-specific plan and then implementation in that phase's branch/worktree.
 
-- Branch: `phase/01-bootstrap-foundation`
-- Worktree: `../family-app-phase-01-bootstrap-foundation`
-
-No Phase 1 code changes should start until the owner explicitly approves the
-Phase 1 plan.
+No new phase code changes should start until the owner explicitly approves that
+phase plan.

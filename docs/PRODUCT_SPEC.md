@@ -187,7 +187,13 @@ Schedule event types:
 - Family event.
 - Rest/sick.
 - Parent work/blocked time.
+- Parent away.
+- Parent activity.
 - Chore/task.
+
+Events may apply to the whole family or to one or more selected family members.
+When an event appears in multiple member lanes, summary counts should still
+count it as one unique event.
 
 Kids may add their own extracurricular schedule entries. Parent can edit all entries.
 

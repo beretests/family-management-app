@@ -51,7 +51,11 @@ export default async function FamilySettingsPage() {
         </div>
       </div>
 
-      <FamilyMemberList familyId={context.family.id} members={context.members} />
+      <FamilyMemberList
+        currentMemberId={context.currentMember.id}
+        familyId={context.family.id}
+        members={context.members}
+      />
       <AddChildMemberForm familyId={context.family.id} />
     </section>
   );

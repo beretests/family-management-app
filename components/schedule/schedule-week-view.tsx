@@ -49,7 +49,7 @@ export function ScheduleWeekView({
                 conflict={conflicts.has(event.id)}
                 event={event}
                 key={event.id}
-                member={members.find((item) => item.id === event.memberId)}
+                members={members}
               />
             ))}
           </div>
@@ -74,13 +74,18 @@ function eventsForDay(events: ScheduleEvent[], day: Date) {
 function WeekEventCard({
   conflict,
   event,
-  member,
+  members,
 }: {
   conflict: boolean;
   event: ScheduleEvent;
-  member?: FamilyMemberWithDetails;
+  members: FamilyMemberWithDetails[];
 }) {
-  const color = event.color ?? member?.color ?? "#047857";
+  const attendees = members.filter((member) => event.memberIds.includes(member.id));
+  const color = event.color ?? attendees[0]?.color ?? "#047857";
+  const attendeeLabel =
+    attendees.length > 0
+      ? attendees.map((member) => member.displayName).join(", ")
+      : "Whole family";
 
   return (
     <div
@@ -99,8 +104,7 @@ function WeekEventCard({
         {conflict ? <StatusPill tone="warning">!</StatusPill> : null}
       </div>
       <p className="mt-2 text-xs text-[var(--muted)]">
-        {member?.displayName ?? "Whole family"} ·{" "}
-        {scheduleEventTypeLabels[event.eventType]}
+        {attendeeLabel} · {scheduleEventTypeLabels[event.eventType]}
       </p>
     </div>
   );

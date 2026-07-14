@@ -285,7 +285,7 @@ function countScheduleConflicts({
   scheduleEvents: ScheduleEvent[];
 }) {
   return scheduleEvents.filter((event) => {
-    if (event.memberId !== memberId) {
+    if (!event.memberIds.includes(memberId)) {
       return false;
     }
 

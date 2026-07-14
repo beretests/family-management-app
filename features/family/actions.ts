@@ -8,6 +8,7 @@ import {
   deactivateChildMemberSchema,
   familySetupSchema,
   memberStatusSchema,
+  updateParentProfileSchema,
   updateChildMemberSchema,
 } from "@/features/family/schemas";
 import { hashChildPin } from "@/lib/auth/pin";
@@ -272,6 +273,68 @@ export async function updateChildMember(
   revalidatePath("/dashboard");
   revalidatePath("/settings/family");
   return { success: `${parsed.data.displayName} was updated.` };
+}
+
+export async function updateParentProfile(
+  _previousState: FamilyActionState,
+  formData: FormData,
+): Promise<FamilyActionState> {
+  const parsed = updateParentProfileSchema.safeParse({
+    familyId: getString(formData, "familyId"),
+    memberId: getString(formData, "memberId"),
+    displayName: getString(formData, "displayName"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    const parent = await requireParentContext(supabase, parsed.data.familyId);
+
+    if (parsed.data.memberId !== parent.memberId) {
+      return { error: "You can edit only your own parent profile." };
+    }
+
+    const { error: memberError } = await supabase
+      .from("family_members")
+      .update({
+        display_name: parsed.data.displayName,
+      })
+      .eq("family_id", parent.familyId)
+      .eq("id", parent.memberId)
+      .eq("role", "parent");
+
+    if (memberError) {
+      return { error: memberError.message };
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        display_name: parsed.data.displayName,
+      })
+      .eq("id", parent.profileId);
+
+    if (profileError) {
+      return { error: profileError.message };
+    }
+
+    await insertAuditEvent({
+      action: "parent_profile.updated",
+      actorMemberId: parent.memberId,
+      familyId: parent.familyId,
+      target: { memberId: parent.memberId },
+    });
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/settings/family");
+  return { success: "Parent profile updated." };
 }
 
 export async function setChildPin(

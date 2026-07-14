@@ -132,12 +132,17 @@ Schedule flow:
 
 1. `/schedule` loads the signed-in user's family context.
 2. The route reads day/week events through `features/schedule/queries.ts`.
-3. Parents create, update, and delete schedule events through Server Actions.
-4. Schedule actions validate input with Zod, resolve active parent membership
+3. Event reads return each schedule event once and include attendee IDs from
+   `schedule_event_members`; older rows can still fall back to
+   `schedule_events.member_id`.
+4. Parents create, update, and delete schedule events through Server Actions.
+5. Schedule actions validate input with Zod, resolve active parent membership
    server-side, verify assigned members belong to the family, and then rely on
    existing Supabase RLS policies for database writes.
-5. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
-   events assigned to the same family member.
+6. Multi-member event counts are based on unique event IDs, even when the same
+   event appears in multiple member lanes.
+7. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
+   events assigned to at least one shared family member.
 
 Chore template flow:
 

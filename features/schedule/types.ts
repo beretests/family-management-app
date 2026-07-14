@@ -5,12 +5,15 @@ export type ScheduleEventType =
   | "family_event"
   | "rest_sick"
   | "parent_work"
+  | "parent_away"
+  | "parent_activity"
   | "chore_task";
 
 export type ScheduleEvent = {
   id: string;
   familyId: string;
   memberId: string | null;
+  memberIds: string[];
   taskInstanceId: string | null;
   createdByMemberId: string | null;
   eventType: ScheduleEventType;

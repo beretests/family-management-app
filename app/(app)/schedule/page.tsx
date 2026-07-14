@@ -6,6 +6,7 @@ import { ScheduleWeekView } from "@/components/schedule/schedule-week-view";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getFamilyContext } from "@/features/family/queries";
 import { findScheduleConflicts } from "@/features/schedule/conflicts";
+import { countUniqueScheduleEvents } from "@/features/schedule/metrics";
 import { getScheduleEvents } from "@/features/schedule/queries";
 import {
   addDays,
@@ -73,7 +74,7 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <MetricCard label="Events" value={events.length} />
+        <MetricCard label="Events" value={countUniqueScheduleEvents(events)} />
         <MetricCard label="Conflicts" value={conflicts.size} />
         <MetricCard
           label="Rest flags"
