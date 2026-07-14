@@ -13,6 +13,7 @@ The initial product goal is a family schedule and chore-management app where par
 Example target family scenario:
 
 > A parent has 3 kids, ages 8, 11, and 14. The 8-year-old hates cleaning bathrooms, the 14-year-old has soccer on Tuesdays and Thursdays, and chores should be distributed fairly every day while considering schedules, age, ability, illness, disliked chores, and completion history.
+
 ## Product principles
 
 The app should feel like a helpful family assistant, not a punishment system.
@@ -80,7 +81,7 @@ When implementing Kid Mode:
 - Store PIN hashes only; never store PINs in plain text.
 - Use HttpOnly cookies for lightweight child session state where needed.
 - Route all child-profile actions through server-side code that verifies family membership and allowed action type.
-- Never expose Supabase service-role or secret keys in the browser.
+- Never expose Supabase secret or admin keys in the browser.
 
 If implementing separate child Supabase Auth accounts:
 
@@ -115,13 +116,12 @@ Recommended environment variables:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 CRON_SECRET=
 ```
 
-Only use `SUPABASE_SERVICE_ROLE_KEY` server-side for carefully reviewed admin operations, migrations, cleanup jobs, or child-mode route handlers that cannot rely on a user JWT. Prefer user-scoped Supabase clients and RLS wherever possible.
+Only use `SUPABASE_SECRET_KEY` server-side for carefully reviewed admin operations, cleanup jobs, or child-mode route handlers that cannot rely on a user JWT. Prefer user-scoped Supabase clients and RLS wherever possible. Do not use Supabase's legacy `service_role` key for production app deployment unless a documented tool limitation requires it.
 
 ---
 

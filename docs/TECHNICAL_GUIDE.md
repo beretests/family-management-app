@@ -32,7 +32,7 @@ Review the relevant docs for the task, including:
 - Supabase Auth with Next.js SSR, Supabase Auth providers, email/password, OTP/magic link, phone auth, RLS, Storage policies, and current API key guidance.
 - Supabase pricing/free-tier limits, especially database size, storage size, egress, auth limits, function limits, project pausing, and active project limits.
 - Vercel Hobby plan, Vercel Functions, Cron Jobs, environment variables, deployment limits, image optimization, and usage monitoring.
-- Current security guidance for handling service-role keys, secret keys, cookies, redirects, and private file access.
+- Current security guidance for handling Supabase secret keys, legacy service-role keys, cookies, redirects, and private file access.
 
 If internet access is unavailable, state that limitation in the plan and avoid making assumptions about platform-specific setup that may have changed.
 
@@ -89,13 +89,12 @@ Recommended environment variables:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 CRON_SECRET=
 ```
 
-Only use `SUPABASE_SERVICE_ROLE_KEY` server-side for carefully reviewed admin operations, migrations, cleanup jobs, or child-mode route handlers that cannot rely on a user JWT. Prefer user-scoped Supabase clients and RLS wherever possible.
+Only use `SUPABASE_SECRET_KEY` server-side for carefully reviewed admin operations, cleanup jobs, or child-mode route handlers that cannot rely on a user JWT. Prefer user-scoped Supabase clients and RLS wherever possible. Do not use Supabase's legacy `service_role` key for production app deployment unless a documented tool limitation requires it.
 
 ---
 
@@ -158,7 +157,7 @@ RLS must enforce:
 
 Security rules:
 
-- Never expose service-role keys in client code.
+- Never expose Supabase secret or admin keys in client code.
 - Validate all server actions and route handlers with Zod or equivalent schema validation.
 - Treat `family_id`, `member_id`, and `role` from the client as untrusted.
 - Resolve permissions server-side from the authenticated user/session.

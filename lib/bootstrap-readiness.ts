@@ -12,7 +12,7 @@ export function getBootstrapReadinessItems(): BootstrapReadinessItem[] {
     {
       label: "App Router",
       description:
-        "The root layout and home surface are ready for protected app routes in Phase 2.",
+        "Protected app routes are implemented for family setup, chores, schedule, rewards, reminders, and reviews.",
       status: "Ready",
       tone: "success",
     },
@@ -26,7 +26,7 @@ export function getBootstrapReadinessItems(): BootstrapReadinessItem[] {
     {
       label: "Free-tier guardrails",
       description:
-        "The foundation avoids paid services and keeps SMS, AI, storage, and cron work out of Phase 1.",
+        "The app avoids paid services, keeps SMS disabled, and uses private evidence storage with daily cleanup.",
       status: "Protected",
       tone: "warning",
     },

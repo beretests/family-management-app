@@ -1,74 +1,69 @@
 # Supabase Setup
 
-This document covers Supabase setup through Phase 11: Auth, database schema/RLS
-policies, family profile setup, assignments, private evidence storage, rewards,
-leaderboard reads, reminders, and evidence cleanup.
+This app uses Supabase Auth, Postgres, RLS, private Storage, and server-side
+maintenance with a Supabase secret key.
 
-## Phase 2: Auth
+## API Keys
 
-Required values:
+Use Supabase's current API key model:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+```bash
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
+```
 
-Dashboard setup:
+Do not use the legacy JWT `service_role` key for production app deployment.
+`SUPABASE_SECRET_KEY` is still elevated and bypasses RLS, so keep it server-only
+and never expose it in browser code, logs, query strings, screenshots, or docs.
 
-1. Create or open a Supabase project.
-2. Configure Authentication Site URL:
+The local Supabase CLI may still output a `SERVICE_ROLE_KEY` for local-only test
+automation. Treat that as a local tooling detail, not the production app key.
+
+## Auth
+
+In Supabase Dashboard:
+
+1. Open Authentication settings.
+2. Set the local Site URL:
 
 ```text
 http://localhost:3000
 ```
 
-3. Configure Redirect URLs:
+3. Add local Redirect URLs:
 
 ```text
 http://localhost:3000/callback
 ```
 
-4. Enable email/password auth.
-5. Configure Google OAuth if Google sign-in should be tested.
-6. Keep phone auth disabled unless SMS cost risk is approved.
+4. Add production Redirect URLs:
 
-## Phone Auth Cost Guardrail
-
-Phone auth is disabled by default with:
-
-```bash
-NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
+```text
+https://your-app.vercel.app/callback
+https://your-custom-domain.example/callback
 ```
 
-Do not enable it until:
+5. Enable email/password auth.
+6. Configure Google OAuth if Google sign-in is used:
+   - Create OAuth credentials in Google Cloud.
+   - Add the Supabase callback URL shown in the Google provider screen.
+   - Add the Google client ID and secret in Supabase.
+   - Add the app origins in Google OAuth settings.
+7. Keep phone auth disabled unless SMS provider setup and cost are explicitly
+   approved.
 
-- the owner chooses an SMS provider
-- provider credentials are configured in Supabase
-- possible SMS costs are accepted
-- setup steps are documented here and in `docs/auth-setup.md`
+## Local CLI
 
-## Phase 3: Database Schema And RLS
-
-Phase 3 adds:
-
-- `supabase/config.toml`
-- migrations in `supabase/migrations`
-- RLS policies on app tables
-- starter chore seed data in `supabase/seed.sql`
-- data-model documentation in `docs/data-model.md`
-
-### Local CLI Setup
-
-Install the Supabase CLI using the current official instructions for your
-machine, then from the repo root run:
+Install the Supabase CLI using current official instructions, then run:
 
 ```bash
 supabase start
 supabase db reset
 ```
 
-`supabase db reset` applies migrations and runs `supabase/seed.sql` locally.
+`supabase db reset` applies all migrations and runs `supabase/seed.sql`.
 
-This repo intentionally uses non-default local ports in `supabase/config.toml`
-so it can run alongside other Supabase projects:
+This repo intentionally uses non-default local ports:
 
 - API: `http://127.0.0.1:55421`
 - Database: `postgresql://postgres:postgres@127.0.0.1:55422/postgres`
@@ -79,158 +74,87 @@ so it can run alongside other Supabase projects:
 - Analytics: `http://127.0.0.1:55427`
 - Shadow database: `55420`
 
-Optional verification:
-
-```bash
-supabase status
-```
-
-Then run the SQL checks in `tests/sql/rls-verification.sql` from a local SQL
-editor or `psql`.
-
-### Remote Project Setup
+## Remote Migrations
 
 Do not make manual dashboard table edits for app schema. Keep schema changes in
 migrations.
 
-When ready to apply to a remote project:
+For a linked remote project:
 
 ```bash
 supabase link --project-ref <project-ref>
 supabase db push
 ```
 
-Review the migration before confirming. Do not run destructive migration steps
-without explicit approval.
+Review the migration list before confirming. Do not run destructive migration
+steps without explicit approval.
 
-### RLS Review
+## Storage
 
-After applying migrations, verify:
+Phase 8 creates a private `task-evidence` bucket by migration.
 
-- RLS is enabled on app tables.
-- family-owned tables include `family_id`.
-- parents can manage family settings, members, templates, tasks, rewards, and
-  approvals.
-- children can read family schedule and their own assignments/submissions.
-- children cannot approve submissions or manage parent settings/templates.
-- global starter chore templates are read-only reference data for authenticated
-  users.
+Expected bucket behavior:
 
-## Phase 4: Family Bootstrap RLS
-
-Phase 4 adds a small follow-up migration:
-
-- `20260708190000_fix_initial_family_member_bootstrap.sql`
-
-It creates `current_user_created_family_without_members(family_id)` and replaces
-the initial parent `family_members` insert policy. This lets an authenticated
-user create the first parent membership row for a family they just created,
-while keeping later member management parent-only.
-
-Run `supabase db reset` locally after pulling this phase. For a linked remote
-project, review the migration and then use:
-
-```bash
-supabase db push
-```
-
-The SQL verification script now includes a rollback-only bootstrap check for
-this policy.
-
-### API Keys
-
-Use:
-
-```bash
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-SUPABASE_SECRET_KEY=sb_secret_...
-```
-
-Do not use `SUPABASE_SECRET_KEY` in browser code. It bypasses RLS and must stay
-server-only.
-
-The legacy `SUPABASE_SERVICE_ROLE_KEY` name may remain in docs for compatibility
-with older tooling, but new app code should prefer `SUPABASE_SECRET_KEY`.
-
-## Phase 8: Evidence Storage
-
-Phase 8 adds:
-
-- additive `task_instances` snapshot columns for evidence requirements
-- private `task-evidence` Storage bucket
-- Storage object policies scoped by family, task, and assigned member
-- signed URL access pattern for private evidence previews
-- evidence retention documentation in `docs/storage-retention.md`
-
-Apply locally with:
-
-```bash
-supabase db reset
-```
-
-For a linked remote project, review the migration and then use:
-
-```bash
-supabase db push
-```
-
-The migration creates the bucket as private and limits uploads to:
-
-- JPEG
-- PNG
-- WebP
-- GIF
+- public access disabled
+- JPEG, PNG, WebP, GIF only
 - 5 MB max file size
+- signed URL previews only
+- evidence cleanup after review/retention
 
 Do not make the `task-evidence` bucket public.
 
-## Phase 10: Rewards And Leaderboard
+## RLS Review
 
-Phase 10 uses reward and points tables created in the initial schema:
+After migrations, verify:
 
-- `reward_catalog`
-- `reward_redemptions`
-- `points_ledger`
-- `leaderboard_snapshots`
-- `audit_events`
+- RLS is enabled on app tables.
+- Family-owned tables include `family_id`.
+- Parents can manage family settings, members, templates, tasks, rewards,
+  reviews, reminders, and audit records.
+- Children can read family schedule and their own assignments/submissions.
+- Children cannot approve submissions or manage parent settings/templates.
+- Global starter chore templates are read-only reference data.
 
-No new migration or Supabase dashboard change is required. After applying the
-existing migrations, verify the existing policies still match the intended
-boundaries:
+The SQL helper `tests/sql/rls-verification.sql` provides lightweight local
+verification.
 
-- authenticated family members can read active/inactive family rewards
-- parents can create and update reward catalog entries
-- child-linked auth profiles can insert their own reward redemption requests
-- parents can approve or reject redemption requests
-- point deductions are written by parent actions to `points_ledger`
+## Maintenance
 
-The leaderboard is computed live from ledger rows the signed-in user is allowed
-to read. `leaderboard_snapshots` remains available for a future scheduled
-snapshot phase.
+The daily Vercel cron route uses `SUPABASE_SECRET_KEY` to:
 
-## Phase 11: Reminders And Evidence Cleanup
+- generate reminders
+- delete expired private evidence objects from Storage
+- delete matching `task_evidence_files` metadata
 
-Phase 11 uses existing tables and Storage setup:
-
-- `reminders`
-- `task_evidence_files`
-- private `task-evidence` Storage bucket
-
-No new migration or Supabase dashboard change is required.
-
-The daily maintenance route uses a server-only Supabase admin key to:
-
-- generate in-app reminders in the existing `reminders` table
-- remove expired private evidence objects from Storage
-- delete matching `task_evidence_files` metadata rows after Storage deletion
-
-Required server-only values:
+Required values:
 
 ```bash
 SUPABASE_SECRET_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 CRON_SECRET=
 ```
 
-Prefer `SUPABASE_SECRET_KEY` for new setup. Keep the legacy service-role name
-only for compatibility. Never expose these values in browser code.
+The route is:
+
+```text
+/api/cron/daily-maintenance
+```
+
+It requires:
+
+```text
+Authorization: Bearer <CRON_SECRET>
+```
+
+## Free-Tier Monitoring
+
+Monitor:
+
+- database size
+- Storage size
+- egress
+- auth activity
+- project pause/inactivity status
+- Vercel function and cron usage
+
+Evidence uploads and long-lived history are the main growth areas. Keep
+retention cleanup enabled before real family use.
