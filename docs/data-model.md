@@ -8,7 +8,8 @@ assigned tasks, checklist updates, submissions, and private evidence metadata
 into the kid-facing task flow. Phase 9 wires parent review decisions and points
 ledger entries into submitted task workflows. Phase 10 wires non-monetary
 rewards, redemption review, point deductions, and a constructive family
-leaderboard into the app UI.
+leaderboard into the app UI. Phase 11 wires in-app reminders and evidence
+retention cleanup into the existing reminder and evidence tables.
 
 ## Identity And Families
 
@@ -130,6 +131,12 @@ active child profiles. It blends approved chore count, earned task points,
 saved balance, and reward use into a private progress score instead of ranking
 only by raw point totals. The `leaderboard_snapshots` table remains reserved for
 future periodic snapshots.
+
+Phase 11 writes reminder records for due-soon chores, overdue chores, submitted
+chores waiting for review, rejected chores needing correction, and reward
+redemptions waiting for approval. Reminder reads stay scoped by existing RLS:
+parents/caregivers can read family reminders, and children can read their own
+member reminders.
 
 ## Settings And Audit
 

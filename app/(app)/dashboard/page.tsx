@@ -3,6 +3,10 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { getTaskInstancesDueBetween } from "@/features/assignments/queries";
 import { getChoreTemplates } from "@/features/chores/queries";
 import { getFamilyContext } from "@/features/family/queries";
+import {
+  getReminderCount,
+  getUpcomingReminders,
+} from "@/features/reminders/queries";
 import { getPendingReviewCount } from "@/features/reviews/queries";
 import {
   getActiveRewardCount,
@@ -59,6 +63,8 @@ export default async function DashboardPage() {
     pendingReviews,
     activeRewards,
     pendingRewardRequests,
+    reminderCount,
+    upcomingReminders,
   ] = await Promise.all([
     getScheduleEvents({
       endsAt: todayEnd,
@@ -74,6 +80,12 @@ export default async function DashboardPage() {
     getPendingReviewCount(context.family.id),
     getActiveRewardCount(context.family.id),
     getPendingRewardRedemptionCount(context.family.id),
+    getReminderCount(context.family.id),
+    getUpcomingReminders({
+      familyId: context.family.id,
+      now: todayStart,
+      until: endOfDay(new Date(today.getTime() + 24 * 60 * 60 * 1000)),
+    }),
   ]);
 
   return (
@@ -118,6 +130,7 @@ export default async function DashboardPage() {
         <MetricCard label="Pending reviews" value={pendingReviews} />
         <MetricCard label="Reward requests" value={pendingRewardRequests} />
         <MetricCard label="Active rewards" value={activeRewards} />
+        <MetricCard label="Reminders" value={reminderCount} />
         <MetricCard
           label="Active chores"
           value={choreTemplates.filter((template) => template.active).length}
@@ -137,6 +150,46 @@ export default async function DashboardPage() {
           label="View board"
           title="Leaderboard"
         />
+        <DashboardActionCard
+          body="See due-soon chores, parent review items, rewards, and gentle catch-up notes."
+          href="/reminders"
+          label="Open reminders"
+          title="Reminders"
+        />
+      </div>
+
+      <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">
+            Today and tomorrow
+          </h2>
+          <Link
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+            href="/reminders"
+          >
+            View reminders
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {upcomingReminders.length === 0 ? (
+            <p className="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)] md:col-span-3">
+              No reminders for today or tomorrow.
+            </p>
+          ) : null}
+          {upcomingReminders.slice(0, 6).map((reminder) => (
+            <article
+              className="rounded-md border border-[var(--line)] p-4"
+              key={reminder.id}
+            >
+              <h3 className="font-semibold text-[var(--foreground)]">
+                {reminder.message}
+              </h3>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                {formatTimeRange(reminder.remindAt, reminder.remindAt, false)}
+              </p>
+            </article>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">

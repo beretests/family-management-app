@@ -1,11 +1,11 @@
 # Local Development
 
-This guide covers local development through Phase 10. Supabase Auth is wired for
+This guide covers local development through Phase 11. Supabase Auth is wired for
 parent and caregiver accounts, the initial schema/RLS policies are available
 through Supabase CLI migrations, and signed-in parents can create family and
 child profiles, family schedule events, chore templates, assignments, and kid
 task submissions, review submitted chores and award points, manage rewards, and
-view the family leaderboard.
+view the family leaderboard and reminders.
 
 ## Requirements
 
@@ -54,6 +54,8 @@ Rules:
   SMS provider setup and cost risk.
 - Never expose `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, or
   `CRON_SECRET` to browser code.
+- The daily maintenance route requires `CRON_SECRET` and a server-only Supabase
+  admin key before it can generate reminders or clean Storage metadata.
 - Never commit `.env.local` or real secrets.
 
 ## Checks
@@ -104,7 +106,8 @@ links to `/family/setup`; family management lives at `/settings/family`, day/wee
 schedule views live at `/schedule`, chore template setup lives at `/chores`,
 assignment planning lives at `/assignments`, and kid task submission lives at
 `/my-today`. Parent review lives at `/approvals`, rewards live at `/rewards`,
-and the constructive family leaderboard lives at `/leaderboard`.
+the constructive family leaderboard lives at `/leaderboard`, and reminders live
+at `/reminders`.
 
 This project uses non-default local Supabase ports to avoid conflicts with other
 local projects:
@@ -118,23 +121,25 @@ local projects:
 Phase 8 creates a private `task-evidence` bucket through migration. Evidence
 uploads are limited to JPEG, PNG, WebP, or GIF files up to 5 MB.
 
-Later phases will add automated retention cleanup.
+Phase 11 adds automated retention cleanup through the secured daily maintenance
+route.
 
 ## Vercel
 
-No Vercel deployment is required in Phase 10.
+No Vercel deployment is required in Phase 11.
 
 See `docs/vercel-setup.md` for planned env var and callback URL setup.
 
 Later phases will add:
 
 - importing the repo
-- optional low-frequency cron setup
+- low-frequency cron setup
 - free-tier usage monitoring
 
 ## Cost Guardrails
 
-Phase 10 adds no paid services, gift cards, payment integrations, analytics, or
-external reward providers. Phase 8 added private Supabase Storage usage for evidence photos, which can
-consume free-tier storage and egress. Do not add SMS, paid email, paid
-analytics, paid AI APIs, paid queues, or observability without owner approval.
+Phase 11 adds no paid services, SMS, email provider, external workers, or push
+notification provider. It adds one low-frequency Vercel Cron route and keeps
+reminders in-app by default. Phase 8 added private Supabase Storage usage for
+evidence photos, which can consume free-tier storage and egress; Phase 11
+cleanup reduces long-term storage growth.

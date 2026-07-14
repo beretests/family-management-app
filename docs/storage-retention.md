@@ -1,6 +1,7 @@
 # Storage Retention
 
-Phase 8 adds private evidence uploads for kid task submissions.
+Phase 8 adds private evidence uploads for kid task submissions. Phase 11 adds
+bounded automated cleanup for reviewed evidence.
 
 ## Bucket
 
@@ -27,12 +28,36 @@ signed URLs.
 ## Retention Target
 
 The default retention target is to remove approved or rejected evidence after 30
-days. Phase 8 stores evidence metadata but does not run cleanup automatically.
-Automated cleanup belongs to the reminders and cleanup phase.
+days.
 
-Until cleanup is implemented:
+Phase 11 cleanup behavior:
 
-- keep evidence uploads small
-- avoid using evidence for long-term photo storage
-- manually delete old evidence from Supabase Storage only after confirming the
-  matching app metadata and review history no longer need it
+- The cleanup job scans `task_evidence_files` in bounded batches.
+- Evidence is eligible when `retention_delete_after` is in the past, or when the
+  related task is `approved` or `rejected` and the review timestamp is older
+  than 30 days.
+- The job deletes the private Storage object first, then deletes the matching
+  metadata row.
+- Cleanup is idempotent and safe to rerun.
+- Unreviewed submitted evidence is not removed by the fallback 30-day rule.
+
+Keep evidence uploads small and avoid using evidence for long-term photo
+storage.
+
+## Scheduled Cleanup
+
+Phase 11 adds a secured daily maintenance route:
+
+```text
+/api/cron/daily-maintenance
+```
+
+The route requires:
+
+```text
+Authorization: Bearer <CRON_SECRET>
+```
+
+When deployed to Vercel, `vercel.json` schedules the route once daily. Vercel
+Hobby cron is low-frequency and not minute-precise, so cleanup must not depend
+on exact timing.
