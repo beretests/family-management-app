@@ -7,6 +7,7 @@ import type {
   TaskInstance,
   TaskSubtaskSnapshot,
 } from "@/features/assignments/types";
+import { resolveMemberAgeYears } from "@/lib/dates/age";
 
 const activeTaskStatuses = new Set([
   "draft",
@@ -148,25 +149,30 @@ function scoreCandidate({
   const reasons: string[] = [];
   const warnings: string[] = [];
   let score = 0;
+  const memberAgeYears = resolveMemberAgeYears({
+    ageYears: member.ageYears,
+    birthdate: member.birthdate,
+    referenceDate: assignmentWindowStart,
+  });
 
-  if (member.ageYears === null) {
+  if (memberAgeYears === null) {
     warnings.push("age is unknown, so parent review is important");
     score += 10;
   } else {
-    if (member.ageYears < template.minimumAge) {
+    if (memberAgeYears < template.minimumAge) {
       blockers.push(
-        `age ${member.ageYears} is below the minimum age ${template.minimumAge}`,
+        `age ${memberAgeYears} is below the minimum age ${template.minimumAge}`,
       );
     }
 
-    if (template.maximumAge !== null && member.ageYears > template.maximumAge) {
+    if (template.maximumAge !== null && memberAgeYears > template.maximumAge) {
       blockers.push(
-        `age ${member.ageYears} is above the maximum age ${template.maximumAge}`,
+        `age ${memberAgeYears} is above the maximum age ${template.maximumAge}`,
       );
     }
 
     if (blockers.length === 0) {
-      reasons.push(`age ${member.ageYears} fits`);
+      reasons.push(`age ${memberAgeYears} fits`);
     }
   }
 

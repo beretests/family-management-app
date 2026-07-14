@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calculateAgeYears } from "@/lib/dates/age";
 
 const optionalTrimmedString = (maxLength: number, message: string) =>
   z
@@ -21,6 +22,35 @@ export const familySetupSchema = z.object({
     .max(120, "Use 120 characters or fewer."),
 });
 
+const birthMonthSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}$/, "Choose a birth month and year.")
+  .refine(
+    (value) => {
+      const [yearValue, monthValue] = value.split("-");
+      const year = Number(yearValue);
+      const month = Number(monthValue);
+      const today = new Date();
+      const birthdate = `${year}-${String(month).padStart(2, "0")}-01`;
+      const age = calculateAgeYears(birthdate, today);
+
+      return (
+        Number.isInteger(year) &&
+        Number.isInteger(month) &&
+        month >= 1 &&
+        month <= 12 &&
+        new Date(year, month - 1, 1).getTime() <=
+          new Date(today.getFullYear(), today.getMonth(), 1).getTime() &&
+        age !== null &&
+        age <= 18
+      );
+    },
+    {
+      message: "Use a birth month for a child age 18 or younger.",
+    },
+  );
+
 export const childMemberSchema = z.object({
   familyId: z.string().uuid("Missing family."),
   displayName: z
@@ -28,11 +58,7 @@ export const childMemberSchema = z.object({
     .trim()
     .min(1, "Enter a child name.")
     .max(120, "Use 120 characters or fewer."),
-  ageYears: z.coerce
-    .number({ error: "Enter an age." })
-    .int("Age must be a whole number.")
-    .min(1, "Age must be at least 1.")
-    .max(18, "Use this flow for kids age 18 or younger."),
+  birthMonth: birthMonthSchema,
   abilityLevel: z.coerce
     .number({ error: "Choose an ability level." })
     .int()
@@ -88,6 +114,40 @@ export const updateParentProfileSchema = z.object({
     .max(120, "Use 120 characters or fewer."),
 });
 
+export const adultInvitationRoles = ["parent", "caregiver"] as const;
+
+export const adultInviteSchema = z.object({
+  familyId: z.string().uuid("Missing family."),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, "Enter a display name.")
+    .max(120, "Use 120 characters or fewer."),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address.")
+    .toLowerCase()
+    .max(254, "Use 254 characters or fewer."),
+  role: z.enum(adultInvitationRoles, {
+    error: "Choose parent or caregiver.",
+  }),
+});
+
+export const acceptFamilyInvitationSchema = z.object({
+  invitationId: z.string().uuid("Missing invitation."),
+});
+
+export const revokeFamilyInvitationSchema = z.object({
+  familyId: z.string().uuid("Missing family."),
+  invitationId: z.string().uuid("Missing invitation."),
+});
+
+export const deactivateAdultMemberSchema = z.object({
+  familyId: z.string().uuid("Missing family."),
+  memberId: z.string().uuid("Missing adult profile."),
+});
+
 export type FamilySetupInput = z.infer<typeof familySetupSchema>;
 export type ChildMemberInput = z.infer<typeof childMemberSchema>;
 export type UpdateChildMemberInput = z.infer<typeof updateChildMemberSchema>;
@@ -96,3 +156,4 @@ export type ChildPinInput = z.infer<typeof childPinSchema>;
 export type UpdateParentProfileInput = z.infer<
   typeof updateParentProfileSchema
 >;
+export type AdultInviteInput = z.infer<typeof adultInviteSchema>;

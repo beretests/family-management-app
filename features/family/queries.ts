@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   Family,
   FamilyContext,
+  FamilyInvitation,
   FamilyMember,
   FamilyMemberPreference,
   FamilyMemberStatus,
@@ -10,6 +11,7 @@ import {
   getAuthenticatedProfileId,
   getVerifiedChildSessionContext,
 } from "@/lib/permissions/family";
+import { resolveMemberAgeYears } from "@/lib/dates/age";
 
 type FamilyRow = {
   id: string;
@@ -58,6 +60,21 @@ type PinCredentialRow = {
   member_id: string;
 };
 
+type FamilyInvitationRow = {
+  id: string;
+  family_id: string;
+  member_id: string;
+  email_normalized: string;
+  role: "parent" | "caregiver";
+  status: "pending" | "accepted" | "revoked" | "expired";
+  invited_by_member_id: string | null;
+  accepted_by_profile_id: string | null;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+};
+
 function mapFamily(row: FamilyRow): Family {
   return {
     id: row.id,
@@ -75,11 +92,31 @@ function mapMember(row: FamilyMemberRow): FamilyMember {
     displayName: row.display_name,
     role: row.role,
     birthdate: row.birthdate,
-    ageYears: row.age_years,
+    ageYears: resolveMemberAgeYears({
+      ageYears: row.age_years,
+      birthdate: row.birthdate,
+    }),
     abilityLevel: row.ability_level,
     color: row.color,
     lifecycleStatus: row.lifecycle_status,
     deactivatedAt: row.deactivated_at,
+  };
+}
+
+function mapInvitation(row: FamilyInvitationRow): FamilyInvitation {
+  return {
+    id: row.id,
+    familyId: row.family_id,
+    memberId: row.member_id,
+    emailNormalized: row.email_normalized,
+    role: row.role,
+    status: row.status,
+    invitedByMemberId: row.invited_by_member_id,
+    acceptedByProfileId: row.accepted_by_profile_id,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    acceptedAt: row.accepted_at,
+    revokedAt: row.revoked_at,
   };
 }
 
@@ -279,4 +316,23 @@ export async function getFamilyContext(): Promise<FamilyContext> {
       hasKidModePin: pinMemberIds.has(row.id),
     })),
   };
+}
+
+export async function getFamilyInvitations(
+  familyId: string,
+): Promise<FamilyInvitation[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("family_invitations")
+    .select(
+      "id,family_id,member_id,email_normalized,role,status,invited_by_member_id,accepted_by_profile_id,created_at,expires_at,accepted_at,revoked_at",
+    )
+    .eq("family_id", familyId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as FamilyInvitationRow[]).map(mapInvitation);
 }

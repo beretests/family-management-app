@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adultInviteSchema,
   childPinSchema,
   childMemberSchema,
   familySetupSchema,
@@ -35,26 +36,51 @@ describe("childMemberSchema", () => {
     const parsed = childMemberSchema.parse({
       familyId,
       displayName: " Ari ",
-      ageYears: "8",
+      birthMonth: "2018-07",
       abilityLevel: "3",
       color: "#047857",
       notes: "",
     });
 
     expect(parsed.displayName).toBe("Ari");
-    expect(parsed.ageYears).toBe(8);
+    expect(parsed.birthMonth).toBe("2018-07");
     expect(parsed.abilityLevel).toBe(3);
     expect(parsed.notes).toBeUndefined();
   });
 
-  it("rejects out-of-range ages and invalid colors", () => {
+  it("rejects adult birth months and invalid colors", () => {
     const parsed = childMemberSchema.safeParse({
       familyId,
       displayName: "Ari",
-      ageYears: "22",
+      birthMonth: "1999-07",
       abilityLevel: "3",
       color: "green",
       notes: "ok",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("adultInviteSchema", () => {
+  it("normalizes adult invite emails", () => {
+    const parsed = adultInviteSchema.parse({
+      familyId,
+      displayName: " Sam ",
+      email: " CARE@Example.COM ",
+      role: "caregiver",
+    });
+
+    expect(parsed.displayName).toBe("Sam");
+    expect(parsed.email).toBe("care@example.com");
+  });
+
+  it("allows only parent or caregiver adult invite roles", () => {
+    const parsed = adultInviteSchema.safeParse({
+      familyId,
+      displayName: "Sam",
+      email: "care@example.com",
+      role: "child",
     });
 
     expect(parsed.success).toBe(false);

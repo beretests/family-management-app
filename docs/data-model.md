@@ -10,7 +10,8 @@ ledger entries into submitted task workflows. Phase 10 wires non-monetary
 rewards, redemption review, point deductions, and a constructive family
 leaderboard into the app UI. Phase 11 wires in-app reminders and evidence
 retention cleanup into the existing reminder and evidence tables. Phase 14 adds
-multi-member schedule attendance and parent profile editing.
+multi-member schedule attendance and parent profile editing. Phase 16 adds
+adult family invitations and birthdate-based child age calculation.
 
 ## Identity And Families
 
@@ -20,6 +21,8 @@ multi-member schedule attendance and parent profile editing.
   Children may have no Supabase Auth account in the MVP.
 - `family_member_auth_links`: optional link from an auth profile to a family
   member, used for older kids or caregiver linking.
+- `family_invitations`: parent-created pending, accepted, revoked, or expired
+  invites for other parent/caregiver accounts.
 - `family_member_preferences`: disliked/preferred chores and notes.
 - `family_member_statuses`: normal, under-the-weather, sick, and rest-day
   status history.
@@ -39,6 +42,9 @@ membership row.
 Child profile management:
 
 - Child profiles are `family_members` rows with `role = 'child'`.
+- New and edited child profiles store month/year of birth in the existing
+  `family_members.birthdate` column as the first day of the selected month.
+  `age_years` remains only as legacy fallback data.
 - Child profiles do not require Supabase Auth accounts when using Kid Mode.
 - Kid Mode PIN hashes, failed-attempt counters, and lockout timestamps live in
   `family_member_pin_credentials`, which is restricted to active parents by RLS.
@@ -50,6 +56,16 @@ Child profile management:
   `deactivated_at`; it does not hard-delete history.
 - Sick, rest, and under-the-weather updates append
   `family_member_statuses` rows.
+
+Adult invitation management:
+
+- Parent-created adult invites create an inactive pending `family_members` row
+  and a matching `family_invitations` row.
+- The invited adult must sign in with the invited email address and accept the
+  invite before `profile_id` and `family_member_auth_links` are attached.
+- Revoking a pending invite marks the invite revoked and deactivates the
+  unaccepted adult member.
+- Deactivating an accepted adult revokes auth links and preserves history.
 
 ## House And Chores
 
