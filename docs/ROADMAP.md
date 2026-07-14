@@ -365,6 +365,35 @@ approved phase scope.
 - Recommended commit message:
   `style(ui): add kid-friendly theme and clean home page`
 
+## Phase 16: Adult Family Invites and Auto-Updating Ages
+
+- Branch: `phase/16-adult-family-invites`
+- Worktree: `../family-app-phase-16-adult-family-invites`
+- Intended changes: add parent-managed invitations for other parents or
+  caregivers, accept invite links after Supabase Auth sign-in, allow pending
+  invite revocation and accepted adult deactivation, and switch child profiles
+  from static age entry to birth month/year stored in the existing
+  `family_members.birthdate` column.
+- Acceptance criteria: parents can invite a parent or caregiver by email; the
+  invited adult must sign in with the invited email to accept; pending invites
+  are visible and revocable in Family settings; accepted adults are linked to
+  `family_member_auth_links`; deactivating adults preserves history and never
+  leaves a family without an accepted active parent; new/edited child profiles
+  auto-calculate age from birth month/year.
+- Checks to run: `npm run lint`, `npm run typecheck`, `npm test`,
+  `npm run build`.
+- Supabase setup impact: apply the `family_invitations` migration, verify RLS
+  allows active parents to manage invites only for their family, and keep
+  `SUPABASE_SECRET_KEY` server-only for invite emails and acceptance linking.
+- Vercel setup impact: ensure `NEXT_PUBLIC_APP_URL` matches the production app
+  URL, `/callback` is allow-listed in Supabase redirects, and
+  `SUPABASE_SECRET_KEY` is set in Vercel before testing invite emails.
+- Free-tier risks: no paid services added. Supabase hosted auth emails may have
+  rate/volume limits, so avoid bulk invites and consider a custom SMTP provider
+  only if the owner later approves any cost.
+- Recommended commit message:
+  `feat(family): add adult invites and birthdate ages`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

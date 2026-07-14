@@ -8,6 +8,7 @@ import {
 } from "@/features/family/actions";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
+import { birthdateToMonthInput } from "@/lib/dates/age";
 
 const initialState: FamilyActionState = {};
 
@@ -22,7 +23,8 @@ export function AddChildMemberForm({ familyId }: { familyId: string }) {
         Add a child
       </h2>
       <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-        Add age, ability, and notes parents should consider when assigning work.
+        Add birth month, ability, and notes parents should consider when
+        assigning work.
       </p>
       <ChildFields
         action={formAction}
@@ -74,7 +76,7 @@ function ChildFields({
 
       <ActionMessage error={state.error} success={state.success} />
 
-      <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+      <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
         <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
           Name
           <input
@@ -87,15 +89,13 @@ function ChildFields({
         </label>
 
         <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Age
+          Birth month and year
           <input
             className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            defaultValue={member?.ageYears ?? ""}
-            max={18}
-            min={1}
-            name="ageYears"
+            defaultValue={birthdateToMonthInput(member?.birthdate ?? null)}
+            name="birthMonth"
             required
-            type="number"
+            type="month"
           />
         </label>
       </div>

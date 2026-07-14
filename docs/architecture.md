@@ -126,7 +126,10 @@ Family profile flow:
 3. Family setup creates `profiles`, `families`, and the first parent
    `family_members` row through Server Actions.
 4. `/settings/family` lets active parents create child profiles, update notes,
-   set status, and deactivate children.
+   set status, invite other adults, and deactivate family members.
+5. Adult invitations are tracked in `family_invitations`; invite acceptance
+   validates the signed-in email before linking the Supabase Auth user to the
+   pending adult `family_members` row.
 
 Schedule flow:
 

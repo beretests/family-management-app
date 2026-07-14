@@ -13,6 +13,7 @@ Implemented auth paths:
 - SSR cookie handling through `@supabase/ssr`
 - parent-managed Kid Mode/PIN profile switching
 - optional linked child auth profiles for older kids
+- parent-created invitations for other parents or caregivers
 - guarded local-only E2E session helper
 
 Not implemented by default:
@@ -108,6 +109,9 @@ With Supabase env vars configured:
 8. Test Google sign-in after Google provider setup is complete.
 9. As a parent, add a child, set a Kid Mode PIN in Family settings, unlock the
    child from `/kid-mode`, and confirm parent-only routes redirect away.
+10. As a parent, invite another parent or caregiver from Family settings. The
+    invited adult must sign in with the invited email address and accept from
+    `/family/invite/accept?invite=<id>`.
 
 ## Kid Mode Security
 
@@ -124,6 +128,23 @@ not equivalent to a separate child password.
   because Supabase RLS can only see the parent JWT, not the app's child cookie.
 - Older kids can use real Supabase Auth accounts linked through
   `family_member_auth_links`; those sessions continue through normal RLS.
+
+## Adult Family Invitations
+
+Parents can invite another `parent` or `caregiver` by email. The app creates a
+pending adult family member and `family_invitations` row, then sends a Supabase
+Auth invite email with `auth.admin.inviteUserByEmail`.
+
+- Requires server-only `SUPABASE_SECRET_KEY`.
+- Invite links redirect through `/callback` and then to
+  `/family/invite/accept`.
+- The accepting user must be signed in with the same email address that was
+  invited.
+- Parent role invites can manage family settings after acceptance.
+- Caregiver role invites are linked to the family but do not get parent-only
+  settings access.
+- Pending invites can be revoked from Family settings.
+- At least one accepted active parent must remain in the family.
 
 Without Supabase env vars configured:
 

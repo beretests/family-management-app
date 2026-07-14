@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import { AddChildMemberForm } from "@/components/family/family-member-form";
 import { FamilyMemberList } from "@/components/family/family-member-list";
 import { StatusPill } from "@/components/ui/status-pill";
-import { getFamilyContext } from "@/features/family/queries";
+import {
+  getFamilyContext,
+  getFamilyInvitations,
+} from "@/features/family/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,7 @@ export default async function FamilySettingsPage() {
     (member) =>
       member.role === "child" && member.lifecycleStatus === "active",
   );
+  const invitations = await getFamilyInvitations(context.family.id);
 
   return (
     <section className="grid gap-5">
@@ -54,6 +58,7 @@ export default async function FamilySettingsPage() {
       <FamilyMemberList
         currentMemberId={context.currentMember.id}
         familyId={context.family.id}
+        invitations={invitations}
         members={context.members}
       />
       <AddChildMemberForm familyId={context.family.id} />

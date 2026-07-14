@@ -58,6 +58,11 @@ https://your-custom-domain.example/callback
 7. Keep phone auth disabled unless SMS provider setup and cost are explicitly
    approved.
 
+Adult family invitations use Supabase Auth invite emails. Keep
+`SUPABASE_SECRET_KEY` configured server-side and verify that `/callback` is in
+the redirect allow-list for local and production domains. The app sends invite
+links back through `/callback?next=/family/invite/accept?...`.
+
 ## Local CLI
 
 Install the Supabase CLI using current official instructions, then run:
@@ -117,6 +122,8 @@ After migrations, verify:
 - Family-owned tables include `family_id`.
 - Parents can manage family settings, members, templates, tasks, rewards,
   reviews, reminders, and audit records.
+- Parents can select and manage `family_invitations`; invited adults are linked
+  only after signing in with the invited email and accepting the invite.
 - Parents can select and manage `family_member_pin_credentials`; child accounts
   cannot read PIN hashes.
 - Children can read family schedule and their own assignments/submissions.

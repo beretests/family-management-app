@@ -2,57 +2,74 @@
 
 ## Current Phase
 
-Phase 15: Visual Theme and Home Page Polish
+Phase 16: Adult Family Invites and Auto-Updating Ages
 
 ## Branch and Worktree
 
-- Branch: `phase/15-visual-homepage-polish`
-- Worktree: `../family-app-phase-15-visual-homepage-polish`
-- Base branch: `main` at `286291e` (`fix(schedule): show role labels for parent schedule lanes`)
+- Branch: `phase/16-adult-family-invites`
+- Worktree: `../family-app-phase-16-adult-family-invites`
+- Base branch: `main` at `8120006` (`fix(schedule): fall back to legacy member events when attendee table is missing`)
 
 ## Implemented Features
 
-- Replaced the public home page bootstrap preview with a clean product intro.
-- Removed fake family member data, fake schedule rows, and foundation readiness
-  content from `/`.
-- Added clear sign-in and create-account calls to action.
-- Added "how it works" steps for parent account creation, family setup, fair
-  chore planning, and review/reward flow.
-- Added parent-focused and kid-focused feature sections.
-- Added `lucide-react` for consistent icons.
-- Added icons to the authenticated app shell navigation and sign-out action.
-- Refreshed global theme tokens with brighter family-friendly colors, rounded
-  system font stacks, stronger focus styles, and reusable playful accent colors.
-- Updated status pills to feel softer and more polished.
+- Added `family_invitations` with pending, accepted, revoked, and expired
+  statuses.
+- Added parent-managed invites for other parents or caregivers.
+- Added invite acceptance at `/family/invite/accept?invite=<id>`.
+- Validated invite acceptance against the signed-in user's email address.
+- Kept pending adult members inactive until acceptance, then linked accepted
+  adults through `profiles`, `family_members.profile_id`, and
+  `family_member_auth_links`.
+- Added pending invite revocation and accepted adult deactivation.
+- Prevented deactivation from leaving a family without an accepted active
+  parent.
+- Changed child profile entry from static age to birth month/year.
+- Stored birth month/year in existing `family_members.birthdate` as the first
+  day of the selected month.
+- Calculated current age from birthdate with `age_years` kept as legacy
+  fallback.
 
 ## Manual Setup Still Required
 
-- Run `npm install` after pulling this phase so `lucide-react` is available.
-- Redeploy after merge to publish the refreshed home page and app shell.
+- Apply the new Supabase migration:
+
+```bash
+supabase db push
+```
+
+- Set `SUPABASE_SECRET_KEY` server-side in local/Vercel environments before
+  sending invite emails.
+- Confirm Supabase Auth redirect allow-list includes `/callback` for local and
+  production domains.
+- Confirm `NEXT_PUBLIC_APP_URL` matches the production deployment URL before
+  testing invite links in Vercel.
 
 ## Known Issues and Limitations
 
-- This phase does not add a runtime theme switcher; it adds the first app-wide
-  visual theme and reusable accent tokens.
-- It does not redesign every feature page. Existing pages inherit global theme
-  tokens and shell icons, while deeper feature-specific visual polish can be a
-  later phase.
-- No Supabase, RLS, storage, or Vercel configuration changes are included.
+- Invite emails use Supabase hosted auth email delivery; rate and volume limits
+  apply on the free tier.
+- Caregivers can be linked to the family, but parent-only settings remain
+  limited to the `parent` role.
+- This phase stores month/year only by writing day `01` into `birthdate`; it
+  does not collect exact birthdays.
+- Existing child rows without `birthdate` continue to use `age_years` until a
+  parent edits the profile.
 
 ## Next Recommended Phase
 
-- `phase/16-kid-dashboard-polish`: improve the kid-facing My Today experience
-  with richer task cards, progress states, and reward moments.
-- `phase/16-onboarding`: add a guided first-run flow after account creation for
-  family setup, child profiles, schedule, and starter chores.
+- Add guided onboarding for new families: family setup, child profiles,
+  starter chores, schedule basics, and first invite.
 
 ## Checks
 
-- `npm install lucide-react` passed. npm reported 2 moderate vulnerabilities in
-  existing dependencies.
-- `npm run lint` passed.
+- `npm install` passed. npm reported 2 moderate vulnerabilities in existing
+  dependencies.
+- Initial `npm run lint`, `npm run typecheck`, and `npm test` failed before
+  install because this sibling worktree did not have local dependencies.
+- `npm run lint` passed after install.
 - Initial `npm run typecheck` failed because the sandbox could not write
   `tsconfig.tsbuildinfo` in the sibling worktree.
-- `npm run typecheck` passed with worktree write permission.
-- `npm test` passed: 21 files, 69 tests.
+- `npm run typecheck` passed with worktree write permission, then passed again
+  after restoring generated `next-env.d.ts` churn.
+- `npm test` passed: 23 files, 77 tests.
 - `npm run build` passed with worktree write permission.
