@@ -1,5 +1,7 @@
 import { signOut } from "@/features/auth/actions";
 import Link from "next/link";
+import { ExitKidModeForm } from "@/components/child-session/kid-mode-forms";
+import type { FamilyMember } from "@/features/family/types";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -12,6 +14,7 @@ const navItems = [
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/reminders", label: "Reminders" },
   { href: "/settings/family", label: "Family" },
+  { href: "/kid-mode", label: "Kid Mode" },
 ];
 
 const navLinkClass =
@@ -19,11 +22,15 @@ const navLinkClass =
 
 export function AppShell({
   children,
+  currentMember,
   email,
 }: {
   children: React.ReactNode;
+  currentMember?: FamilyMember | null;
   email?: string;
 }) {
+  const isKidMode = currentMember?.role === "child";
+
   return (
     <main className="min-h-screen">
       <header className="border-b border-[var(--line)] bg-[var(--panel)]">
@@ -36,15 +43,23 @@ export function AppShell({
               <p className="mt-1 break-words text-sm text-[var(--muted)]">
                 Signed in{email ? ` as ${email}` : ""}
               </p>
+              {isKidMode ? (
+                <p className="mt-2 inline-flex rounded-md bg-[var(--accent-soft)] px-3 py-1 text-sm font-semibold text-[var(--accent-strong)]">
+                  Kid Mode: {currentMember.displayName}
+                </p>
+              ) : null}
             </div>
-            <form action={signOut} className="shrink-0">
-              <button
-                className="inline-flex min-h-10 items-center whitespace-nowrap rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-                type="submit"
-              >
-                Sign out
-              </button>
-            </form>
+            <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+              {isKidMode ? <ExitKidModeForm /> : null}
+              <form action={signOut}>
+                <button
+                  className="inline-flex min-h-10 items-center whitespace-nowrap rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+                  type="submit"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
           </div>
           <nav
             aria-label="Primary"

@@ -11,6 +11,7 @@ where n.nspname = 'public'
     'families',
     'family_members',
     'family_member_auth_links',
+    'family_member_pin_credentials',
     'family_member_preferences',
     'family_member_statuses',
     'house_profiles',
@@ -40,6 +41,7 @@ from (
   values
     ('family_members'),
     ('family_member_auth_links'),
+    ('family_member_pin_credentials'),
     ('family_member_preferences'),
     ('family_member_statuses'),
     ('house_profiles'),

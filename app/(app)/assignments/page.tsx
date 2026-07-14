@@ -34,6 +34,10 @@ export default async function AssignmentsPage({
     redirect("/family/setup");
   }
 
+  if (context.currentMember?.role !== "parent") {
+    redirect("/dashboard");
+  }
+
   const selectedDate = parseDateParam(params.date);
   const assignmentDate = toDateParam(selectedDate);
   const dayStart = startOfDay(selectedDate);

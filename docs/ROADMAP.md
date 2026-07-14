@@ -289,6 +289,33 @@ approved phase scope.
   Supabase and Vercel Hobby.
 - Recommended commit message: `docs: add Vercel and Supabase deployment guide`
 
+## Phase 13: Secure Kid Access
+
+- Branch: `phase/13-kid-mode-pin`
+- Worktree: `../family-app-phase-13-kid-mode-pin`
+- Intended changes: add parent-managed Kid Mode with hashed PIN credentials,
+  signed HttpOnly child-session cookies, a Kid Mode unlock/exit route, parent
+  PIN setup/reset controls, child-mode task submission support, route-level
+  parent gates, and documentation for optional linked Supabase Auth child
+  accounts.
+- Acceptance criteria: parents can set/reset a child PIN; children can unlock a
+  limited Kid Mode profile on a parent-authenticated device; Kid Mode can submit
+  only that child's tasks; parent-only settings, chore template, and assignment
+  pages redirect away from child context; PINs are never stored plaintext; older
+  linked child auth accounts continue to use `family_member_auth_links` and RLS.
+- Checks to run: `npm run lint`, `npm run typecheck`, `npm test`,
+  `npm run build`.
+- Supabase setup impact: apply the `family_member_pin_credentials` migration;
+  verify RLS keeps PIN hashes parent-only; keep `SUPABASE_SECRET_KEY`
+  server-only for validated child-mode task writes.
+- Vercel setup impact: add `CHILD_SESSION_SECRET` and redeploy after env var
+  changes.
+- Free-tier risks: minimal cost impact; no SMS, paid auth, paid workers, or paid
+  messaging. Main risk is security clarity: Kid Mode is household profile
+  switching, not a separate child password.
+- Recommended commit message:
+  `feat(auth): add parent-managed kid mode with PIN sessions`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

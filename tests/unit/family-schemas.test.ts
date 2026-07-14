@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  childPinSchema,
   childMemberSchema,
   familySetupSchema,
   memberStatusSchema,
@@ -71,5 +72,37 @@ describe("memberStatusSchema", () => {
 
     expect(parsed.status).toBe("under_the_weather");
     expect(parsed.note).toBe("Low energy today");
+  });
+});
+
+describe("childPinSchema", () => {
+  it("accepts matching 4 to 8 digit PINs", () => {
+    const parsed = childPinSchema.parse({
+      confirmPin: "1234",
+      familyId,
+      memberId,
+      pin: "1234",
+    });
+
+    expect(parsed.pin).toBe("1234");
+  });
+
+  it("rejects mismatched or non-numeric PINs", () => {
+    expect(
+      childPinSchema.safeParse({
+        confirmPin: "1235",
+        familyId,
+        memberId,
+        pin: "1234",
+      }).success,
+    ).toBe(false);
+    expect(
+      childPinSchema.safeParse({
+        confirmPin: "abcd",
+        familyId,
+        memberId,
+        pin: "abcd",
+      }).success,
+    ).toBe(false);
   });
 });

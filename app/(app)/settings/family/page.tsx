@@ -14,6 +14,10 @@ export default async function FamilySettingsPage() {
     redirect("/family/setup");
   }
 
+  if (context.currentMember?.role !== "parent") {
+    redirect("/dashboard");
+  }
+
   const activeChildren = context.members.filter(
     (member) =>
       member.role === "child" && member.lifecycleStatus === "active",

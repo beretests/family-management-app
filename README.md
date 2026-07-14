@@ -62,12 +62,15 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 SUPABASE_SECRET_KEY=
+CHILD_SESSION_SECRET=
 CRON_SECRET=
 ```
 
 Use Supabase's current `sb_publishable_...` and `sb_secret_...` API keys. Do
 not use the legacy `service_role` key for app deployment unless you are working
 around local Supabase CLI tooling in tests.
+Set `CHILD_SESSION_SECRET` to a long random server-only value for Kid Mode
+profile switching.
 
 Never commit real secrets.
 

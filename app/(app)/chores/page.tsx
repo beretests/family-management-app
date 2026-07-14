@@ -23,6 +23,10 @@ export default async function ChoresPage() {
     redirect("/family/setup");
   }
 
+  if (context.currentMember?.role !== "parent") {
+    redirect("/dashboard");
+  }
+
   const [houseProfileRow, starterTemplates, choreTemplates] = await Promise.all([
     getHouseProfile(context.family.id),
     getStarterChoreTemplates(),

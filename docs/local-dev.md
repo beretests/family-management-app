@@ -45,6 +45,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
 SUPABASE_SECRET_KEY=
+CHILD_SESSION_SECRET=
 CRON_SECRET=
 ```
 
@@ -52,11 +53,14 @@ Rules:
 
 - Keep `NEXT_PUBLIC_ENABLE_PHONE_AUTH=false` unless the owner explicitly approves
   SMS provider setup and cost risk.
-- Never expose `SUPABASE_SECRET_KEY` or `CRON_SECRET` to browser code.
+- Never expose `SUPABASE_SECRET_KEY`, `CHILD_SESSION_SECRET`, or `CRON_SECRET`
+  to browser code.
 - Use Supabase's current `sb_secret_...` key for `SUPABASE_SECRET_KEY`; do not
   use the legacy `service_role` key for production app deployment.
 - The daily maintenance route requires `CRON_SECRET` and a server-only Supabase
   admin key before it can generate reminders or clean Storage metadata.
+- Kid Mode requires `CHILD_SESSION_SECRET` and uses `SUPABASE_SECRET_KEY`
+  server-side for validated child-mode task writes.
 - Never commit `.env.local` or real secrets.
 
 ## Checks

@@ -38,7 +38,11 @@ membership row.
 Child profile management:
 
 - Child profiles are `family_members` rows with `role = 'child'`.
-- MVP child profiles do not require Supabase Auth accounts.
+- Child profiles do not require Supabase Auth accounts when using Kid Mode.
+- Kid Mode PIN hashes, failed-attempt counters, and lockout timestamps live in
+  `family_member_pin_credentials`, which is restricted to active parents by RLS.
+- Older kids may use real Supabase Auth accounts linked through
+  `family_member_auth_links`.
 - Parent-entered preferences and dislikes are stored in
   `family_member_preferences.notes` until chore templates exist.
 - Removing a child from active use sets `lifecycle_status = 'inactive'` and
