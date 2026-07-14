@@ -131,6 +131,7 @@ function event(overrides: Partial<ScheduleEvent>): ScheduleEvent {
     id: "88888888-8888-4888-8888-888888888888",
     location: null,
     memberId: childAId,
+    memberIds: [childAId],
     startsAt: "2026-07-13T16:00:00.000Z",
     taskInstanceId: null,
     title: "Soccer",
@@ -173,7 +174,7 @@ describe("generateAssignmentPreview", () => {
       assignmentWindowStart: windowStart,
       members: [child(childAId, "Ari"), child(childBId, "Bea")],
       recentTasks: [],
-      scheduleEvents: [event({ memberId: childAId })],
+      scheduleEvents: [event({ memberId: childAId, memberIds: [childAId] })],
       templates: [template()],
     });
 

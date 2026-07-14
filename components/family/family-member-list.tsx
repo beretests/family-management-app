@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import {
   deactivateChildMember,
   type FamilyActionState,
+  updateParentProfile,
 } from "@/features/family/actions";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
@@ -22,9 +23,11 @@ const statusLabels = {
 };
 
 export function FamilyMemberList({
+  currentMemberId,
   familyId,
   members,
 }: {
+  currentMemberId: string;
   familyId: string;
   members: FamilyMemberWithDetails[];
 }) {
@@ -39,18 +42,12 @@ export function FamilyMemberList({
         </h2>
         <div className="mt-4 grid gap-3">
           {parents.map((member) => (
-            <article
-              className="flex items-center gap-3 rounded-md border border-[var(--line)] p-3"
+            <ParentCard
+              canEdit={member.id === currentMemberId}
+              familyId={familyId}
               key={member.id}
-            >
-              <Avatar color={member.color} name={member.displayName} />
-              <div>
-                <h3 className="font-semibold text-[var(--foreground)]">
-                  {member.displayName}
-                </h3>
-                <p className="text-sm text-[var(--muted)]">Parent account</p>
-              </div>
-            </article>
+              member={member}
+            />
           ))}
         </div>
       </div>
@@ -81,6 +78,80 @@ export function FamilyMemberList({
         </div>
       </div>
     </section>
+  );
+}
+
+function ParentCard({
+  canEdit,
+  familyId,
+  member,
+}: {
+  canEdit: boolean;
+  familyId: string;
+  member: FamilyMemberWithDetails;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  return (
+    <article className="rounded-md border border-[var(--line)] p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar color={member.color} name={member.displayName} />
+          <div>
+            <h3 className="font-semibold text-[var(--foreground)]">
+              {member.displayName}
+            </h3>
+            <p className="text-sm text-[var(--muted)]">Parent account</p>
+          </div>
+        </div>
+        {canEdit ? (
+          <button
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+            onClick={() => setIsEditing((current) => !current)}
+            type="button"
+          >
+            {isEditing ? "Cancel edit" : "Edit profile"}
+          </button>
+        ) : null}
+      </div>
+
+      {canEdit && isEditing ? (
+        <div className="mt-4 border-t border-[var(--line)] pt-4">
+          <ParentProfileForm familyId={familyId} member={member} />
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function ParentProfileForm({
+  familyId,
+  member,
+}: {
+  familyId: string;
+  member: FamilyMemberWithDetails;
+}) {
+  const [state, formAction] = useActionState(updateParentProfile, initialState);
+
+  return (
+    <form action={formAction} className="grid gap-3">
+      <input name="familyId" type="hidden" value={familyId} />
+      <input name="memberId" type="hidden" value={member.id} />
+      <ActionMessage error={state.error} success={state.success} />
+      <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+        Display name
+        <input
+          className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+          defaultValue={member.displayName}
+          maxLength={120}
+          name="displayName"
+          required
+        />
+      </label>
+      <div>
+        <SubmitButton tone="secondary">Save profile</SubmitButton>
+      </div>
+    </form>
   );
 }
 

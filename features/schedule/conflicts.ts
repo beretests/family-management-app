@@ -2,7 +2,7 @@ import type { ScheduleEvent } from "@/features/schedule/types";
 
 type ConflictCandidate = Pick<
   ScheduleEvent,
-  "id" | "memberId" | "startsAt" | "endsAt"
+  "id" | "memberId" | "memberIds" | "startsAt" | "endsAt"
 >;
 
 export function eventsOverlap(
@@ -17,15 +17,18 @@ export function eventsOverlap(
 
 export function findScheduleConflicts(events: ConflictCandidate[]) {
   const conflicts = new Map<string, Set<string>>();
-  const memberEvents = events.filter((event) => event.memberId);
+  const memberEvents = events.filter((event) => event.memberIds.length > 0);
 
   for (let index = 0; index < memberEvents.length; index += 1) {
     const current = memberEvents[index];
 
     for (let nextIndex = index + 1; nextIndex < memberEvents.length; nextIndex += 1) {
       const next = memberEvents[nextIndex];
+      const sharesMember = current.memberIds.some((memberId) =>
+        next.memberIds.includes(memberId),
+      );
 
-      if (current.memberId !== next.memberId || !eventsOverlap(current, next)) {
+      if (!sharesMember || !eventsOverlap(current, next)) {
         continue;
       }
 

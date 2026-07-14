@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
 import {
   createScheduleEvent,
@@ -17,6 +17,18 @@ import { toDateTimeLocalValue } from "@/lib/dates/schedule";
 const initialState: ScheduleActionState = {};
 const colorOptions = ["", "#047857", "#2563eb", "#b45309", "#7c3aed", "#be123c"];
 
+function addOneHour(dateTimeLocalValue: string) {
+  const date = new Date(dateTimeLocalValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateTimeLocalValue;
+  }
+
+  date.setHours(date.getHours() + 1);
+
+  return toDateTimeLocalValue(date.toISOString());
+}
+
 export function CreateScheduleEventForm({
   defaultEndsAt,
   defaultStartsAt,
@@ -32,18 +44,20 @@ export function CreateScheduleEventForm({
 
   return (
     <section className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
-      <h2 className="text-xl font-semibold text-[var(--foreground)]">
-        Add schedule item
-      </h2>
-      <ScheduleEventFields
-        action={formAction}
-        defaultEndsAt={defaultEndsAt}
-        defaultStartsAt={defaultStartsAt}
-        familyId={familyId}
-        members={members}
-        state={state}
-        submitLabel="Add event"
-      />
+      <details>
+        <summary className="cursor-pointer text-xl font-semibold text-[var(--foreground)]">
+          Add schedule item
+        </summary>
+        <ScheduleEventFields
+          action={formAction}
+          defaultEndsAt={defaultEndsAt}
+          defaultStartsAt={defaultStartsAt}
+          familyId={familyId}
+          members={members}
+          state={state}
+          submitLabel="Add event"
+        />
+      </details>
     </section>
   );
 }
@@ -107,6 +121,42 @@ function ScheduleEventFields({
   state: ScheduleActionState;
   submitLabel: string;
 }) {
+  const initialStartsAt = event
+    ? toDateTimeLocalValue(event.startsAt)
+    : toDateTimeLocalValue(defaultStartsAt);
+  const initialEndsAt = event
+    ? toDateTimeLocalValue(event.endsAt)
+    : toDateTimeLocalValue(defaultEndsAt);
+  const [startsAt, setStartsAt] = useState(initialStartsAt);
+  const [endsAt, setEndsAt] = useState(
+    new Date(initialEndsAt).getTime() > new Date(initialStartsAt).getTime()
+      ? initialEndsAt
+      : addOneHour(initialStartsAt),
+  );
+  const [wholeFamily, setWholeFamily] = useState(
+    (event?.memberIds.length ?? 0) === 0,
+  );
+  const activeMembers = members.filter(
+    (member) => member.lifecycleStatus === "active",
+  );
+  const selectedMemberIds = new Set(event?.memberIds ?? []);
+
+  function handleStartsAtChange(value: string) {
+    setStartsAt(value);
+
+    if (new Date(endsAt).getTime() <= new Date(value).getTime()) {
+      setEndsAt(addOneHour(value));
+    }
+  }
+
+  function handleEndsAtChange(value: string) {
+    setEndsAt(
+      new Date(value).getTime() <= new Date(startsAt).getTime()
+        ? addOneHour(startsAt)
+        : value,
+    );
+  }
+
   return (
     <form action={action} className="mt-4 grid gap-4">
       <input name="familyId" type="hidden" value={familyId} />
@@ -147,14 +197,11 @@ function ScheduleEventFields({
           Starts
           <input
             className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            defaultValue={
-              event
-                ? toDateTimeLocalValue(event.startsAt)
-                : toDateTimeLocalValue(defaultStartsAt)
-            }
             name="startsAt"
+            onChange={(event) => handleStartsAtChange(event.target.value)}
             required
             type="datetime-local"
+            value={startsAt}
           />
         </label>
 
@@ -162,34 +209,51 @@ function ScheduleEventFields({
           Ends
           <input
             className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            defaultValue={
-              event
-                ? toDateTimeLocalValue(event.endsAt)
-                : toDateTimeLocalValue(defaultEndsAt)
-            }
+            min={startsAt}
             name="endsAt"
+            onChange={(event) => handleEndsAtChange(event.target.value)}
             required
             type="datetime-local"
+            value={endsAt}
           />
         </label>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Family member
-          <select
-            className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            defaultValue={event?.memberId ?? ""}
-            name="memberId"
-          >
-            <option value="">Whole family</option>
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
+        <fieldset className="grid gap-3">
+          <legend className="text-sm font-medium text-[var(--foreground)]">
+            Family members
+          </legend>
+          <label className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-medium text-[var(--foreground)]">
+            <input
+              checked={wholeFamily}
+              className="size-4"
+              name="wholeFamily"
+              onChange={(event) => setWholeFamily(event.target.checked)}
+              type="checkbox"
+            />
+            Whole family
+          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {activeMembers.map((member) => (
+              <label
+                className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm text-[var(--foreground)]"
+                key={member.id}
+              >
+                <input
+                  className="size-4"
+                  defaultChecked={selectedMemberIds.has(member.id)}
+                  disabled={wholeFamily}
+                  name="memberIds"
+                  onChange={() => setWholeFamily(false)}
+                  type="checkbox"
+                  value={member.id}
+                />
                 {member.displayName}
-              </option>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
 
         <fieldset className="grid gap-2">
           <legend className="text-sm font-medium text-[var(--foreground)]">

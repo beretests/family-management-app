@@ -13,7 +13,8 @@ describe("createScheduleEventSchema", () => {
   it("trims text fields and normalizes optional values", () => {
     const parsed = createScheduleEventSchema.parse({
       familyId,
-      memberId: "",
+      memberIds: [],
+      wholeFamily: true,
       eventType: "extracurricular",
       title: "  Soccer practice  ",
       description: "",
@@ -25,7 +26,8 @@ describe("createScheduleEventSchema", () => {
     });
 
     expect(parsed.title).toBe("Soccer practice");
-    expect(parsed.memberId).toBeUndefined();
+    expect(parsed.memberIds).toEqual([]);
+    expect(parsed.wholeFamily).toBe(true);
     expect(parsed.description).toBeUndefined();
     expect(parsed.location).toBe("Field 2");
     expect(parsed.color).toBeUndefined();
@@ -34,7 +36,8 @@ describe("createScheduleEventSchema", () => {
   it("requires the end time to be after the start time", () => {
     const parsed = createScheduleEventSchema.safeParse({
       familyId,
-      memberId,
+      memberIds: [memberId],
+      wholeFamily: false,
       eventType: "school",
       title: "School",
       description: "",
@@ -51,7 +54,8 @@ describe("createScheduleEventSchema", () => {
   it("rejects unsupported event types and colors", () => {
     const parsed = createScheduleEventSchema.safeParse({
       familyId,
-      memberId,
+      memberIds: [memberId],
+      wholeFamily: false,
       eventType: "sports",
       title: "Practice",
       description: "",
@@ -71,8 +75,9 @@ describe("updateScheduleEventSchema", () => {
     const parsed = updateScheduleEventSchema.parse({
       eventId,
       familyId,
-      memberId,
-      eventType: "appointment",
+      memberIds: [memberId],
+      wholeFamily: false,
+      eventType: "parent_activity",
       title: "Dentist",
       description: "",
       startsAt: "2026-07-12T10:00",
@@ -83,6 +88,27 @@ describe("updateScheduleEventSchema", () => {
     });
 
     expect(parsed.eventId).toBe(eventId);
+    expect(parsed.memberIds).toEqual([memberId]);
+    expect(parsed.eventType).toBe("parent_activity");
+  });
+
+  it("requires selected members when whole family is not selected", () => {
+    const parsed = updateScheduleEventSchema.safeParse({
+      eventId,
+      familyId,
+      memberIds: [],
+      wholeFamily: false,
+      eventType: "parent_away",
+      title: "Work trip",
+      description: "",
+      startsAt: "2026-07-12T10:00",
+      endsAt: "2026-07-12T11:00",
+      allDay: false,
+      location: "",
+      color: "#2563eb",
+    });
+
+    expect(parsed.success).toBe(false);
   });
 });
 

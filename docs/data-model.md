@@ -9,7 +9,8 @@ into the kid-facing task flow. Phase 9 wires parent review decisions and points
 ledger entries into submitted task workflows. Phase 10 wires non-monetary
 rewards, redemption review, point deductions, and a constructive family
 leaderboard into the app UI. Phase 11 wires in-app reminders and evidence
-retention cleanup into the existing reminder and evidence tables.
+retention cleanup into the existing reminder and evidence tables. Phase 14 adds
+multi-member schedule attendance and parent profile editing.
 
 ## Identity And Families
 
@@ -103,6 +104,8 @@ supportive feedback in `rejection_reason`, and keeps the task resubmittable.
 
 - `schedule_events`: family schedule entries, extracurriculars, appointments,
   sick/rest windows, parent blocked time, and chore/task schedule entries.
+- `schedule_event_members`: optional attendee rows for schedule events assigned
+  to one or more specific family members.
 
 Phase 5 uses the existing `schedule_events` table without adding a migration.
 Parent Server Actions create, update, and delete rows after resolving active
@@ -114,6 +117,17 @@ authenticated user can read the family schedule.
 Kids may insert/update their own extracurricular entries at the RLS layer, but
 the Phase 5 UI exposes parent-managed schedule CRUD only. Child-facing schedule
 entry remains future scope.
+
+Phase 14 keeps `schedule_events.member_id` for compatibility with older rows
+and child-owned extracurricular policies, but parent-managed multi-member events
+now write their attendee set to `schedule_event_members`. An event with no
+attendee rows is treated as a whole-family event. Event counters should count
+unique `schedule_events.id` values so a multi-member event displayed in several
+lanes is still counted once.
+
+Phase 14 also adds the schedule event types `parent_away` and
+`parent_activity`. These represent parent availability or parent-only plans that
+can affect chore timing without implying a child assignment.
 
 ## Swaps, Rewards, Points, Reminders
 

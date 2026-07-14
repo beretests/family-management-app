@@ -19,11 +19,26 @@ type ScheduleEventRow = {
   updated_at: string;
 };
 
-function mapScheduleEvent(row: ScheduleEventRow): ScheduleEvent {
+type ScheduleEventMemberRow = {
+  schedule_event_id: string;
+  member_id: string;
+};
+
+function mapScheduleEvent(
+  row: ScheduleEventRow,
+  attendeeIds: string[],
+): ScheduleEvent {
+  const memberIds = attendeeIds.length > 0
+    ? attendeeIds
+    : row.member_id
+      ? [row.member_id]
+      : [];
+
   return {
     id: row.id,
     familyId: row.family_id,
-    memberId: row.member_id,
+    memberId: memberIds[0] ?? null,
+    memberIds,
     taskInstanceId: row.task_instance_id,
     createdByMemberId: row.created_by_member_id,
     eventType: row.event_type,
@@ -63,5 +78,33 @@ export async function getScheduleEvents({
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as ScheduleEventRow[]).map(mapScheduleEvent);
+  const eventRows = (data ?? []) as ScheduleEventRow[];
+  const eventIds = eventRows.map((event) => event.id);
+
+  if (eventIds.length === 0) {
+    return [];
+  }
+
+  const { data: memberRows, error: memberError } = await supabase
+    .from("schedule_event_members")
+    .select("schedule_event_id,member_id")
+    .eq("family_id", familyId)
+    .in("schedule_event_id", eventIds);
+
+  if (memberError) {
+    throw new Error(memberError.message);
+  }
+
+  const membersByEvent = new Map<string, string[]>();
+
+  for (const row of (memberRows ?? []) as ScheduleEventMemberRow[]) {
+    membersByEvent.set(row.schedule_event_id, [
+      ...(membersByEvent.get(row.schedule_event_id) ?? []),
+      row.member_id,
+    ]);
+  }
+
+  return eventRows.map((row) =>
+    mapScheduleEvent(row, membersByEvent.get(row.id) ?? []),
+  );
 }

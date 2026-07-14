@@ -78,8 +78,21 @@ export const childPinSchema = z
     path: ["confirmPin"],
   });
 
+export const updateParentProfileSchema = z.object({
+  familyId: z.string().uuid("Missing family."),
+  memberId: z.string().uuid("Missing parent profile."),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, "Enter a display name.")
+    .max(120, "Use 120 characters or fewer."),
+});
+
 export type FamilySetupInput = z.infer<typeof familySetupSchema>;
 export type ChildMemberInput = z.infer<typeof childMemberSchema>;
 export type UpdateChildMemberInput = z.infer<typeof updateChildMemberSchema>;
 export type MemberStatusInput = z.infer<typeof memberStatusSchema>;
 export type ChildPinInput = z.infer<typeof childPinSchema>;
+export type UpdateParentProfileInput = z.infer<
+  typeof updateParentProfileSchema
+>;
