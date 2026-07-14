@@ -70,6 +70,7 @@ function ScheduleLane({
   title: string;
 }) {
   const status = member?.currentStatus?.status ?? "normal";
+  const memberContext = member ? getMemberContextLabel(member) : null;
 
   return (
     <article className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm">
@@ -84,11 +85,8 @@ function ScheduleLane({
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               {title}
             </h2>
-            {member ? (
-              <p className="text-sm text-[var(--muted)]">
-                Age {member.ageYears ?? "unknown"} · ability{" "}
-                {member.abilityLevel}/5
-              </p>
+            {memberContext ? (
+              <p className="text-sm text-[var(--muted)]">{memberContext}</p>
             ) : null}
           </div>
         </div>
@@ -117,6 +115,18 @@ function ScheduleLane({
       </div>
     </article>
   );
+}
+
+function getMemberContextLabel(member: FamilyMemberWithDetails) {
+  if (member.role === "child") {
+    return `Age ${member.ageYears ?? "unknown"} · ability ${member.abilityLevel}/5`;
+  }
+
+  if (member.role === "caregiver") {
+    return "Caregiver";
+  }
+
+  return "Parent";
 }
 
 function ScheduleEventCard({
