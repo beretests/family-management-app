@@ -1,8 +1,8 @@
 # Supabase Setup
 
-This document covers Supabase setup through Phase 10: Auth, database schema/RLS
+This document covers Supabase setup through Phase 11: Auth, database schema/RLS
 policies, family profile setup, assignments, private evidence storage, rewards,
-and leaderboard reads.
+leaderboard reads, reminders, and evidence cleanup.
 
 ## Phase 2: Auth
 
@@ -207,3 +207,30 @@ boundaries:
 The leaderboard is computed live from ledger rows the signed-in user is allowed
 to read. `leaderboard_snapshots` remains available for a future scheduled
 snapshot phase.
+
+## Phase 11: Reminders And Evidence Cleanup
+
+Phase 11 uses existing tables and Storage setup:
+
+- `reminders`
+- `task_evidence_files`
+- private `task-evidence` Storage bucket
+
+No new migration or Supabase dashboard change is required.
+
+The daily maintenance route uses a server-only Supabase admin key to:
+
+- generate in-app reminders in the existing `reminders` table
+- remove expired private evidence objects from Storage
+- delete matching `task_evidence_files` metadata rows after Storage deletion
+
+Required server-only values:
+
+```bash
+SUPABASE_SECRET_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+CRON_SECRET=
+```
+
+Prefer `SUPABASE_SECRET_KEY` for new setup. Keep the legacy service-role name
+only for compatibility. Never expose these values in browser code.

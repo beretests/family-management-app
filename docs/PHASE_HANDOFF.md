@@ -2,69 +2,70 @@
 
 ## Current Phase
 
-Phase 10: Rewards and Leaderboard
+Phase 11: Reminders and Evidence Cleanup
 
 ## Branch and Worktree
 
-- Branch: `phase/10-rewards-leaderboard`
-- Worktree: `../family-app-phase-10-rewards-leaderboard`
-- Base branch: local `main` at `cb7d121` (`Merge branch 'phase/09-parent-review-points'`)
+- Branch: `phase/11-reminders-cleanup`
+- Worktree: `../family-app-phase-11-reminders-cleanup`
+- Base branch: local `main` at `0941b21` (`Merge branch 'phase/10-rewards-leaderboard'`)
 
 ## Implemented Features
 
-- Added `/rewards` with parent-managed non-monetary reward catalog creation and
-  editing.
-- Added child reward request flow for linked child auth profiles with point
-  affordability checks against the immutable ledger.
-- Added parent approval/rejection for reward redemption requests. Approval
-  deducts points with a negative `points_ledger` row and records audit events.
-- Added reward history and dashboard reward request/active reward summaries.
-- Added `/leaderboard` with a family-private constructive progress score based
-  on approved chores, earned task points, saved balance, and reward usage rather
-  than raw point totals alone.
-- Added Rewards and Leaderboard to app navigation.
-- Added unit tests for reward schemas and leaderboard scoring.
+- Added `/reminders` as an in-app reminder center.
+- Added reminder generation for due-soon chores, overdue chores, submitted
+  chores waiting for parent review, rejected chores needing correction, and
+  reward redemptions waiting for approval.
+- Added optional browser Notification API prompt without SMS, email, paid push,
+  or external messaging providers.
+- Added dashboard reminder count and today/tomorrow reminder summary.
+- Added secured daily maintenance route at `/api/cron/daily-maintenance`.
+- Added `vercel.json` with one daily Vercel Cron entry.
+- Added evidence cleanup utilities that delete old reviewed evidence from the
+  private `task-evidence` bucket and remove matching metadata.
+- Added unit tests for reminder generation and evidence cleanup eligibility.
 
 ## Manual Setup Still Required
 
-- No new Supabase migration is required for Phase 10.
-- Existing Phase 3 through Phase 8 migrations must be applied before rewards,
-  points, and evidence-backed task flows work.
+- No new Supabase migration is required for Phase 11.
+- Existing migrations must be applied before reminders and evidence cleanup work.
 - No Supabase dashboard change is required for this phase.
-- No Vercel dashboard change is required for this phase.
+- Vercel requires `CRON_SECRET` and a server-only Supabase admin key before the
+  daily maintenance route can run after deployment.
 - No production deployment was performed.
 
 ## Known Issues and Limitations
 
-- Reward approval writes update `reward_redemptions` and insert a deduction in
-  `points_ledger` through server actions using existing parent RLS policies;
-  they are not wrapped in a custom database transaction.
-- Child reward requests require a linked child auth profile. Parent-managed Kid
-  Mode/PIN profile switching remains future scope.
-- The leaderboard is computed live; `leaderboard_snapshots` is not populated
-  until a future scheduled snapshot phase.
-- Evidence cleanup remains Phase 11 scope.
-- E2E smoke coverage still focuses on the parent flow; child reward redemption
-  browser coverage should be added when a child auth flow is available in tests.
+- Cron timing is daily/low-frequency and should not be treated as exact on
+  Vercel Hobby.
+- Reminder dismissal uses server-side permission checks and the server-only
+  Supabase admin key because existing RLS only allows parents to update
+  reminders.
+- Evidence cleanup is batch-limited and deletes Storage objects before metadata.
+- Browser notifications are local browser alerts only; background push is not
+  implemented.
+- Email and SMS reminders are intentionally not implemented.
 
 ## Next Recommended Phase
 
-Phase 11: Reminders and Evidence Cleanup
+Phase 12: Deployment Polish
 
 Expected branch and worktree:
 
-- Branch: `phase/11-reminders-cleanup`
-- Worktree: `../family-app-phase-11-reminders-cleanup`
+- Branch: `phase/12-deployment-polish`
+- Worktree: `../family-app-phase-12-deployment-polish`
 
 ## Checks
 
-- `npm install` passed in the Phase 10 worktree. npm reported 2 moderate
+- `npm install` passed in the Phase 11 worktree. npm reported 2 moderate
   vulnerabilities in existing dependencies.
-- `npm run lint` passed.
-- `npm run typecheck` passed after rerunning with worktree write permission for
+- `npm run lint` passed after fixing browser notification component React purity
+  issues.
+- `npm run typecheck` passed with worktree write permission for
   `tsconfig.tsbuildinfo`.
-- `npm test` passed: 16 files, 54 tests.
+- `npm test` passed: 18 files, 61 tests.
 - `npm run build` passed and included routes:
+  - `/api/cron/daily-maintenance`
   - `/api/test/session`
   - `/approvals`
   - `/assignments`
@@ -73,11 +74,11 @@ Expected branch and worktree:
   - `/family/setup`
   - `/leaderboard`
   - `/my-today`
+  - `/reminders`
   - `/rewards`
   - `/schedule`
   - `/settings/family`
   - `/sign-in`
   - `/sign-up`
-- `npm run test:e2e` was not run for Phase 10 because the existing E2E suite
-  exercises the parent setup/task flow, while child reward requests require a
-  linked child auth flow that is not yet covered.
+- `npm run test:e2e` was not run for Phase 11 because the existing E2E smoke
+  flow does not seed or exercise generated reminder rows or cron execution.

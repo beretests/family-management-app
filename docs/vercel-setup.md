@@ -47,6 +47,30 @@ the corresponding callback URLs in Supabase.
 - Phase 10 rewards and leaderboard use existing Supabase tables and Next.js
   server actions/pages. No Vercel Cron, paid reward provider, or payment
   integration is required.
+- Phase 11 adds one Vercel Cron route for daily maintenance:
+  `/api/cron/daily-maintenance`. Set `CRON_SECRET` in Vercel and keep the
+  generated value server-only. The route expects Vercel's cron request
+  authorization header: `Authorization: Bearer <CRON_SECRET>`.
+- Hobby cron should be treated as daily/low-frequency and not exact to the
+  minute. The maintenance route is idempotent and batch-limited.
+
+## Cron
+
+Phase 11 includes this `vercel.json` entry:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-maintenance",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}
+```
+
+Do not add high-frequency cron jobs or external worker services on the free-tier
+plan without explicit approval.
 
 ## Build Command
 
