@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   deactivateChildMember,
   type FamilyActionState,
@@ -90,14 +90,17 @@ function ChildCard({
   familyId: string;
   member: FamilyMemberWithDetails;
 }) {
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
   const isInactive = member.lifecycleStatus === "inactive";
+  const statusNote = member.currentStatus?.note?.trim();
 
   return (
     <article className="rounded-md border border-[var(--line)] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex gap-3">
+        <div className="flex min-w-0 gap-3">
           <Avatar color={member.color} name={member.displayName} />
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-[var(--foreground)]">
                 {member.displayName}
@@ -118,17 +121,52 @@ function ChildCard({
                 {member.preferences.notes}
               </p>
             ) : null}
+            {statusNote ? (
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                Status note: {statusNote}
+              </p>
+            ) : null}
           </div>
         </div>
         {!isInactive ? (
-          <DeactivateChildForm familyId={familyId} memberId={member.id} />
+          <div className="flex flex-wrap items-start gap-2 sm:justify-end">
+            <button
+              className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+              onClick={() => setIsEditingProfile((current) => !current)}
+              type="button"
+            >
+              {isEditingProfile ? "Cancel edit" : "Edit profile"}
+            </button>
+            <button
+              className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+              onClick={() => setIsEditingStatus((current) => !current)}
+              type="button"
+            >
+              {isEditingStatus ? "Cancel status" : "Set status"}
+            </button>
+            <DeactivateChildForm familyId={familyId} memberId={member.id} />
+          </div>
         ) : null}
       </div>
 
-      {!isInactive ? (
+      {!isInactive && (isEditingProfile || isEditingStatus) ? (
         <div className="mt-5 grid gap-5 border-t border-[var(--line)] pt-5">
-          <EditChildMemberForm familyId={familyId} member={member} />
-          <MemberStatusForm familyId={familyId} member={member} />
+          {isEditingProfile ? (
+            <section className="rounded-md bg-[var(--background)] p-4">
+              <h4 className="text-sm font-semibold uppercase text-[var(--muted)]">
+                Edit profile
+              </h4>
+              <EditChildMemberForm familyId={familyId} member={member} />
+            </section>
+          ) : null}
+          {isEditingStatus ? (
+            <section className="rounded-md bg-[var(--background)] p-4">
+              <h4 className="text-sm font-semibold uppercase text-[var(--muted)]">
+                Update status
+              </h4>
+              <MemberStatusForm familyId={familyId} member={member} />
+            </section>
+          ) : null}
         </div>
       ) : null}
     </article>
