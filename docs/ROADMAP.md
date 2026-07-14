@@ -316,6 +316,28 @@ approved phase scope.
 - Recommended commit message:
   `feat(auth): add parent-managed kid mode with PIN sessions`
 
+## Phase 15: Visual Theme and Home Page Polish
+
+- Branch: `phase/15-visual-homepage-polish`
+- Worktree: `../family-app-phase-15-visual-homepage-polish`
+- Intended changes: add kid-friendly color/theme tokens, use `lucide-react`
+  icons in the public home page and app shell, refresh rounded system font
+  stacks, remove bootstrap/sample landing content, and replace `/` with a
+  professional product intro that explains sign-in and account creation paths.
+- Acceptance criteria: the home page clearly explains the app without fake
+  family data or foundation readiness copy; primary sign-in/create-account
+  flows are obvious; authenticated navigation uses recognizable icons; visual
+  styling is more engaging for kids while parent/admin workflows remain
+  readable and stable on mobile.
+- Checks to run: `npm run lint`, `npm run typecheck`, `npm test`,
+  `npm run build`.
+- Supabase setup impact: none.
+- Vercel setup impact: none beyond normal redeploy after merge.
+- Free-tier risks: no paid services. `lucide-react` is a static npm dependency
+  and adds no runtime service cost.
+- Recommended commit message:
+  `style(ui): add kid-friendly theme and clean home page`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:
@@ -348,13 +370,10 @@ Use a GitHub pull request instead of local merge if preferred. Never force-remov
 a worktree or branch without explicit approval and a clear explanation of what
 would be lost.
 
-## Phase 1 Approval Gate
+## Next Phase Approval Gate
 
-Next action after this roadmap is owner approval for Phase 1 planning and then
-implementation in:
+Next action after each completed phase is owner approval for the next
+phase-specific plan and then implementation in that phase's branch/worktree.
 
-- Branch: `phase/01-bootstrap-foundation`
-- Worktree: `../family-app-phase-01-bootstrap-foundation`
-
-No Phase 1 code changes should start until the owner explicitly approves the
-Phase 1 plan.
+No new phase code changes should start until the owner explicitly approves that
+phase plan.
