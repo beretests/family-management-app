@@ -24,6 +24,24 @@ type ScheduleEventMemberRow = {
   member_id: string;
 };
 
+type SupabaseErrorLike = {
+  code?: string;
+  message?: string;
+};
+
+function isMissingScheduleEventMembersTable(error: SupabaseErrorLike) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    (message.includes("schedule_event_members") &&
+      (message.includes("Could not find") ||
+        message.includes("does not exist") ||
+        message.includes("schema cache")))
+  );
+}
+
 function mapScheduleEvent(
   row: ScheduleEventRow,
   attendeeIds: string[],
@@ -92,6 +110,10 @@ export async function getScheduleEvents({
     .in("schedule_event_id", eventIds);
 
   if (memberError) {
+    if (isMissingScheduleEventMembersTable(memberError)) {
+      return eventRows.map((row) => mapScheduleEvent(row, []));
+    }
+
     throw new Error(memberError.message);
   }
 
