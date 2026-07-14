@@ -100,11 +100,11 @@ function ChildFields({
         </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,auto)]">
+        <label className="grid min-w-0 gap-2 text-sm font-medium text-[var(--foreground)]">
           Ability level
           <select
-            className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+            className="min-h-11 w-full min-w-0 rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
             defaultValue={member?.abilityLevel ?? 3}
             name="abilityLevel"
           >
@@ -116,14 +116,14 @@ function ChildFields({
           </select>
         </label>
 
-        <fieldset className="grid gap-2">
+        <fieldset className="grid min-w-0 gap-2">
           <legend className="text-sm font-medium text-[var(--foreground)]">
             Color
           </legend>
-          <div className="flex min-h-11 items-center gap-2">
+          <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-2">
             {colorOptions.map((color) => (
               <label
-                className="grid size-9 cursor-pointer place-items-center rounded-full border border-[var(--line)]"
+                className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border border-[var(--line)]"
                 key={color}
                 style={{ backgroundColor: color }}
                 title={color}
