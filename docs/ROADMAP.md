@@ -343,6 +343,28 @@ approved phase scope.
 - Recommended commit message:
   `feat(schedule): support multi-member events and parent profile edits`
 
+## Phase 15: Visual Theme and Home Page Polish
+
+- Branch: `phase/15-visual-homepage-polish`
+- Worktree: `../family-app-phase-15-visual-homepage-polish`
+- Intended changes: add kid-friendly color/theme tokens, use `lucide-react`
+  icons in the public home page and app shell, refresh rounded system font
+  stacks, remove bootstrap/sample landing content, and replace `/` with a
+  professional product intro that explains sign-in and account creation paths.
+- Acceptance criteria: the home page clearly explains the app without fake
+  family data or foundation readiness copy; primary sign-in/create-account
+  flows are obvious; authenticated navigation uses recognizable icons; visual
+  styling is more engaging for kids while parent/admin workflows remain
+  readable and stable on mobile.
+- Checks to run: `npm run lint`, `npm run typecheck`, `npm test`,
+  `npm run build`.
+- Supabase setup impact: none.
+- Vercel setup impact: none beyond normal redeploy after merge.
+- Free-tier risks: no paid services. `lucide-react` is a static npm dependency
+  and adds no runtime service cost.
+- Recommended commit message:
+  `style(ui): add kid-friendly theme and clean home page`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:
