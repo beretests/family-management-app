@@ -46,12 +46,15 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
+ENABLE_FULL_APP=false
 SUPABASE_SECRET_KEY=
 CHILD_SESSION_SECRET=
 CRON_SECRET=
 ```
 
 - Confirm `NEXT_PUBLIC_APP_URL` matches the deployed origin.
+- Confirm `ENABLE_FULL_APP=false` for a calendar-only production rollout. Test
+  `true` in Preview before exposing the complete app.
 - Confirm `vercel.json` includes `/api/cron/daily-maintenance`.
 - Redeploy after env var changes.
 
@@ -71,15 +74,11 @@ Add preview callback URLs only when preview auth testing is needed.
 - Landing page loads.
 - Parent can sign up/sign in.
 - Parent can create or open a family.
-- Dashboard loads.
-- Schedule page loads.
-- Chores page loads.
-- Assignment page loads.
-- My Today page loads.
-- Approvals page loads.
-- Rewards page loads.
-- Leaderboard page loads.
-- Reminders page loads.
+- Calendar loads in whole-family and individual-member views.
+- With `ENABLE_FULL_APP=false`, full-app routes redirect to Calendar.
+- In a Preview with `ENABLE_FULL_APP=true`, Dashboard, Chores, Assignments, My
+  Today, Approvals, Rewards, Leaderboard, Reminders, Family settings, and Kid
+  Mode still load.
 - Cron route returns `401` without `CRON_SECRET`.
 - Evidence bucket remains private.
 

@@ -34,7 +34,7 @@ test.describe("parent family setup smoke flow", () => {
       has: page.getByRole("button", { name: "Add child" }),
     });
     await childForm.getByLabel("Name").fill(childName);
-    await childForm.getByLabel("Age").fill("8");
+    await childForm.getByLabel("Birth month and year").fill("2018-07");
     await childForm.getByLabel("Ability level").selectOption("3");
     await childForm
       .getByLabel("Preferences, dislikes, and safety notes")
@@ -51,9 +51,13 @@ test.describe("parent family setup smoke flow", () => {
 
     await page.goto("/schedule?date=2026-07-12&view=day");
     await expect(
-      page.getByRole("heading", { name: "Sunday, July 12" }),
+      page.getByRole("heading", { name: /Daily Calendar$/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Sunday, July 12", { exact: false }),
     ).toBeVisible();
 
+    await page.getByText("Add schedule item", { exact: true }).click();
     const scheduleForm = page.locator("form").filter({
       has: page.getByRole("button", { name: "Add event" }),
     });
@@ -61,9 +65,8 @@ test.describe("parent family setup smoke flow", () => {
     await scheduleForm.getByLabel("Type").selectOption("extracurricular");
     await scheduleForm.getByLabel("Starts").fill("2026-07-12T16:00");
     await scheduleForm.getByLabel("Ends").fill("2026-07-12T17:00");
-    await scheduleForm.getByLabel("Family member").selectOption({
-      label: childName,
-    });
+    await scheduleForm.getByLabel("Whole family").uncheck();
+    await scheduleForm.getByLabel(childName).check();
     await scheduleForm.getByLabel("Location").fill("Community field");
     await scheduleForm.getByLabel("Notes").fill("Bring water bottle.");
     await scheduleForm.getByRole("button", { name: "Add event" }).click();
@@ -76,7 +79,7 @@ test.describe("parent family setup smoke flow", () => {
     await expect(
       eventCard.getByText("Bring water bottle.").first(),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: childName })).toBeVisible();
+    await expect(page.getByRole("link", { name: childName })).toBeVisible();
 
     await page.goto("/chores");
     await expect(
@@ -109,7 +112,9 @@ test.describe("parent family setup smoke flow", () => {
       page.getByRole("heading", { name: "Sweep Kitchen" }),
     ).toBeVisible();
     await expect(
-      page.getByText("Sign in as the assigned child profile").first(),
+      page
+        .getByText("Children update and submit chores from their own profiles.")
+        .first(),
     ).toBeVisible();
   });
 });

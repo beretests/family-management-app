@@ -218,6 +218,9 @@ Auth security decisions:
 - keeps chore generation deterministic and free of paid AI/API calls
 - guards the test-only session route behind `E2E_TEST_AUTH_ENABLED=true`
 - guards cron maintenance behind `CRON_SECRET`
+- keeps the complete non-calendar product surface behind the server-side
+  `ENABLE_FULL_APP` rollout flag while preserving all underlying routes and
+  actions for reversible enablement
 
 The project reserves these environment variables:
 
@@ -225,11 +228,14 @@ The project reserves these environment variables:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_ENABLE_PHONE_AUTH`
+- `ENABLE_FULL_APP`
 - `SUPABASE_SECRET_KEY`
 - `CHILD_SESSION_SECRET`
 - `CRON_SECRET`
 
-Only `NEXT_PUBLIC_*` variables may be read in browser code.
+Only `NEXT_PUBLIC_*` variables may be read in browser code. `ENABLE_FULL_APP`
+is evaluated on the server and in Proxy so hiding navigation is paired with
+route-level redirects.
 
 ## Free-Tier Posture
 

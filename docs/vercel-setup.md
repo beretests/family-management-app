@@ -28,6 +28,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
+ENABLE_FULL_APP=false
 SUPABASE_SECRET_KEY=
 CHILD_SESSION_SECRET=
 CRON_SECRET=
@@ -37,6 +38,8 @@ Rules:
 
 - `NEXT_PUBLIC_APP_URL` must be the deployed app origin, for example
   `https://your-app.vercel.app` or the custom domain.
+- Keep `ENABLE_FULL_APP=false` for the calendar-only rollout. Set it to `true`
+  only when the complete existing app should be visible and reachable again.
 - Use Supabase's `sb_publishable_...` key for
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - Use Supabase's `sb_secret_...` key for `SUPABASE_SECRET_KEY`.
@@ -105,9 +108,12 @@ After deployment:
 1. Open `NEXT_PUBLIC_APP_URL`.
 2. Confirm the landing page loads.
 3. Sign in with a test parent account.
-4. Confirm `/dashboard` loads.
-5. Confirm `/schedule`, `/chores`, `/assignments`, `/my-today`, `/approvals`,
-   `/rewards`, `/leaderboard`, and `/reminders` load for the test family.
+4. With `ENABLE_FULL_APP=false`, confirm `/schedule` loads, offers Whole family
+   and active-member views, and a request for `/dashboard` redirects to
+   `/schedule`.
+5. In a Preview deployment with `ENABLE_FULL_APP=true`, confirm `/dashboard`,
+   `/schedule`, `/chores`, `/assignments`, `/my-today`, `/approvals`, `/rewards`,
+   `/leaderboard`, and `/reminders` load for the test family.
 6. Confirm Supabase redirects return through `/callback`.
 7. Confirm `/api/cron/daily-maintenance` returns `401` without the cron secret.
 8. Trigger the cron route manually only with the correct secret from a trusted

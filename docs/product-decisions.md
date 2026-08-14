@@ -56,3 +56,20 @@ leaderboard snapshots are family-private.
 Avoid storing child photos longer than needed. The default retention target for
 future evidence files remains 30 days after approve/reject unless the owner
 changes it.
+
+## Calendar-Only Rollout
+
+Calendar is the default product surface. With `ENABLE_FULL_APP` omitted or set
+to `false`, the public messaging, signed-in navigation, and protected feature
+routes expose Calendar only. Authentication, invitation acceptance, initial
+family/member setup, and API/cron infrastructure remain available because they
+support the calendar and account lifecycle.
+
+Setting `ENABLE_FULL_APP=true` restores the existing dashboard, chores,
+assignments, approvals, rewards, leaderboard, reminders, family-settings
+navigation, and Kid Mode without deleting or migrating any feature data.
+Calendar offers a
+whole-family view and a view for each active family member. An individual view
+includes events assigned to that member and events assigned to the whole
+family. Calendar-only mode opens on Week by default to provide the at-a-glance
+layout; the full app retains its existing Day default.

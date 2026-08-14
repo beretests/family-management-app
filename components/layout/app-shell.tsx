@@ -19,8 +19,9 @@ import {
 import { ExitKidModeForm } from "@/components/child-session/kid-mode-forms";
 import type { FamilyMember } from "@/features/family/types";
 import { LinkPendingIndicator } from "@/components/layout/link-pending-indicator";
+import { isFullAppEnabled } from "@/lib/feature-flags";
 
-const navItems = [
+const fullAppNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/my-today", label: "My Today", icon: ListChecks },
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
@@ -47,6 +48,10 @@ export function AppShell({
   email?: string;
 }) {
   const isKidMode = currentMember?.role === "child";
+  const fullAppEnabled = isFullAppEnabled();
+  const navItems = fullAppEnabled
+    ? fullAppNavItems
+    : [{ href: "/schedule", label: "Calendar", icon: CalendarDays }];
 
   return (
     <main className="min-h-screen">
@@ -59,7 +64,7 @@ export function AppShell({
                   <Sparkles aria-hidden="true" className="size-5" />
                 </span>
                 <p className="text-sm font-extrabold uppercase text-[var(--accent-strong)]">
-                  Family Chore Hub
+                  {fullAppEnabled ? "Family Chore Hub" : "Family Calendar"}
                 </p>
               </div>
               <p className="mt-1 break-words text-sm text-[var(--muted)]">
@@ -85,10 +90,7 @@ export function AppShell({
               </form>
             </div>
           </div>
-          <nav
-            aria-label="Primary"
-            className="flex gap-2 overflow-x-auto pb-1"
-          >
+          <nav aria-label="Primary" className="flex gap-2 overflow-x-auto pb-1">
             {navItems.map((item) => (
               <Link className={navLinkClass} href={item.href} key={item.href}>
                 <item.icon aria-hidden="true" className="size-4" />

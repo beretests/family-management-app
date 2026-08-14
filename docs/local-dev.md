@@ -44,6 +44,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_ENABLE_PHONE_AUTH=false
+ENABLE_FULL_APP=false
 SUPABASE_SECRET_KEY=
 CHILD_SESSION_SECRET=
 CRON_SECRET=
@@ -51,6 +52,10 @@ CRON_SECRET=
 
 Rules:
 
+- Keep `ENABLE_FULL_APP=false` (or omit it) for the calendar-only experience.
+  Set it to `true` and restart the development server to restore the complete
+  dashboard, chores, assignments, approvals, rewards, leaderboard, reminders,
+  and Kid Mode navigation and routes.
 - Keep `NEXT_PUBLIC_ENABLE_PHONE_AUTH=false` unless the owner explicitly approves
   SMS provider setup and cost risk.
 - Never expose `SUPABASE_SECRET_KEY`, `CHILD_SESSION_SECRET`, or `CRON_SECRET`
@@ -85,7 +90,10 @@ The E2E suite uses Playwright with system Chrome by default. Set
 `PLAYWRIGHT_BROWSER_CHANNEL` if you need a different installed browser channel.
 The Playwright-managed dev server runs on `http://127.0.0.1:3106` by default
 and enables `E2E_TEST_AUTH_ENABLED=true`, which turns on the guarded local-only
-test session route at `/api/test/session`. Without that flag, the route returns 404. The test runner reads local Supabase connection details from environment
+test session route at `/api/test/session`. It also defaults
+`ENABLE_FULL_APP=true` so the established end-to-end flow continues to verify
+every existing feature; set the variable explicitly to override that behavior.
+Without the auth test flag, the route returns 404. The test runner reads local Supabase connection details from environment
 variables or `supabase status -o env`; do not commit local CLI admin keys.
 
 ## Supabase
@@ -107,13 +115,17 @@ supabase start
 supabase db reset
 ```
 
-After signing in locally, visit `/dashboard`. If no family exists yet, the app
-links to `/family/setup`; family management lives at `/settings/family`, day/week
-schedule views live at `/schedule`, chore template setup lives at `/chores`,
-assignment planning lives at `/assignments`, and kid task submission lives at
-`/my-today`. Parent review lives at `/approvals`, rewards live at `/rewards`,
-the constructive family leaderboard lives at `/leaderboard`, and reminders live
-at `/reminders`.
+With the default calendar-only flag, sign-in and gated feature URLs lead to
+`/schedule`. A new account can still use `/family/setup` and
+`/settings/family` to create the family and its members. Calendar supports a
+whole-family view and one view for each active member; member views also include
+whole-family events.
+
+With `ENABLE_FULL_APP=true`, the existing full product surface is restored:
+dashboard at `/dashboard`, family management at `/settings/family`, day/week
+schedule views at `/schedule`, chore templates at `/chores`, assignments at
+`/assignments`, kid tasks at `/my-today`, parent review at `/approvals`, rewards
+at `/rewards`, leaderboard at `/leaderboard`, and reminders at `/reminders`.
 
 This project uses non-default local Supabase ports to avoid conflicts with other
 local projects:
