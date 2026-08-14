@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CreateScheduleEventForm } from "@/components/schedule/schedule-event-form";
+import { IcsImportForm } from "@/components/schedule/ics-import-form";
 import { ScheduleBoard } from "@/components/schedule/schedule-board";
 import { ScheduleWeekView } from "@/components/schedule/schedule-week-view";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -145,6 +146,13 @@ export default async function SchedulePage({
         canManageAll={canManageAll}
         defaultEndsAt={defaultEndsAt.toISOString()}
         defaultStartsAt={defaultStartsAt.toISOString()}
+        familyId={context.family.id}
+        members={context.members}
+      />
+
+      <IcsImportForm
+        actorMemberId={context.currentMember.id}
+        canManageAll={canManageAll}
         familyId={context.family.id}
         members={context.members}
       />

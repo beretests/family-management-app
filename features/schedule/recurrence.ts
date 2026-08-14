@@ -2,81 +2,26 @@ import type {
   ScheduleEvent,
   ScheduleRecurrence,
 } from "@/features/schedule/types";
-
-type DateParts = {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  second: number;
-};
+import {
+  getZonedDateParts,
+  type ZonedDateParts,
+  zonedDateToUtc,
+} from "@/lib/dates/time-zone";
 
 const dayMilliseconds = 24 * 60 * 60 * 1000;
 const maxCandidateDays = 366 * 100;
 
-function zonedParts(date: Date, timeZone: string): DateParts {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((part) => part.type === type)?.value);
-
-  return {
-    year: value("year"),
-    month: value("month"),
-    day: value("day"),
-    hour: value("hour"),
-    minute: value("minute"),
-    second: value("second"),
-  };
-}
-
-function zonedDateToUtc(parts: DateParts, timeZone: string) {
-  const desired = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  );
-  let result = new Date(desired);
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const actual = zonedParts(result, timeZone);
-    const actualAsUtc = Date.UTC(
-      actual.year,
-      actual.month - 1,
-      actual.day,
-      actual.hour,
-      actual.minute,
-      actual.second,
-    );
-    result = new Date(result.getTime() + desired - actualAsUtc);
-  }
-
-  return result;
-}
-
-function dateKey(parts: Pick<DateParts, "year" | "month" | "day">) {
+function dateKey(parts: Pick<ZonedDateParts, "year" | "month" | "day">) {
   return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(
     parts.day,
   ).padStart(2, "0")}`;
 }
 
-function localDay(parts: Pick<DateParts, "year" | "month" | "day">) {
+function localDay(parts: Pick<ZonedDateParts, "year" | "month" | "day">) {
   return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
 }
 
-function isValidLocalDate(date: Date, anchor: DateParts) {
+function isValidLocalDate(date: Date, anchor: ZonedDateParts) {
   return (
     date.getUTCMonth() === anchor.month - 1 && date.getUTCDate() === anchor.day
   );
@@ -87,7 +32,7 @@ function matchesRule({
   candidate,
   recurrence,
 }: {
-  anchor: DateParts;
+  anchor: ZonedDateParts;
   candidate: Date;
   recurrence: ScheduleRecurrence;
 }) {
@@ -140,9 +85,11 @@ export function expandRecurringEvent(
 
   const baseStart = new Date(event.startsAt);
   const duration = new Date(event.endsAt).getTime() - baseStart.getTime();
-  const anchor = zonedParts(baseStart, recurrence.timeZone);
+  const anchor = getZonedDateParts(baseStart, recurrence.timeZone);
   const anchorDate = localDay(anchor);
-  const lastRangeDay = localDay(zonedParts(rangeEndsAt, recurrence.timeZone));
+  const lastRangeDay = localDay(
+    getZonedDateParts(rangeEndsAt, recurrence.timeZone),
+  );
   const occurrences: ScheduleEvent[] = [];
   let occurrenceNumber = 0;
 

@@ -125,6 +125,9 @@ Calendar navigation includes Previous, Today, Next, and an explicit date picker
 for jumping to past or future days/weeks. Schedule forms support daily, weekly,
 yearly, and custom weekday recurrence. Apply all migrations before testing these
 controls; Phase 19 requires `schedule_event_recurrences` and its RLS policies.
+The import panel accepts `.ics` files after the Phase 20 migration adds import
+provenance and the atomic import function. See `docs/ics-import.md` for size,
+recurrence, time-zone, and duplicate rules.
 
 With `ENABLE_FULL_APP=true`, the existing full product surface is restored:
 dashboard at `/dashboard`, family management at `/settings/family`, day/week

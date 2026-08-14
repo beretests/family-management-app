@@ -100,6 +100,12 @@ supabase db push
 Review the migration list before confirming. Do not run destructive migration
 steps without explicit approval.
 
+Phase 20 requires
+`20260814170000_ics_schedule_import.sql`. It adds nullable import provenance, a
+family/UID partial unique index, and the security-invoker
+`import_schedule_event` function. It does not add a dashboard setting or
+Storage bucket. Apply it before exposing the calendar import panel.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.
@@ -132,6 +138,8 @@ After migrations, verify:
 - Only parents can delete `schedule_events`; recurrence rows cascade when a
   parent deletes the series.
 - `schedule_event_recurrences` has RLS enabled and remains family-scoped.
+- ICS imports use the existing schedule-event, attendee, and recurrence RLS;
+  the atomic import function does not broaden those policies.
 - Children cannot approve submissions or manage parent settings/templates.
 - Global starter chore templates are read-only reference data.
 

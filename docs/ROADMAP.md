@@ -435,6 +435,28 @@ approved phase scope.
 - Recommended commit message:
   `feat(schedule): add recurring events and member event creation`
 
+## Phase 20: Safe ICS Calendar Import
+
+- Branch: `phase/20-ics-calendar-import`
+- Worktree: `../family-app-phase-20-ics-calendar-import`
+- Scope: upload and preview `.ics` files, select supported events, assign them
+  within existing role rules, and skip previously imported UIDs.
+- Data model: nullable import provenance on `schedule_events`, a family/UID
+  partial unique index, and one security-invoker function for atomic event,
+  attendee, and recurrence writes under existing RLS.
+- Supported recurrence: daily, weekly, yearly, and custom weekdays with safe
+  `INTERVAL`, `COUNT`, `UNTIL`, and `BYDAY` mapping.
+- Deferred: ICS export, monthly/complex recurrence, exception dates,
+  recurrence overrides, and one-occurrence edits.
+- Supabase impact: apply `20260814170000_ics_schedule_import.sql`; no dashboard
+  changes or new Storage bucket.
+- Vercel/environment impact: none; files are processed in memory and not
+  retained.
+- Free-tier risk: negligible database growth from imported event rows; no paid
+  service is introduced.
+- Recommended commit message:
+  `feat(schedule): add safe ICS calendar import`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

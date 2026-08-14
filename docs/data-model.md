@@ -161,6 +161,14 @@ to their own member record. Parents retain family-wide create/update/delete.
 Kid Mode uses the same server-side checks before an elevated server-only write,
 because its signed child cookie is not visible to Postgres RLS.
 
+Phase 20 adds nullable import provenance to `schedule_events`: `import_uid`,
+`import_source_name`, and `imported_at`. All three are present only for imported
+rows. A partial unique index on `(family_id, import_uid)` prevents duplicate
+imports without affecting manually created events. The security-invoker
+`import_schedule_event` function atomically creates one schedule event, its
+attendee rows, and its optional recurrence row; existing table RLS remains the
+authorization boundary.
+
 ## Swaps, Rewards, Points, Reminders
 
 - `swap_requests`: sibling swap request and parent approval workflow.

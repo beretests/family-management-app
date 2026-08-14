@@ -83,7 +83,27 @@ default for custom). Series can run indefinitely, end on a date, or stop after
 a chosen occurrence count. The event's browser IANA time zone is stored so its
 local time remains stable through daylight-saving transitions.
 
-Series editing and deletion apply to the entire series in Phase 19. Exceptions,
-single-occurrence edits, and ICS import/export are deferred. All active family
-members can add events, but non-parents can assign/edit only their own events;
-only parents can delete schedule events.
+Series editing and deletion apply to the entire series. Exceptions and
+single-occurrence edits remain deferred. All active family members can add
+events, but non-parents can assign/edit only their own events; only parents can
+delete schedule events.
+
+## ICS Import
+
+Phase 20 uses a preview-first `.ics` import. The browser parses for immediate
+feedback, while the server reparses the uploaded bytes and rechecks actor and
+attendee permissions before writing. Files are limited to 512 KB, previews to
+500 events, and each confirmed import to 100 events. The source file is never
+stored.
+
+Parents may assign imported events to selected active members or the whole
+family. Other active family members import only to themselves. A family-scoped
+unique imported UID makes retries idempotent: duplicates are skipped, never
+used to overwrite an existing event.
+
+The import maps timed/all-day events, UTC/floating/IANA time zones, and the
+app's daily, weekly, yearly, and custom-weekday recurrence subset. It reports
+monthly/complex recurrence, exception dates, recurrence overrides, proprietary
+time zones, and malformed required fields without blocking other supported
+events. ICS export remains deferred. See `docs/ics-import.md` for the exact
+compatibility rules.

@@ -14,6 +14,27 @@ test.describe("parent family setup smoke flow", () => {
     const parentName = `Parent ${runId}`;
     const childName = `Ari ${runId}`;
     const eventTitle = `Soccer practice ${runId}`;
+    const importedEventTitle = `Imported dance ${runId}`;
+    const calendarFile = {
+      name: `family-${runId}.ics`,
+      mimeType: "text/calendar",
+      buffer: Buffer.from(
+        [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "PRODID:-//Family App//E2E//EN",
+          "BEGIN:VEVENT",
+          `UID:import-${runId}@example.test`,
+          "DTSTART;TZID=America/Regina:20260720T180000",
+          "DTEND;TZID=America/Regina:20260720T190000",
+          "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=3",
+          `SUMMARY:${importedEventTitle}`,
+          "LOCATION:Dance studio",
+          "END:VEVENT",
+          "END:VCALENDAR",
+        ].join("\r\n"),
+      ),
+    };
 
     await createConfirmedParentUser({ email, password });
     await signInWithLocalSession(page, email, password);
@@ -90,6 +111,41 @@ test.describe("parent family setup smoke flow", () => {
 
     await page.goto("/schedule?date=2026-07-25&view=day");
     await expect(page.getByText(eventTitle)).toHaveCount(0);
+
+    await page.getByText("Import calendar file", { exact: true }).click();
+    const importForm = page.locator("form").filter({
+      has: page.getByRole("button", { name: "Preview events" }),
+    });
+    await importForm.getByLabel("iCalendar file").setInputFiles(calendarFile);
+    await importForm.getByRole("button", { name: "Preview events" }).click();
+    await expect(importForm.getByText("1 ready")).toBeVisible();
+    await expect(importForm.getByText(importedEventTitle)).toBeVisible();
+    await importForm.getByLabel(parentName).uncheck();
+    await importForm.getByLabel(childName).check();
+    await importForm.getByRole("button", { name: "Import 1 event" }).click();
+    await expect(importForm.getByText("1 imported.")).toBeVisible();
+
+    await page.goto("/schedule?date=2026-07-20&view=day");
+    await expect(page.getByText(importedEventTitle).first()).toBeVisible();
+    await expect(page.getByText("Repeats weekly")).toBeVisible();
+
+    await page.goto("/schedule?date=2026-07-22&view=day");
+    await expect(page.getByText(importedEventTitle).first()).toBeVisible();
+
+    await page.getByText("Import calendar file", { exact: true }).click();
+    const duplicateImportForm = page.locator("form").filter({
+      has: page.getByRole("button", { name: "Preview events" }),
+    });
+    await duplicateImportForm
+      .getByLabel("iCalendar file")
+      .setInputFiles(calendarFile);
+    await duplicateImportForm
+      .getByRole("button", { name: "Preview events" })
+      .click();
+    await expect(duplicateImportForm.getByText("1 duplicates")).toBeVisible();
+    await expect(
+      duplicateImportForm.getByText("This event was already imported."),
+    ).toBeVisible();
 
     await page.goto("/chores");
     await expect(
