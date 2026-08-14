@@ -15,7 +15,14 @@ import type { ScheduleEvent } from "@/features/schedule/types";
 import { toDateTimeLocalValue } from "@/lib/dates/schedule";
 
 const initialState: ScheduleActionState = {};
-const colorOptions = ["", "#047857", "#2563eb", "#b45309", "#7c3aed", "#be123c"];
+const colorOptions = [
+  "",
+  "#047857",
+  "#2563eb",
+  "#b45309",
+  "#7c3aed",
+  "#be123c",
+];
 
 function addOneHour(dateTimeLocalValue: string) {
   const date = new Date(dateTimeLocalValue);
@@ -34,11 +41,15 @@ export function CreateScheduleEventForm({
   defaultStartsAt,
   familyId,
   members,
+  actorMemberId,
+  canManageAll,
 }: {
   defaultEndsAt: string;
   defaultStartsAt: string;
   familyId: string;
   members: FamilyMemberWithDetails[];
+  actorMemberId: string;
+  canManageAll: boolean;
 }) {
   const [state, formAction] = useActionState(createScheduleEvent, initialState);
 
@@ -54,6 +65,8 @@ export function CreateScheduleEventForm({
           defaultStartsAt={defaultStartsAt}
           familyId={familyId}
           members={members}
+          actorMemberId={actorMemberId}
+          canManageAll={canManageAll}
           state={state}
           submitLabel="Add event"
         />
@@ -66,10 +79,16 @@ export function EditScheduleEventForm({
   event,
   familyId,
   members,
+  actorMemberId,
+  canDelete,
+  canManageAll,
 }: {
   event: ScheduleEvent;
   familyId: string;
   members: FamilyMemberWithDetails[];
+  actorMemberId: string;
+  canDelete: boolean;
+  canManageAll: boolean;
 }) {
   const [updateState, updateAction] = useActionState(
     updateScheduleEvent,
@@ -87,19 +106,30 @@ export function EditScheduleEventForm({
         event={event}
         familyId={familyId}
         members={members}
+        actorMemberId={actorMemberId}
+        canManageAll={canManageAll}
         state={updateState}
         submitLabel="Save"
       />
-      <form action={deleteAction}>
-        <input name="familyId" type="hidden" value={familyId} />
-        <input name="eventId" type="hidden" value={event.id} />
-        <ActionMessage error={deleteState.error} success={deleteState.success} />
-        <div className="mt-3">
-          <SubmitButton pendingLabel="Deleting..." tone="danger">
-            Delete event
-          </SubmitButton>
-        </div>
-      </form>
+      {canDelete ? (
+        <form action={deleteAction}>
+          <input name="familyId" type="hidden" value={familyId} />
+          <input
+            name="eventId"
+            type="hidden"
+            value={event.sourceEventId ?? event.id}
+          />
+          <ActionMessage
+            error={deleteState.error}
+            success={deleteState.success}
+          />
+          <div className="mt-3">
+            <SubmitButton pendingLabel="Deleting..." tone="danger">
+              Delete event
+            </SubmitButton>
+          </div>
+        </form>
+      ) : null}
     </div>
   );
 }
@@ -111,6 +141,8 @@ function ScheduleEventFields({
   event,
   familyId,
   members,
+  actorMemberId,
+  canManageAll,
   state,
   submitLabel,
 }: {
@@ -120,14 +152,16 @@ function ScheduleEventFields({
   event?: ScheduleEvent;
   familyId: string;
   members: FamilyMemberWithDetails[];
+  actorMemberId: string;
+  canManageAll: boolean;
   state: ScheduleActionState;
   submitLabel: string;
 }) {
   const initialStartsAt = event
-    ? toDateTimeLocalValue(event.startsAt)
+    ? toDateTimeLocalValue(event.seriesStartsAt ?? event.startsAt)
     : toDateTimeLocalValue(defaultStartsAt);
   const initialEndsAt = event
-    ? toDateTimeLocalValue(event.endsAt)
+    ? toDateTimeLocalValue(event.seriesEndsAt ?? event.endsAt)
     : toDateTimeLocalValue(defaultEndsAt);
   const [startsAt, setStartsAt] = useState(initialStartsAt);
   const [endsAt, setEndsAt] = useState(
@@ -136,12 +170,32 @@ function ScheduleEventFields({
       : addOneHour(initialStartsAt),
   );
   const [wholeFamily, setWholeFamily] = useState(
-    (event?.memberIds.length ?? 0) === 0,
+    canManageAll && (event?.memberIds.length ?? 0) === 0,
   );
+  const initialRepeatType = event?.recurrence
+    ? event.recurrence.frequency === "weekly" &&
+      event.recurrence.weekdays.length
+      ? "custom"
+      : event.recurrence.frequency
+    : "none";
+  const [repeatType, setRepeatType] = useState(initialRepeatType);
+  const [recurrenceEndType, setRecurrenceEndType] = useState(
+    event?.recurrence?.endsOn
+      ? "on"
+      : event?.recurrence?.occurrenceCount
+        ? "after"
+        : "never",
+  );
+  const timeZone =
+    event?.recurrence?.timeZone ??
+    Intl.DateTimeFormat().resolvedOptions().timeZone ??
+    "UTC";
   const activeMembers = members.filter(
     (member) => member.lifecycleStatus === "active",
   );
-  const selectedMemberIds = new Set(event?.memberIds ?? []);
+  const selectedMemberIds = new Set(
+    canManageAll ? (event?.memberIds ?? []) : [actorMemberId],
+  );
 
   function handleStartsAtChange(value: string) {
     setStartsAt(value);
@@ -162,7 +216,22 @@ function ScheduleEventFields({
   return (
     <form action={action} className="mt-4 grid gap-4">
       <input name="familyId" type="hidden" value={familyId} />
-      {event ? <input name="eventId" type="hidden" value={event.id} /> : null}
+      {!canManageAll ? (
+        <input name="memberIds" type="hidden" value={actorMemberId} />
+      ) : null}
+      {event ? (
+        <input
+          name="eventId"
+          type="hidden"
+          value={event.sourceEventId ?? event.id}
+        />
+      ) : null}
+      <input
+        name="timeZone"
+        suppressHydrationWarning
+        type="hidden"
+        value={timeZone}
+      />
 
       <ActionMessage error={state.error} success={state.success} />
 
@@ -226,34 +295,38 @@ function ScheduleEventFields({
           <legend className="text-sm font-medium text-[var(--foreground)]">
             Family members
           </legend>
-          <label className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-medium text-[var(--foreground)]">
-            <input
-              checked={wholeFamily}
-              className="size-4"
-              name="wholeFamily"
-              onChange={(event) => setWholeFamily(event.target.checked)}
-              type="checkbox"
-            />
-            Whole family
-          </label>
+          {canManageAll ? (
+            <label className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-medium text-[var(--foreground)]">
+              <input
+                checked={wholeFamily}
+                className="size-4"
+                name="wholeFamily"
+                onChange={(event) => setWholeFamily(event.target.checked)}
+                type="checkbox"
+              />
+              Whole family
+            </label>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-2">
-            {activeMembers.map((member) => (
-              <label
-                className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm text-[var(--foreground)]"
-                key={member.id}
-              >
-                <input
-                  className="size-4"
-                  defaultChecked={selectedMemberIds.has(member.id)}
-                  disabled={wholeFamily}
-                  name="memberIds"
-                  onChange={() => setWholeFamily(false)}
-                  type="checkbox"
-                  value={member.id}
-                />
-                {member.displayName}
-              </label>
-            ))}
+            {activeMembers
+              .filter((member) => canManageAll || member.id === actorMemberId)
+              .map((member) => (
+                <label
+                  className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm text-[var(--foreground)]"
+                  key={member.id}
+                >
+                  <input
+                    className="size-4"
+                    defaultChecked={selectedMemberIds.has(member.id)}
+                    disabled={wholeFamily || !canManageAll}
+                    name="memberIds"
+                    onChange={() => setWholeFamily(false)}
+                    type="checkbox"
+                    value={member.id}
+                  />
+                  {member.displayName}
+                </label>
+              ))}
           </div>
         </fieldset>
 
@@ -282,6 +355,131 @@ function ScheduleEventFields({
           </div>
         </fieldset>
       </div>
+
+      <fieldset className="grid gap-3 rounded-lg border border-[var(--line)] p-4">
+        <legend className="px-1 text-sm font-semibold text-[var(--foreground)]">
+          Repeat
+        </legend>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+            Repeats
+            <select
+              className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
+              name="repeatType"
+              onChange={(changeEvent) =>
+                setRepeatType(changeEvent.target.value)
+              }
+              value={repeatType}
+            >
+              <option value="none">Does not repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="yearly">Yearly</option>
+              <option value="custom">Custom weekdays</option>
+            </select>
+          </label>
+          {repeatType !== "none" ? (
+            <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+              Repeat every
+              <span className="flex items-center gap-2">
+                <input
+                  className="min-h-11 w-24 rounded-md border border-[var(--line)] px-3 text-base"
+                  defaultValue={event?.recurrence?.interval ?? 1}
+                  max={365}
+                  min={1}
+                  name="recurrenceInterval"
+                  type="number"
+                />
+                {repeatType === "yearly"
+                  ? "year(s)"
+                  : repeatType === "daily"
+                    ? "day(s)"
+                    : "week(s)"}
+              </span>
+            </label>
+          ) : null}
+        </div>
+
+        {repeatType === "custom" ? (
+          <fieldset>
+            <legend className="text-sm font-medium text-[var(--foreground)]">
+              Weekdays
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                (label, index) => (
+                  <label
+                    className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm"
+                    key={label}
+                  >
+                    <input
+                      defaultChecked={
+                        event?.recurrence?.weekdays.includes(index) ??
+                        (index >= 1 && index <= 5)
+                      }
+                      name="recurrenceWeekdays"
+                      type="checkbox"
+                      value={index}
+                    />
+                    {label}
+                  </label>
+                ),
+              )}
+            </div>
+          </fieldset>
+        ) : null}
+
+        {repeatType !== "none" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+              Series ends
+              <select
+                className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
+                name="recurrenceEndType"
+                onChange={(changeEvent) =>
+                  setRecurrenceEndType(changeEvent.target.value)
+                }
+                value={recurrenceEndType}
+              >
+                <option value="never">Never</option>
+                <option value="on">On date</option>
+                <option value="after">After occurrences</option>
+              </select>
+            </label>
+            {recurrenceEndType === "on" ? (
+              <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+                End date
+                <input
+                  className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
+                  defaultValue={event?.recurrence?.endsOn ?? ""}
+                  name="recurrenceEndsOn"
+                  required
+                  type="date"
+                />
+              </label>
+            ) : null}
+            {recurrenceEndType === "after" ? (
+              <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+                Number of occurrences
+                <input
+                  className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
+                  defaultValue={event?.recurrence?.occurrenceCount ?? 10}
+                  max={1000}
+                  min={1}
+                  name="recurrenceCount"
+                  required
+                  type="number"
+                />
+              </label>
+            ) : null}
+          </div>
+        ) : null}
+        {event?.recurrence ? (
+          <p className="text-xs text-[var(--muted)]">
+            Changes apply to the whole series.
+          </p>
+        ) : null}
+      </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
         <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
@@ -316,7 +514,9 @@ function ScheduleEventFields({
       </label>
 
       <div>
-        <SubmitButton pendingLabel="Saving event...">{submitLabel}</SubmitButton>
+        <SubmitButton pendingLabel="Saving event...">
+          {submitLabel}
+        </SubmitButton>
       </div>
     </form>
   );

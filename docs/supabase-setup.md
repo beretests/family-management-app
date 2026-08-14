@@ -127,6 +127,11 @@ After migrations, verify:
 - Parents can select and manage `family_member_pin_credentials`; child accounts
   cannot read PIN hashes.
 - Children can read family schedule and their own assignments/submissions.
+- Active family members can create and update only their own self-assigned
+  schedule events; parents can manage all schedule events.
+- Only parents can delete `schedule_events`; recurrence rows cascade when a
+  parent deletes the series.
+- `schedule_event_recurrences` has RLS enabled and remains family-scoped.
 - Children cannot approve submissions or manage parent settings/templates.
 - Global starter chore templates are read-only reference data.
 

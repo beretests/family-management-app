@@ -122,6 +122,9 @@ supportive feedback in `rejection_reason`, and keeps the task resubmittable.
   sick/rest windows, parent blocked time, and chore/task schedule entries.
 - `schedule_event_members`: optional attendee rows for schedule events assigned
   to one or more specific family members.
+- `schedule_event_recurrences`: optional one-to-one recurrence settings for a
+  schedule event, including frequency, interval, custom weekdays, end limit,
+  and the IANA time zone used to preserve local wall-clock time.
 
 Phase 5 uses the existing `schedule_events` table without adding a migration.
 Parent Server Actions create, update, and delete rows after resolving active
@@ -144,6 +147,19 @@ lanes is still counted once.
 Phase 14 also adds the schedule event types `parent_away` and
 `parent_activity`. These represent parent availability or parent-only plans that
 can affect chore timing without implying a child assignment.
+
+Phase 19 adds `schedule_event_recurrences` without materializing individual
+occurrences. The server expands only the requested day/week range, so daily or
+long-running series do not create unbounded rows. Supported patterns are daily,
+weekly, yearly, and custom weekday sets such as Monday-Friday. An end date and
+an occurrence count are mutually exclusive optional limits. Editing or deleting
+a recurring event currently applies to the whole series.
+
+Phase 19 also narrows non-parent writes: an active authenticated family member
+may create and update an event only when they created it and it is assigned only
+to their own member record. Parents retain family-wide create/update/delete.
+Kid Mode uses the same server-side checks before an elevated server-only write,
+because its signed child cookie is not visible to Postgres RLS.
 
 ## Swaps, Rewards, Points, Reminders
 

@@ -12,6 +12,7 @@ Then open the local SQL editor or connect with `psql` and run:
 
 ```sql
 \i tests/sql/rls-verification.sql
+\i tests/sql/schedule-permissions-verification.sql
 ```
 
 Expected result:
@@ -19,6 +20,7 @@ Expected result:
 - RLS checks return zero rows.
 - family-owned table checks return zero rows.
 - starter chore count returns `14`.
+- schedule permission verification completes without an exception and rolls back.
 
 These checks do not replace RLS integration tests with authenticated JWTs. They
 are a low-cost Phase 3 sanity check until app-level data access exists.

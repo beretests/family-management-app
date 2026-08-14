@@ -68,6 +68,39 @@ describe("createScheduleEventSchema", () => {
 
     expect(parsed.success).toBe(false);
   });
+
+  it("accepts custom weekday recurrence and requires selected weekdays", () => {
+    const input = {
+      familyId,
+      memberIds: [memberId],
+      wholeFamily: false,
+      eventType: "school",
+      title: "School run",
+      description: "",
+      startsAt: "2026-08-17T08:00",
+      endsAt: "2026-08-17T09:00",
+      allDay: false,
+      location: "",
+      color: "",
+      repeatType: "custom",
+      recurrenceInterval: "1",
+      recurrenceWeekdays: ["1", "2", "3", "4", "5"],
+      recurrenceEndType: "never",
+      recurrenceEndsOn: "",
+      recurrenceCount: "",
+      timeZone: "America/Regina",
+    };
+
+    expect(createScheduleEventSchema.parse(input).recurrenceWeekdays).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
+    expect(
+      createScheduleEventSchema.safeParse({
+        ...input,
+        recurrenceWeekdays: [],
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("updateScheduleEventSchema", () => {

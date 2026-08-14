@@ -7,14 +7,16 @@ import type { ScheduleEvent } from "@/features/schedule/types";
 import { formatTimeRange, startOfDay } from "@/lib/dates/schedule";
 
 export function ScheduleBoard({
-  canManage,
+  actorMemberId,
+  canManageAll,
   conflicts,
   day,
   events,
   familyId,
   members,
 }: {
-  canManage: boolean;
+  actorMemberId: string;
+  canManageAll: boolean;
   conflicts: Map<string, string[]>;
   day: Date;
   events: ScheduleEvent[];
@@ -47,7 +49,9 @@ export function ScheduleBoard({
             Event details
           </h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Review notes and locations{canManage ? ", or edit an event" : ""}.
+            {canManageAll
+              ? "Review notes and locations, or edit any event."
+              : "Review notes and locations, or edit events you added."}
           </p>
         </div>
 
@@ -59,7 +63,8 @@ export function ScheduleBoard({
           ) : null}
           {sortedEvents.map((event) => (
             <ScheduleEventCard
-              canManage={canManage}
+              actorMemberId={actorMemberId}
+              canManageAll={canManageAll}
               conflicts={conflicts.get(event.id) ?? []}
               event={event}
               familyId={familyId}
@@ -74,13 +79,15 @@ export function ScheduleBoard({
 }
 
 function ScheduleEventCard({
-  canManage,
+  actorMemberId,
+  canManageAll,
   conflicts,
   event,
   familyId,
   members,
 }: {
-  canManage: boolean;
+  actorMemberId: string;
+  canManageAll: boolean;
   conflicts: string[];
   event: ScheduleEvent;
   familyId: string;
@@ -94,6 +101,7 @@ function ScheduleEventCard({
     attendees.length > 0
       ? attendees.map((member) => member.displayName).join(", ")
       : "Whole family";
+  const canEdit = canManageAll || event.createdByMemberId === actorMemberId;
 
   return (
     <article
@@ -109,6 +117,11 @@ function ScheduleEventCard({
             {formatTimeRange(event.startsAt, event.endsAt, event.allDay)} ·{" "}
             {scheduleEventTypeLabels[event.eventType]}
           </p>
+          {event.recurrence ? (
+            <p className="mt-1 text-sm font-medium text-[var(--accent)]">
+              Repeats {event.recurrence.frequency}
+            </p>
+          ) : null}
           <p className="mt-1 text-sm text-[var(--muted)]">{attendeeLabel}</p>
           {event.location ? (
             <p className="mt-1 text-sm text-[var(--muted)]">{event.location}</p>
@@ -124,7 +137,7 @@ function ScheduleEventCard({
         ) : null}
       </div>
 
-      {canManage ? (
+      {canEdit ? (
         <details className="mt-3 rounded-md border border-[var(--line)] p-3">
           <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
             Edit
@@ -133,6 +146,9 @@ function ScheduleEventCard({
             event={event}
             familyId={familyId}
             members={members}
+            actorMemberId={actorMemberId}
+            canDelete={canManageAll}
+            canManageAll={canManageAll}
           />
         </details>
       ) : null}

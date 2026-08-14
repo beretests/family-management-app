@@ -416,6 +416,25 @@ approved phase scope.
 - Recommended commit message:
   `feat(ui): add loading feedback across app`
 
+## Phase 19: Recurring Schedule Events and Member Permissions
+
+- Branch: `phase/19-recurring-schedule-events`
+- Worktree: `../family-app-phase-19-recurring-schedule-events`
+- Scope: daily, weekly, yearly, and custom-weekday recurrence; past/future date
+  jumping; event creation for every active member; parent-only event deletion.
+- Data model: additive `schedule_event_recurrences` table with family-scoped
+  RLS. Occurrences are expanded for the visible range rather than persisted.
+- Permission rule: non-parents can create/edit only their own self-assigned
+  events. Parents can assign, edit, and delete across the family.
+- Deferred: ICS import/export and one-occurrence series exceptions.
+- Supabase impact: apply
+  `20260813170000_schedule_recurrence_permissions.sql`; no dashboard changes.
+- Vercel/environment impact: none; the event form records the browser IANA time
+  zone without a new environment variable.
+- Free-tier risk: none; no external service or paid dependency is added.
+- Recommended commit message:
+  `feat(schedule): add recurring events and member event creation`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

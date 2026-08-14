@@ -1,0 +1,203 @@
+import type {
+  ScheduleEvent,
+  ScheduleRecurrence,
+} from "@/features/schedule/types";
+
+type DateParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+const dayMilliseconds = 24 * 60 * 60 * 1000;
+const maxCandidateDays = 366 * 100;
+
+function zonedParts(date: Date, timeZone: string): DateParts {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+
+  return {
+    year: value("year"),
+    month: value("month"),
+    day: value("day"),
+    hour: value("hour"),
+    minute: value("minute"),
+    second: value("second"),
+  };
+}
+
+function zonedDateToUtc(parts: DateParts, timeZone: string) {
+  const desired = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  let result = new Date(desired);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const actual = zonedParts(result, timeZone);
+    const actualAsUtc = Date.UTC(
+      actual.year,
+      actual.month - 1,
+      actual.day,
+      actual.hour,
+      actual.minute,
+      actual.second,
+    );
+    result = new Date(result.getTime() + desired - actualAsUtc);
+  }
+
+  return result;
+}
+
+function dateKey(parts: Pick<DateParts, "year" | "month" | "day">) {
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(
+    parts.day,
+  ).padStart(2, "0")}`;
+}
+
+function localDay(parts: Pick<DateParts, "year" | "month" | "day">) {
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+}
+
+function isValidLocalDate(date: Date, anchor: DateParts) {
+  return (
+    date.getUTCMonth() === anchor.month - 1 && date.getUTCDate() === anchor.day
+  );
+}
+
+function matchesRule({
+  anchor,
+  candidate,
+  recurrence,
+}: {
+  anchor: DateParts;
+  candidate: Date;
+  recurrence: ScheduleRecurrence;
+}) {
+  const anchorDate = localDay(anchor);
+  const differenceDays = Math.floor(
+    (candidate.getTime() - anchorDate.getTime()) / dayMilliseconds,
+  );
+
+  if (differenceDays < 0) {
+    return false;
+  }
+
+  if (recurrence.frequency === "daily") {
+    return differenceDays % recurrence.interval === 0;
+  }
+
+  if (recurrence.frequency === "weekly") {
+    const weekdays = recurrence.weekdays.length
+      ? recurrence.weekdays
+      : [anchorDate.getUTCDay()];
+    return (
+      Math.floor(differenceDays / 7) % recurrence.interval === 0 &&
+      weekdays.includes(candidate.getUTCDay())
+    );
+  }
+
+  const years = candidate.getUTCFullYear() - anchor.year;
+  return (
+    years >= 0 &&
+    years % recurrence.interval === 0 &&
+    candidate.getUTCMonth() === anchor.month - 1 &&
+    candidate.getUTCDate() === anchor.day &&
+    isValidLocalDate(candidate, anchor)
+  );
+}
+
+export function expandRecurringEvent(
+  event: ScheduleEvent,
+  rangeStartsAt: Date,
+  rangeEndsAt: Date,
+) {
+  const recurrence = event.recurrence;
+
+  if (!recurrence) {
+    return new Date(event.startsAt) < rangeEndsAt &&
+      new Date(event.endsAt) > rangeStartsAt
+      ? [event]
+      : [];
+  }
+
+  const baseStart = new Date(event.startsAt);
+  const duration = new Date(event.endsAt).getTime() - baseStart.getTime();
+  const anchor = zonedParts(baseStart, recurrence.timeZone);
+  const anchorDate = localDay(anchor);
+  const lastRangeDay = localDay(zonedParts(rangeEndsAt, recurrence.timeZone));
+  const occurrences: ScheduleEvent[] = [];
+  let occurrenceNumber = 0;
+
+  for (
+    let candidate = new Date(anchorDate);
+    candidate <= lastRangeDay;
+    candidate = new Date(candidate.getTime() + dayMilliseconds)
+  ) {
+    if (
+      (candidate.getTime() - anchorDate.getTime()) / dayMilliseconds >
+      maxCandidateDays
+    ) {
+      break;
+    }
+
+    if (!matchesRule({ anchor, candidate, recurrence })) {
+      continue;
+    }
+
+    occurrenceNumber += 1;
+    const candidateParts = {
+      year: candidate.getUTCFullYear(),
+      month: candidate.getUTCMonth() + 1,
+      day: candidate.getUTCDate(),
+      hour: anchor.hour,
+      minute: anchor.minute,
+      second: anchor.second,
+    };
+
+    if (recurrence.endsOn && dateKey(candidateParts) > recurrence.endsOn) {
+      break;
+    }
+
+    if (
+      recurrence.occurrenceCount &&
+      occurrenceNumber > recurrence.occurrenceCount
+    ) {
+      break;
+    }
+
+    const occurrenceStart = zonedDateToUtc(candidateParts, recurrence.timeZone);
+    const occurrenceEnd = new Date(occurrenceStart.getTime() + duration);
+
+    if (occurrenceStart < rangeEndsAt && occurrenceEnd > rangeStartsAt) {
+      occurrences.push({
+        ...event,
+        id: `${event.id}:${occurrenceStart.toISOString()}`,
+        sourceEventId: event.id,
+        seriesStartsAt: event.startsAt,
+        seriesEndsAt: event.endsAt,
+        startsAt: occurrenceStart.toISOString(),
+        endsAt: occurrenceEnd.toISOString(),
+      });
+    }
+  }
+
+  return occurrences;
+}
