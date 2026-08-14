@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ScheduleEvent, ScheduleEventType } from "@/features/schedule/types";
+import type {
+  ScheduleEvent,
+  ScheduleEventType,
+} from "@/features/schedule/types";
+import { expandRecurringEvent } from "@/features/schedule/recurrence";
 
 type ScheduleEventRow = {
   id: string;
@@ -24,6 +28,16 @@ type ScheduleEventMemberRow = {
   member_id: string;
 };
 
+type ScheduleEventRecurrenceRow = {
+  event_id: string;
+  frequency: "daily" | "weekly" | "yearly";
+  interval_count: number;
+  weekdays: number[];
+  ends_on: string | null;
+  occurrence_count: number | null;
+  time_zone: string;
+};
+
 type SupabaseErrorLike = {
   code?: string;
   message?: string;
@@ -42,15 +56,26 @@ function isMissingScheduleEventMembersTable(error: SupabaseErrorLike) {
   );
 }
 
+function isMissingRecurrenceTable(error: SupabaseErrorLike) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    (message.includes("schedule_event_recurrences") &&
+      (message.includes("Could not find") ||
+        message.includes("does not exist") ||
+        message.includes("schema cache")))
+  );
+}
+
 function mapScheduleEvent(
   row: ScheduleEventRow,
   attendeeIds: string[],
+  recurrence?: ScheduleEventRecurrenceRow,
 ): ScheduleEvent {
-  const memberIds = attendeeIds.length > 0
-    ? attendeeIds
-    : row.member_id
-      ? [row.member_id]
-      : [];
+  const memberIds =
+    attendeeIds.length > 0 ? attendeeIds : row.member_id ? [row.member_id] : [];
 
   return {
     id: row.id,
@@ -69,6 +94,16 @@ function mapScheduleEvent(
     color: row.color,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    recurrence: recurrence
+      ? {
+          frequency: recurrence.frequency,
+          interval: recurrence.interval_count,
+          weekdays: recurrence.weekdays,
+          endsOn: recurrence.ends_on,
+          occurrenceCount: recurrence.occurrence_count,
+          timeZone: recurrence.time_zone,
+        }
+      : null,
   };
 }
 
@@ -82,7 +117,7 @@ export async function getScheduleEvents({
   startsAt: Date;
 }) {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data: overlapData, error } = await supabase
     .from("schedule_events")
     .select(
       "id,family_id,member_id,task_instance_id,created_by_member_id,event_type,title,description,starts_at,ends_at,all_day,location,color,created_at,updated_at",
@@ -96,7 +131,48 @@ export async function getScheduleEvents({
     throw new Error(error.message);
   }
 
-  const eventRows = (data ?? []) as ScheduleEventRow[];
+  const { data: recurrenceData, error: recurrenceError } = await supabase
+    .from("schedule_event_recurrences")
+    .select(
+      "event_id,frequency,interval_count,weekdays,ends_on,occurrence_count,time_zone",
+    )
+    .eq("family_id", familyId);
+
+  if (recurrenceError && !isMissingRecurrenceTable(recurrenceError)) {
+    throw new Error(recurrenceError.message);
+  }
+
+  const recurrenceRows = (recurrenceData ?? []) as ScheduleEventRecurrenceRow[];
+  const recurrenceEventIds = recurrenceRows.map((row) => row.event_id);
+  let recurringParentRows: ScheduleEventRow[] = [];
+
+  if (recurrenceEventIds.length > 0) {
+    const { data: parentData, error: parentError } = await supabase
+      .from("schedule_events")
+      .select(
+        "id,family_id,member_id,task_instance_id,created_by_member_id,event_type,title,description,starts_at,ends_at,all_day,location,color,created_at,updated_at",
+      )
+      .eq("family_id", familyId)
+      .in("id", recurrenceEventIds)
+      .lt("starts_at", endsAt.toISOString());
+
+    if (parentError) {
+      throw new Error(parentError.message);
+    }
+
+    recurringParentRows = (parentData ?? []) as ScheduleEventRow[];
+  }
+
+  const rowsById = new Map<string, ScheduleEventRow>();
+
+  for (const row of [
+    ...((overlapData ?? []) as ScheduleEventRow[]),
+    ...recurringParentRows,
+  ]) {
+    rowsById.set(row.id, row);
+  }
+
+  const eventRows = [...rowsById.values()];
   const eventIds = eventRows.map((event) => event.id);
 
   if (eventIds.length === 0) {
@@ -111,7 +187,16 @@ export async function getScheduleEvents({
 
   if (memberError) {
     if (isMissingScheduleEventMembersTable(memberError)) {
-      return eventRows.map((row) => mapScheduleEvent(row, []));
+      return eventRows.flatMap((row) => {
+        const recurrence = recurrenceRows.find(
+          (item) => item.event_id === row.id,
+        );
+        return expandRecurringEvent(
+          mapScheduleEvent(row, [], recurrence),
+          startsAt,
+          endsAt,
+        );
+      });
     }
 
     throw new Error(memberError.message);
@@ -126,7 +211,24 @@ export async function getScheduleEvents({
     ]);
   }
 
-  return eventRows.map((row) =>
-    mapScheduleEvent(row, membersByEvent.get(row.id) ?? []),
+  const recurrenceByEvent = new Map(
+    recurrenceRows.map((row) => [row.event_id, row]),
   );
+
+  return eventRows
+    .flatMap((row) =>
+      expandRecurringEvent(
+        mapScheduleEvent(
+          row,
+          membersByEvent.get(row.id) ?? [],
+          recurrenceByEvent.get(row.id),
+        ),
+        startsAt,
+        endsAt,
+      ),
+    )
+    .sort(
+      (left, right) =>
+        new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+    );
 }

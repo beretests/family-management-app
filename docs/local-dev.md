@@ -121,6 +121,11 @@ With the default calendar-only flag, sign-in and gated feature URLs lead to
 whole-family view and one view for each active member; member views also include
 whole-family events.
 
+Calendar navigation includes Previous, Today, Next, and an explicit date picker
+for jumping to past or future days/weeks. Schedule forms support daily, weekly,
+yearly, and custom weekday recurrence. Apply all migrations before testing these
+controls; Phase 19 requires `schedule_event_recurrences` and its RLS policies.
+
 With `ENABLE_FULL_APP=true`, the existing full product surface is restored:
 dashboard at `/dashboard`, family management at `/settings/family`, day/week
 schedule views at `/schedule`, chore templates at `/chores`, assignments at

@@ -47,7 +47,7 @@ export default async function SchedulePage({
   const view = resolveCalendarView(params?.view, isFullAppEnabled());
   const context = await getFamilyContext();
 
-  if (!context.family) {
+  if (!context.family || !context.currentMember) {
     redirect("/family/setup");
   }
 
@@ -69,7 +69,7 @@ export default async function SchedulePage({
     selectedMember?.id ?? null,
   );
   const conflicts = findScheduleConflicts(visibleEvents);
-  const canManage = context.currentMember?.role === "parent";
+  const canManageAll = context.currentMember.role === "parent";
   const defaultStartsAt = new Date(selectedDate);
   defaultStartsAt.setHours(16, 0, 0, 0);
   const defaultEndsAt = new Date(selectedDate);
@@ -130,7 +130,8 @@ export default async function SchedulePage({
         />
       ) : (
         <ScheduleBoard
-          canManage={canManage}
+          actorMemberId={context.currentMember.id}
+          canManageAll={canManageAll}
           conflicts={conflicts}
           day={selectedDate}
           events={visibleEvents}
@@ -139,14 +140,14 @@ export default async function SchedulePage({
         />
       )}
 
-      {canManage ? (
-        <CreateScheduleEventForm
-          defaultEndsAt={defaultEndsAt.toISOString()}
-          defaultStartsAt={defaultStartsAt.toISOString()}
-          familyId={context.family.id}
-          members={context.members}
-        />
-      ) : null}
+      <CreateScheduleEventForm
+        actorMemberId={context.currentMember.id}
+        canManageAll={canManageAll}
+        defaultEndsAt={defaultEndsAt.toISOString()}
+        defaultStartsAt={defaultStartsAt.toISOString()}
+        familyId={context.family.id}
+        members={context.members}
+      />
     </section>
   );
 }
@@ -254,6 +255,24 @@ function ScheduleControls({
           Week
         </Link>
       </div>
+      <form action="/schedule" className="flex items-end gap-2" method="get">
+        <input name="view" type="hidden" value={view} />
+        {memberId ? (
+          <input name="member" type="hidden" value={memberId} />
+        ) : null}
+        <label className="grid flex-1 gap-1 text-xs font-semibold text-[var(--muted)]">
+          Jump to date
+          <input
+            className="min-h-10 rounded-md border border-[var(--line)] px-2 text-sm text-[var(--foreground)]"
+            defaultValue={toDateParam(date)}
+            name="date"
+            type="date"
+          />
+        </label>
+        <button className={linkClass} type="submit">
+          Go
+        </button>
+      </form>
     </div>
   );
 }

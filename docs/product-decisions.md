@@ -73,3 +73,17 @@ whole-family view and a view for each active family member. An individual view
 includes events assigned to that member and events assigned to the whole
 family. Calendar-only mode opens on Week by default to provide the at-a-glance
 layout; the full app retains its existing Day default.
+
+## Recurring Schedule Events
+
+Phase 19 stores one recurrence definition per schedule event and generates only
+the occurrences needed for the visible day or week. Supported choices are
+daily, weekly, yearly, and custom weekdays (with Monday-Friday selected by
+default for custom). Series can run indefinitely, end on a date, or stop after
+a chosen occurrence count. The event's browser IANA time zone is stored so its
+local time remains stable through daylight-saving transitions.
+
+Series editing and deletion apply to the entire series in Phase 19. Exceptions,
+single-occurrence edits, and ICS import/export are deferred. All active family
+members can add events, but non-parents can assign/edit only their own events;
+only parents can delete schedule events.

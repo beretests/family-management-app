@@ -9,8 +9,22 @@ export type ScheduleEventType =
   | "parent_activity"
   | "chore_task";
 
+export type ScheduleRecurrenceFrequency = "daily" | "weekly" | "yearly";
+
+export type ScheduleRecurrence = {
+  frequency: ScheduleRecurrenceFrequency;
+  interval: number;
+  weekdays: number[];
+  endsOn: string | null;
+  occurrenceCount: number | null;
+  timeZone: string;
+};
+
 export type ScheduleEvent = {
   id: string;
+  sourceEventId?: string;
+  seriesStartsAt?: string;
+  seriesEndsAt?: string;
   familyId: string;
   memberId: string | null;
   memberIds: string[];
@@ -26,6 +40,7 @@ export type ScheduleEvent = {
   color: string | null;
   createdAt: string;
   updatedAt: string;
+  recurrence?: ScheduleRecurrence | null;
 };
 
 export type ScheduleMember = {

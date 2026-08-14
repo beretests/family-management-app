@@ -69,6 +69,9 @@ test.describe("parent family setup smoke flow", () => {
     await scheduleForm.getByLabel(childName).check();
     await scheduleForm.getByLabel("Location").fill("Community field");
     await scheduleForm.getByLabel("Notes").fill("Bring water bottle.");
+    await scheduleForm.getByLabel("Repeats").selectOption("daily");
+    await scheduleForm.getByLabel("Series ends").selectOption("after");
+    await scheduleForm.getByLabel("Number of occurrences").fill("10");
     await scheduleForm.getByRole("button", { name: "Add event" }).click();
 
     const eventCard = page
@@ -80,6 +83,13 @@ test.describe("parent family setup smoke flow", () => {
       eventCard.getByText("Bring water bottle.").first(),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: childName })).toBeVisible();
+
+    await page.goto("/schedule?date=2026-07-19&view=day");
+    await expect(page.getByText(eventTitle).first()).toBeVisible();
+    await expect(page.getByText("Repeats daily")).toBeVisible();
+
+    await page.goto("/schedule?date=2026-07-25&view=day");
+    await expect(page.getByText(eventTitle)).toHaveCount(0);
 
     await page.goto("/chores");
     await expect(
@@ -107,7 +117,7 @@ test.describe("parent family setup smoke flow", () => {
     await expect(page.getByText("Assignments created.")).toBeVisible();
 
     await page.goto("/my-today");
-    await expect(page.getByText("Family view")).toBeVisible();
+    await expect(page.getByText("Family view", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Sweep Kitchen" }),
     ).toBeVisible();

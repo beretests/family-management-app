@@ -12,6 +12,16 @@ export const scheduleEventTypes = [
   "chore_task",
 ] as const;
 
+export const scheduleRepeatTypes = [
+  "none",
+  "daily",
+  "weekly",
+  "yearly",
+  "custom",
+] as const;
+
+export const scheduleRecurrenceEndTypes = ["never", "on", "after"] as const;
+
 const optionalTrimmedString = (maxLength: number, message: string) =>
   z
     .string()
@@ -32,6 +42,11 @@ const dateTimeLocal = z
   .refine((value) => !Number.isNaN(new Date(value).getTime()), {
     message: "Choose a valid date and time.",
   });
+
+const optionalPositiveInteger = z.preprocess(
+  (value) => (value === "" || value === undefined ? undefined : Number(value)),
+  z.number().int().min(1).max(1000).optional(),
+);
 
 const scheduleEventBaseSchema = z
   .object({
@@ -60,9 +75,20 @@ const scheduleEventBaseSchema = z
           .regex(/^#[0-9A-Fa-f]{6}$/, "Choose a valid color.")
           .optional(),
       ),
+    repeatType: z.enum(scheduleRepeatTypes).default("none"),
+    recurrenceInterval: z.coerce.number().int().min(1).max(365).default(1),
+    recurrenceWeekdays: z
+      .array(z.coerce.number().int().min(0).max(6))
+      .default([])
+      .transform((values) => [...new Set(values)].sort()),
+    recurrenceEndType: z.enum(scheduleRecurrenceEndTypes).default("never"),
+    recurrenceEndsOn: z.string().trim().optional(),
+    recurrenceCount: optionalPositiveInteger,
+    timeZone: z.string().trim().min(1).max(100).default("UTC"),
   })
   .refine(
-    (value) => new Date(value.endsAt).getTime() > new Date(value.startsAt).getTime(),
+    (value) =>
+      new Date(value.endsAt).getTime() > new Date(value.startsAt).getTime(),
     {
       message: "End time must be after start time.",
       path: ["endsAt"],
@@ -71,7 +97,35 @@ const scheduleEventBaseSchema = z
   .refine((value) => value.wholeFamily || value.memberIds.length > 0, {
     message: "Choose whole family or at least one family member.",
     path: ["memberIds"],
-  });
+  })
+  .refine(
+    (value) =>
+      value.repeatType !== "custom" || value.recurrenceWeekdays.length > 0,
+    {
+      message: "Choose at least one weekday.",
+      path: ["recurrenceWeekdays"],
+    },
+  )
+  .refine(
+    (value) =>
+      value.repeatType === "none" ||
+      value.recurrenceEndType !== "on" ||
+      /^\d{4}-\d{2}-\d{2}$/.test(value.recurrenceEndsOn ?? ""),
+    {
+      message: "Choose when the series ends.",
+      path: ["recurrenceEndsOn"],
+    },
+  )
+  .refine(
+    (value) =>
+      value.repeatType === "none" ||
+      value.recurrenceEndType !== "after" ||
+      Boolean(value.recurrenceCount),
+    {
+      message: "Choose how many times the event repeats.",
+      path: ["recurrenceCount"],
+    },
+  );
 
 export const createScheduleEventSchema = scheduleEventBaseSchema;
 
@@ -84,6 +138,12 @@ export const deleteScheduleEventSchema = z.object({
   eventId: z.string().uuid("Missing schedule event."),
 });
 
-export type CreateScheduleEventInput = z.infer<typeof createScheduleEventSchema>;
-export type UpdateScheduleEventInput = z.infer<typeof updateScheduleEventSchema>;
-export type DeleteScheduleEventInput = z.infer<typeof deleteScheduleEventSchema>;
+export type CreateScheduleEventInput = z.infer<
+  typeof createScheduleEventSchema
+>;
+export type UpdateScheduleEventInput = z.infer<
+  typeof updateScheduleEventSchema
+>;
+export type DeleteScheduleEventInput = z.infer<
+  typeof deleteScheduleEventSchema
+>;

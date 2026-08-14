@@ -138,13 +138,17 @@ Schedule flow:
 3. Event reads return each schedule event once and include attendee IDs from
    `schedule_event_members`; older rows can still fall back to
    `schedule_events.member_id`.
-4. Parents create, update, and delete schedule events through Server Actions.
-5. Schedule actions validate input with Zod, resolve active parent membership
-   server-side, verify assigned members belong to the family, and then rely on
-   existing Supabase RLS policies for database writes.
-6. Multi-member event counts are based on unique event IDs, even when the same
+4. Every active family member can create schedule events. Non-parents can assign
+   and edit only events they created for themselves; only parents can delete.
+5. Schedule actions validate input with Zod, resolve the active actor
+   server-side, verify assigned members belong to the family, and rely on
+   Supabase RLS for authenticated writes. Kid Mode is validated against its
+   signed child session before using the server-only admin client.
+6. Optional recurrence settings are read from `schedule_event_recurrences` and
+   expanded only for the requested date range in the stored IANA time zone.
+7. Multi-member event counts are based on unique occurrence IDs, even when the same
    event appears in multiple member lanes.
-7. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
+8. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
    events assigned to at least one shared family member.
 
 Chore template flow:
@@ -210,8 +214,10 @@ Auth security decisions:
 - uses `SUPABASE_SECRET_KEY` for validated child-mode task writes because
   Supabase RLS cannot inspect app cookies
 - validates schedule mutations with Zod Server Actions
-- resolves active parent membership server-side before schedule management
-  writes
+- resolves the active family member server-side before schedule writes and
+  enforces self-only create/edit for non-parents
+- permits schedule deletion only for active parents at both the action and RLS
+  layers
 - checks assigned schedule members server-side before write attempts
 - validates house profile and chore template mutations with Zod Server Actions
 - resolves active parent membership server-side before house/chore writes
