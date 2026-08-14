@@ -394,6 +394,28 @@ approved phase scope.
 - Recommended commit message:
   `feat(family): add adult invites and birthdate ages`
 
+## Phase 17: Loading Feedback and Auto-Clearing Notices
+
+- Branch: `phase/17-loading-feedback`
+- Worktree: `../family-app-phase-17-loading-feedback`
+- Intended changes: add route-level loading UI for app/auth pages, add inline
+  navigation pending hints, improve shared submit buttons with spinners and
+  action-specific pending labels, and auto-clear action notices after a short
+  delay.
+- Acceptance criteria: users get visible feedback after route clicks and form
+  submits; submit buttons disable while pending to prevent duplicate actions;
+  success notices auto-clear; error notices stay visible longer before
+  clearing; loading UI does not require database, auth, or deployment config
+  changes.
+- Checks to run: `npm run lint`, `npm run typecheck`, `npm test`,
+  `npm run build`.
+- Supabase setup impact: none.
+- Vercel setup impact: none beyond normal redeploy after merge.
+- Free-tier risks: none; this is client/UI behavior only and adds no external
+  services.
+- Recommended commit message:
+  `feat(ui): add loading feedback across app`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

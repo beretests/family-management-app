@@ -231,7 +231,7 @@ function InviteAdultForm({ familyId }: { familyId: string }) {
             <option value="caregiver">Caregiver</option>
           </select>
         </label>
-        <SubmitButton>Send invite</SubmitButton>
+        <SubmitButton pendingLabel="Sending invite...">Send invite</SubmitButton>
       </div>
     </form>
   );
@@ -262,7 +262,9 @@ function ParentProfileForm({
         />
       </label>
       <div>
-        <SubmitButton tone="secondary">Save profile</SubmitButton>
+        <SubmitButton pendingLabel="Saving profile..." tone="secondary">
+          Save profile
+        </SubmitButton>
       </div>
     </form>
   );
@@ -397,7 +399,9 @@ function DeactivateChildForm({
     <form action={formAction} className="grid gap-2">
       <input name="familyId" type="hidden" value={familyId} />
       <input name="memberId" type="hidden" value={memberId} />
-      <SubmitButton tone="danger">Deactivate</SubmitButton>
+      <SubmitButton pendingLabel="Deactivating..." tone="danger">
+        Deactivate
+      </SubmitButton>
       <ActionMessage error={state.error} success={state.success} />
     </form>
   );
@@ -419,7 +423,9 @@ function RevokeInvitationForm({
     <form action={formAction} className="grid gap-2">
       <input name="familyId" type="hidden" value={familyId} />
       <input name="invitationId" type="hidden" value={invitationId} />
-      <SubmitButton tone="secondary">Revoke invite</SubmitButton>
+      <SubmitButton pendingLabel="Revoking..." tone="secondary">
+        Revoke invite
+      </SubmitButton>
       <ActionMessage error={state.error} success={state.success} />
     </form>
   );
@@ -441,7 +447,9 @@ function DeactivateAdultForm({
     <form action={formAction} className="grid gap-2">
       <input name="familyId" type="hidden" value={familyId} />
       <input name="memberId" type="hidden" value={memberId} />
-      <SubmitButton tone="danger">Deactivate</SubmitButton>
+      <SubmitButton pendingLabel="Deactivating..." tone="danger">
+        Deactivate
+      </SubmitButton>
       <ActionMessage error={state.error} success={state.success} />
     </form>
   );

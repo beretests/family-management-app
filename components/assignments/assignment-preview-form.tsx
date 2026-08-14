@@ -143,7 +143,9 @@ export function AssignmentPreviewForm({
 
       {previews.length > 0 ? (
         <div>
-          <SubmitButton>Create assignments</SubmitButton>
+          <SubmitButton pendingLabel="Creating assignments...">
+            Create assignments
+          </SubmitButton>
         </div>
       ) : null}
     </form>

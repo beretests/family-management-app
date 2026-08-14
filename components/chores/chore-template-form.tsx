@@ -69,7 +69,9 @@ export function EditChoreTemplateForm({
         <input name="templateId" type="hidden" value={template.id} />
         <ActionMessage error={deleteState.error} success={deleteState.success} />
         <div className="mt-3">
-          <SubmitButton tone="danger">Delete template</SubmitButton>
+          <SubmitButton pendingLabel="Deleting..." tone="danger">
+            Delete template
+          </SubmitButton>
         </div>
       </form>
     </div>
@@ -282,7 +284,7 @@ function ChoreTemplateFields({
       </div>
 
       <div>
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <SubmitButton pendingLabel="Saving template...">{submitLabel}</SubmitButton>
       </div>
     </form>
   );

@@ -1,14 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 export function SubmitButton({
   children,
   disabled = false,
+  pendingLabel = "Working...",
   tone = "primary",
 }: {
   children: React.ReactNode;
   disabled?: boolean;
+  pendingLabel?: string;
   tone?: "primary" | "secondary" | "danger";
 }) {
   const { pending } = useFormStatus();
@@ -21,7 +24,10 @@ export function SubmitButton({
 
   return (
     <button className={className} disabled={pending || disabled} type="submit">
-      {pending ? "Saving..." : children}
+      <span className="inline-flex items-center gap-2">
+        {pending ? <Spinner /> : null}
+        {pending ? pendingLabel : children}
+      </span>
     </button>
   );
 }
@@ -33,7 +39,28 @@ export function ActionMessage({
   error?: string;
   success?: string;
 }) {
-  if (!error && !success) {
+  const message = error ?? success;
+  const messageKey = message ? `${error ? "error" : "success"}:${message}` : "";
+  const [dismissedMessageKey, setDismissedMessageKey] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+
+    const timeout = window.setTimeout(
+      () => {
+        setDismissedMessageKey(messageKey);
+      },
+      error ? 10000 : 4500,
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [error, message, messageKey]);
+
+  if (!message || dismissedMessageKey === messageKey) {
     return null;
   }
 
@@ -42,8 +69,33 @@ export function ActionMessage({
     : "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent-strong)]";
 
   return (
-    <p className={`rounded-md border p-3 text-sm ${className}`}>
-      {error ?? success}
+    <p
+      className={`rounded-md border p-3 text-sm ${className}`}
+      role={error ? "alert" : "status"}
+    >
+      {message}
     </p>
+  );
+}
+
+export function InlineLoading({ label = "Loading" }: { label?: string }) {
+  return (
+    <span
+      aria-label={label}
+      className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)]"
+      role="status"
+    >
+      <Spinner />
+      {label}
+    </span>
+  );
+}
+
+export function Spinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent"
+    />
   );
 }

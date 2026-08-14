@@ -56,7 +56,7 @@ export function TaskSubmitForm({ task }: { task: TodayTask }) {
       ) : null}
 
       <div>
-        <SubmitButton>Submit for review</SubmitButton>
+        <SubmitButton pendingLabel="Submitting...">Submit for review</SubmitButton>
       </div>
     </form>
   );

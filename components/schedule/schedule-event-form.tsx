@@ -95,7 +95,9 @@ export function EditScheduleEventForm({
         <input name="eventId" type="hidden" value={event.id} />
         <ActionMessage error={deleteState.error} success={deleteState.success} />
         <div className="mt-3">
-          <SubmitButton tone="danger">Delete event</SubmitButton>
+          <SubmitButton pendingLabel="Deleting..." tone="danger">
+            Delete event
+          </SubmitButton>
         </div>
       </form>
     </div>
@@ -314,7 +316,7 @@ function ScheduleEventFields({
       </label>
 
       <div>
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <SubmitButton pendingLabel="Saving event...">{submitLabel}</SubmitButton>
       </div>
     </form>
   );

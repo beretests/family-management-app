@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ExitKidModeForm } from "@/components/child-session/kid-mode-forms";
 import type { FamilyMember } from "@/features/family/types";
+import { LinkPendingIndicator } from "@/components/layout/link-pending-indicator";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -92,6 +93,7 @@ export function AppShell({
               <Link className={navLinkClass} href={item.href} key={item.href}>
                 <item.icon aria-hidden="true" className="size-4" />
                 {item.label}
+                <LinkPendingIndicator />
               </Link>
             ))}
           </nav>

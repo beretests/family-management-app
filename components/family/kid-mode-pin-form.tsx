@@ -61,7 +61,7 @@ export function KidModePinForm({
       </p>
 
       <div>
-        <SubmitButton tone="secondary">
+        <SubmitButton pendingLabel="Saving PIN..." tone="secondary">
           {hasPin ? "Reset PIN" : "Set PIN"}
         </SubmitButton>
       </div>

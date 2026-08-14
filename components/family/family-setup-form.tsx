@@ -52,7 +52,7 @@ export function FamilySetupForm() {
       </label>
 
       <div>
-        <SubmitButton>Create family</SubmitButton>
+        <SubmitButton pendingLabel="Creating family...">Create family</SubmitButton>
       </div>
     </form>
   );
