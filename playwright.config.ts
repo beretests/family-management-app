@@ -24,6 +24,7 @@ export default defineConfig({
     env: {
       ...process.env,
       E2E_TEST_AUTH_ENABLED: "true",
+      ENABLE_FULL_APP: process.env.ENABLE_FULL_APP ?? "true",
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? baseURL,
       NEXT_PUBLIC_ENABLE_PHONE_AUTH:
         process.env.NEXT_PUBLIC_ENABLE_PHONE_AUTH ?? "false",

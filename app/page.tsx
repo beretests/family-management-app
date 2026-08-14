@@ -16,6 +16,7 @@ import {
   UserPlus,
   UsersRound,
 } from "lucide-react";
+import { isFullAppEnabled } from "@/lib/feature-flags";
 
 const steps = [
   {
@@ -53,8 +54,7 @@ const parentFeatures = [
   },
   {
     title: "Fair assignment reasons",
-    description:
-      "Understand why chores were suggested before assigning them.",
+    description: "Understand why chores were suggested before assigning them.",
     icon: ShieldCheck,
   },
   {
@@ -86,6 +86,66 @@ const kidFeatures = [
   },
 ] satisfies FeatureItem[];
 
+const calendarSteps = [
+  {
+    title: "Create your family",
+    description: "Start a private family calendar with a parent account.",
+    icon: UserPlus,
+  },
+  {
+    title: "Add family members",
+    description: "Give everyone a clear color and their own calendar view.",
+    icon: UsersRound,
+  },
+  {
+    title: "Add the week",
+    description:
+      "Record school, activities, appointments, rest, and family plans.",
+    icon: CalendarDays,
+  },
+  {
+    title: "See it together",
+    description: "Switch between the whole family and one member at a glance.",
+    icon: CheckCircle2,
+  },
+] satisfies FeatureItem[];
+
+const calendarFamilyFeatures = [
+  {
+    title: "One weekly calendar",
+    description: "See every family plan in a familiar time grid.",
+    icon: CalendarDays,
+  },
+  {
+    title: "Clear member colors",
+    description: "Know who is involved without opening every event.",
+    icon: UsersRound,
+  },
+  {
+    title: "Conflict awareness",
+    description: "Spot overlapping plans while there is still time to adjust.",
+    icon: ShieldCheck,
+  },
+] satisfies FeatureItem[];
+
+const calendarMemberFeatures = [
+  {
+    title: "Personal views",
+    description: "Open any active family member's day or week calendar.",
+    icon: CalendarDays,
+  },
+  {
+    title: "Whole-family plans included",
+    description: "Personal views still show events that apply to everyone.",
+    icon: HeartHandshake,
+  },
+  {
+    title: "Works on small screens",
+    description: "The full week stays readable with touch-friendly scrolling.",
+    icon: CheckCircle2,
+  },
+] satisfies FeatureItem[];
+
 type FeatureItem = {
   title: string;
   description: string;
@@ -93,6 +153,15 @@ type FeatureItem = {
 };
 
 export default function Home() {
+  const fullAppEnabled = isFullAppEnabled();
+  const visibleSteps = fullAppEnabled ? steps : calendarSteps;
+  const firstFeatureGroup = fullAppEnabled
+    ? parentFeatures
+    : calendarFamilyFeatures;
+  const secondFeatureGroup = fullAppEnabled
+    ? kidFeatures
+    : calendarMemberFeatures;
+
   return (
     <main className="min-h-screen overflow-hidden bg-[var(--background)]">
       <section className="hero-scene border-b border-[var(--line)]">
@@ -100,11 +169,14 @@ export default function Home() {
           <div className="max-w-2xl self-center">
             <BrandMark />
             <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-normal text-[var(--foreground)] sm:text-5xl">
-              Chores, schedules, and rewards that feel fair for the whole family.
+              {fullAppEnabled
+                ? "Chores, schedules, and rewards that feel fair for the whole family."
+                : "One clear calendar for the whole family."}
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-[var(--muted)]">
-              Family Chore Hub helps parents plan around real life while kids
-              get a clear, colorful view of what to do next.
+              {fullAppEnabled
+                ? "Family Chore Hub helps parents plan around real life while kids get a clear, colorful view of what to do next."
+                : "See the whole week together, then focus on any family member without losing shared family plans."}
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -128,7 +200,7 @@ export default function Home() {
                 Private family workspace
               </span>
               <span className="rounded-md bg-white px-3 py-2 shadow-sm">
-                Kid Mode ready
+                {fullAppEnabled ? "Kid Mode ready" : "Member views included"}
               </span>
               <span className="rounded-md bg-white px-3 py-2 shadow-sm">
                 Free-tier friendly
@@ -136,7 +208,7 @@ export default function Home() {
             </div>
           </div>
 
-          <ProductPreview />
+          <ProductPreview fullAppEnabled={fullAppEnabled} />
         </div>
       </section>
 
@@ -146,11 +218,13 @@ export default function Home() {
             How it works
           </p>
           <h2 className="mt-2 text-3xl font-bold text-[var(--foreground)]">
-            A calmer flow from family setup to chore approval.
+            {fullAppEnabled
+              ? "A calmer flow from family setup to chore approval."
+              : "A simple path to a shared weekly view."}
           </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
-          {steps.map((step, index) => (
+          {visibleSteps.map((step, index) => (
             <FeatureCard
               description={step.description}
               icon={step.icon}
@@ -165,14 +239,22 @@ export default function Home() {
       <section className="border-y border-[var(--line)] bg-[var(--panel)]">
         <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
           <FeatureGroup
-            eyebrow="For parents"
-            features={parentFeatures}
-            title="Plan with context, not guesswork."
+            eyebrow={fullAppEnabled ? "For parents" : "For the family"}
+            features={firstFeatureGroup}
+            title={
+              fullAppEnabled
+                ? "Plan with context, not guesswork."
+                : "See busy time before plans collide."
+            }
           />
           <FeatureGroup
-            eyebrow="For kids"
-            features={kidFeatures}
-            title="Make today's work easy to understand."
+            eyebrow={fullAppEnabled ? "For kids" : "For each member"}
+            features={secondFeatureGroup}
+            title={
+              fullAppEnabled
+                ? "Make today's work easy to understand."
+                : "Give everyone a focused calendar view."
+            }
           />
         </div>
       </section>
@@ -183,7 +265,9 @@ export default function Home() {
             Ready when your family is
           </p>
           <h2 className="mt-2 text-3xl font-bold text-[var(--foreground)]">
-            Create the parent account first, then invite the family into the routine.
+            {fullAppEnabled
+              ? "Create the parent account first, then invite the family into the routine."
+              : "Create the parent account, then bring the family week into one place."}
           </h2>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -208,6 +292,8 @@ export default function Home() {
 }
 
 function BrandMark() {
+  const fullAppEnabled = isFullAppEnabled();
+
   return (
     <div className="inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-white px-3 py-2 shadow-sm">
       <span className="grid size-10 place-items-center rounded-full bg-[var(--accent)] text-white">
@@ -215,58 +301,93 @@ function BrandMark() {
       </span>
       <div>
         <p className="text-sm font-extrabold uppercase text-[var(--accent-strong)]">
-          Family Chore Hub
+          {fullAppEnabled ? "Family Chore Hub" : "Family Calendar"}
         </p>
         <p className="text-xs font-semibold text-[var(--muted)]">
-          Fair plans for busy families
+          {fullAppEnabled
+            ? "Fair plans for busy families"
+            : "One week, every family member"}
         </p>
       </div>
     </div>
   );
 }
 
-function ProductPreview() {
+function ProductPreview({ fullAppEnabled }: { fullAppEnabled: boolean }) {
   return (
     <div className="self-center rounded-lg border border-[var(--line)] bg-white p-4 shadow-xl">
       <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
         <div>
           <p className="text-sm font-bold text-[var(--accent-strong)]">
-            Today
+            {fullAppEnabled ? "Today" : "This week"}
           </p>
           <h2 className="text-2xl font-extrabold text-[var(--foreground)]">
-            Family plan
+            {fullAppEnabled ? "Family plan" : "Family calendar"}
           </h2>
         </div>
         <span className="rounded-full bg-[var(--playful-yellow-soft)] px-3 py-1 text-sm font-bold text-[var(--playful-yellow)]">
-          3 wins
+          {fullAppEnabled ? "3 wins" : "5 events"}
         </span>
       </div>
 
       <div className="mt-4 grid gap-3">
-        <PreviewRow
-          icon={CalendarDays}
-          meta="After school"
-          title="Check the schedule before chores"
-          tone="sky"
-        />
-        <PreviewRow
-          icon={ClipboardList}
-          meta="Fair rotation"
-          title="Assign work by age, ability, and time"
-          tone="mint"
-        />
-        <PreviewRow
-          icon={Gift}
-          meta="Private rewards"
-          title="Approve points and celebrate progress"
-          tone="berry"
-        />
+        {fullAppEnabled ? (
+          <>
+            <PreviewRow
+              icon={CalendarDays}
+              meta="After school"
+              title="Check the schedule before chores"
+              tone="sky"
+            />
+            <PreviewRow
+              icon={ClipboardList}
+              meta="Fair rotation"
+              title="Assign work by age, ability, and time"
+              tone="mint"
+            />
+            <PreviewRow
+              icon={Gift}
+              meta="Private rewards"
+              title="Approve points and celebrate progress"
+              tone="berry"
+            />
+          </>
+        ) : (
+          <>
+            <PreviewRow
+              icon={CalendarDays}
+              meta="Monday to Sunday"
+              title="See the whole family week"
+              tone="sky"
+            />
+            <PreviewRow
+              icon={UsersRound}
+              meta="One tap away"
+              title="Focus on one family member"
+              tone="mint"
+            />
+            <PreviewRow
+              icon={HeartHandshake}
+              meta="Included everywhere"
+              title="Keep shared family events visible"
+              tone="berry"
+            />
+          </>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-3">
-        <PreviewMetric icon={Star} label="Focus" value="Clear" />
+        <PreviewMetric
+          icon={Star}
+          label={fullAppEnabled ? "Focus" : "View"}
+          value={fullAppEnabled ? "Clear" : "Weekly"}
+        />
         <PreviewMetric icon={ShieldCheck} label="Privacy" value="Family" />
-        <PreviewMetric icon={HeartHandshake} label="Tone" value="Kind" />
+        <PreviewMetric
+          icon={HeartHandshake}
+          label={fullAppEnabled ? "Tone" : "Plans"}
+          value={fullAppEnabled ? "Kind" : "Shared"}
+        />
       </div>
     </div>
   );
