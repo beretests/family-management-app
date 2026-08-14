@@ -72,7 +72,7 @@ export function UnlockKidModeForm({
       </div>
 
       <div className="mt-4">
-        <SubmitButton>Unlock</SubmitButton>
+        <SubmitButton pendingLabel="Unlocking...">Unlock</SubmitButton>
       </div>
       <ActionMessage error={state.error} success={state.success} />
     </form>
@@ -82,7 +82,9 @@ export function UnlockKidModeForm({
 export function ExitKidModeForm() {
   return (
     <form action={exitKidMode}>
-      <SubmitButton tone="secondary">Exit Kid Mode</SubmitButton>
+      <SubmitButton pendingLabel="Exiting..." tone="secondary">
+        Exit Kid Mode
+      </SubmitButton>
     </form>
   );
 }

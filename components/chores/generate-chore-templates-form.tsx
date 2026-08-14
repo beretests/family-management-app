@@ -42,7 +42,9 @@ export function GenerateChoreTemplatesForm({
         <input name="familyId" type="hidden" value={familyId} />
         <ActionMessage error={state.error} success={state.success} />
         <div>
-          <SubmitButton>Generate chore templates</SubmitButton>
+          <SubmitButton pendingLabel="Generating templates...">
+            Generate chore templates
+          </SubmitButton>
         </div>
       </form>
     </section>

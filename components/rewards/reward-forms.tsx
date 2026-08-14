@@ -287,7 +287,7 @@ function RewardRequestCard({
           />
         </label>
         <ActionMessage error={state.error} success={state.success} />
-        <SubmitButton disabled={!canAfford}>
+        <SubmitButton disabled={!canAfford} pendingLabel="Requesting reward...">
           {canAfford ? "Request reward" : "Keep earning points"}
         </SubmitButton>
       </form>
@@ -335,7 +335,9 @@ function RedemptionReviewActions({
           />
         </div>
         <div className="mt-3">
-          <SubmitButton>Approve reward</SubmitButton>
+          <SubmitButton pendingLabel="Approving reward...">
+            Approve reward
+          </SubmitButton>
         </div>
       </form>
 
@@ -361,7 +363,9 @@ function RedemptionReviewActions({
           />
         </div>
         <div className="mt-3">
-          <SubmitButton tone="secondary">Decline request</SubmitButton>
+          <SubmitButton pendingLabel="Declining request..." tone="secondary">
+            Decline request
+          </SubmitButton>
         </div>
       </form>
     </div>
@@ -460,7 +464,7 @@ function RewardFields({
         Active
       </label>
 
-      <SubmitButton>{submitLabel}</SubmitButton>
+      <SubmitButton pendingLabel="Saving reward...">{submitLabel}</SubmitButton>
     </form>
   );
 }

@@ -50,7 +50,9 @@ export function MemberStatusForm({
         </label>
 
         <div className="self-end">
-          <SubmitButton tone="secondary">Set status</SubmitButton>
+          <SubmitButton pendingLabel="Setting status..." tone="secondary">
+            Set status
+          </SubmitButton>
         </div>
       </div>
     </form>

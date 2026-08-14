@@ -78,7 +78,9 @@ function ReminderCard({
         <form action={formAction}>
           <input name="familyId" type="hidden" value={familyId} />
           <input name="reminderId" type="hidden" value={reminder.id} />
-          <SubmitButton tone="secondary">Dismiss</SubmitButton>
+          <SubmitButton pendingLabel="Dismissing..." tone="secondary">
+            Dismiss
+          </SubmitButton>
         </form>
       </div>
       <div className="mt-3">

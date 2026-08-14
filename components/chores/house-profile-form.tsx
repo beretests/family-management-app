@@ -99,7 +99,9 @@ export function HouseProfileForm({
         </div>
 
         <div>
-          <SubmitButton>Save house profile</SubmitButton>
+          <SubmitButton pendingLabel="Saving house profile...">
+            Save house profile
+          </SubmitButton>
         </div>
       </form>
     </section>

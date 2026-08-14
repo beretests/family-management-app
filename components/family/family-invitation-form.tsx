@@ -23,7 +23,7 @@ export function AcceptFamilyInvitationForm({
     <form action={formAction} className="mt-5 grid gap-4">
       <input name="invitationId" type="hidden" value={invitationId} />
       <ActionMessage error={state.error} success={state.success} />
-      <SubmitButton>Join family</SubmitButton>
+      <SubmitButton pendingLabel="Joining family...">Join family</SubmitButton>
     </form>
   );
 }

@@ -69,7 +69,7 @@ export function ReviewActions({
           />
         </div>
         <div className="mt-3">
-          <SubmitButton>Approve task</SubmitButton>
+          <SubmitButton pendingLabel="Approving...">Approve task</SubmitButton>
         </div>
       </form>
 
@@ -100,7 +100,9 @@ export function ReviewActions({
           />
         </div>
         <div className="mt-3">
-          <SubmitButton tone="secondary">Send back</SubmitButton>
+          <SubmitButton pendingLabel="Sending back..." tone="secondary">
+            Send back
+          </SubmitButton>
         </div>
       </form>
     </div>

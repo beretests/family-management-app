@@ -153,7 +153,9 @@ function ChildFields({
       </label>
 
       <div>
-        <SubmitButton>{submitLabel}</SubmitButton>
+        <SubmitButton pendingLabel="Saving child profile...">
+          {submitLabel}
+        </SubmitButton>
       </div>
     </form>
   );
