@@ -11,6 +11,12 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const next = normalizeRedirectPath(requestUrl.searchParams.get("next"));
+  const errorPath =
+    next === "/reset-password" ? "/forgot-password" : "/sign-in";
+  const redirectParams = (error: string) => ({
+    error,
+    next: errorPath === "/sign-in" ? next : undefined,
+  });
   const providerError =
     requestUrl.searchParams.get("error_description") ??
     requestUrl.searchParams.get("error");
@@ -18,30 +24,27 @@ export async function GET(request: NextRequest) {
   if (providerError) {
     return redirectTo(
       request,
-      buildAuthRedirect("/sign-in", {
-        error: providerError,
-        next,
-      }),
+      buildAuthRedirect(errorPath, redirectParams(providerError)),
     );
   }
 
   if (!getSupabasePublicConfig().isConfigured) {
     return redirectTo(
       request,
-      buildAuthRedirect("/sign-in", {
-        error: "Supabase auth is not configured yet.",
-        next,
-      }),
+      buildAuthRedirect(
+        errorPath,
+        redirectParams("Supabase auth is not configured yet."),
+      ),
     );
   }
 
   if (!code) {
     return redirectTo(
       request,
-      buildAuthRedirect("/sign-in", {
-        error: "The auth callback was missing a code.",
-        next,
-      }),
+      buildAuthRedirect(
+        errorPath,
+        redirectParams("The auth callback was missing a code."),
+      ),
     );
   }
 
@@ -51,10 +54,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     return redirectTo(
       request,
-      buildAuthRedirect("/sign-in", {
-        error: error.message,
-        next,
-      }),
+      buildAuthRedirect(errorPath, redirectParams(error.message)),
     );
   }
 
