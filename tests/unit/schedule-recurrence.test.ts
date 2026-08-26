@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { expandRecurringEvent } from "@/features/schedule/recurrence";
+import {
+  expandRecurringEvent,
+  getRecurrenceOccurrenceNumber,
+} from "@/features/schedule/recurrence";
 import type {
   ScheduleEvent,
   ScheduleRecurrence,
@@ -83,6 +86,74 @@ describe("schedule recurrence", () => {
       "2026-03-08T13:00:00.000Z",
       "2026-03-15T13:00:00.000Z",
     ]);
+  });
+
+  it("applies modified and cancelled single-occurrence overrides", () => {
+    const event = recurringEvent({ frequency: "daily" });
+    const occurrences = expandRecurringEvent(
+      event,
+      new Date("2026-08-10T00:00:00.000Z"),
+      new Date("2026-08-14T00:00:00.000Z"),
+      [
+        {
+          id: "override-modified",
+          occurrenceDate: "2026-08-11",
+          status: "modified",
+          memberIds: ["member-b"],
+          eventType: "appointment",
+          title: "Moved practice",
+          description: null,
+          startsAt: "2026-08-11T19:00:00.000Z",
+          endsAt: "2026-08-11T20:00:00.000Z",
+          allDay: false,
+          location: "Clinic",
+          color: "#2563eb",
+          updatedAt: "2026-08-09T00:00:00.000Z",
+        },
+        {
+          id: "override-cancelled",
+          occurrenceDate: "2026-08-12",
+          status: "cancelled",
+          memberIds: [],
+          eventType: null,
+          title: null,
+          description: null,
+          startsAt: null,
+          endsAt: null,
+          allDay: null,
+          location: null,
+          color: null,
+          updatedAt: "2026-08-09T00:00:00.000Z",
+        },
+      ],
+    );
+
+    expect(occurrences).toHaveLength(3);
+    expect(
+      occurrences.find((item) => item.occurrenceDate === "2026-08-11"),
+    ).toMatchObject({
+      title: "Moved practice",
+      memberIds: ["member-b"],
+      occurrenceOverrideId: "override-modified",
+    });
+    expect(
+      occurrences.some((item) => item.occurrenceDate === "2026-08-12"),
+    ).toBe(false);
+  });
+
+  it("calculates the selected occurrence number for count-limited splits", () => {
+    const event = recurringEvent({
+      frequency: "weekly",
+      weekdays: [1, 3],
+    });
+
+    expect(
+      getRecurrenceOccurrenceNumber({
+        occurrenceDate: "2026-08-19",
+        recurrence: event.recurrence!,
+        seriesStartsAt: event.startsAt,
+      }),
+    ).toBe(4);
   });
 });
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import {
   MAX_ICS_FILE_BYTES,
   MAX_ICS_IMPORT_EVENTS,
@@ -32,6 +32,7 @@ export type IcsImportActionState = {
   importedCount?: number;
   duplicateCount?: number;
   failedCount?: number;
+  submissionId?: string;
 };
 
 export async function findDuplicateIcsUids(input: unknown): Promise<string[]> {
@@ -195,6 +196,7 @@ export async function importIcsEvents(
       });
       revalidatePath("/dashboard");
       revalidatePath("/schedule");
+      refresh();
     }
 
     const result: IcsImportActionState = {
@@ -209,6 +211,7 @@ export async function importIcsEvents(
 
     if (importedCount > 0 || duplicateCount > 0) {
       result.success = `${importedCount} imported${duplicateCount ? `, ${duplicateCount} already existed` : ""}.`;
+      result.submissionId = crypto.randomUUID();
     }
 
     return result;

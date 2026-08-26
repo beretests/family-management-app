@@ -141,6 +141,25 @@ describe("layoutCalendarEventsForDay", () => {
       { left: 50, width: 50 },
     ]);
   });
+
+  it("positions UTC instants by the requested browser time zone", () => {
+    const [layout] = layoutCalendarEventsForDay({
+      day: new Date(2026, 7, 20),
+      startHour: 6,
+      endHour: 22,
+      events: [
+        eventAt(
+          "regina-afternoon",
+          new Date("2026-08-20T22:00:00.000Z"),
+          new Date("2026-08-20T23:00:00.000Z"),
+        ),
+      ],
+      timeZone: "America/Regina",
+    });
+
+    expect(layout.top).toBe(10 * calendarHourHeight);
+    expect(layout.height).toBe(calendarHourHeight);
+  });
 });
 
 function eventAt(id: string, startsAt: Date, endsAt: Date): ScheduleEvent {

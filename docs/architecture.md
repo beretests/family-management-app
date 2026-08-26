@@ -134,7 +134,9 @@ Family profile flow:
 Schedule flow:
 
 1. `/schedule` loads the signed-in user's family context.
-2. The route reads day/week events through `features/schedule/queries.ts`.
+2. A small client synchronizer adds the browser IANA time zone to the schedule
+   URL. The route derives local day/week boundaries in that zone and reads
+   events through `features/schedule/queries.ts`.
 3. Event reads return each schedule event once and include attendee IDs from
    `schedule_event_members`; older rows can still fall back to
    `schedule_events.member_id`.
@@ -146,9 +148,15 @@ Schedule flow:
    signed child session before using the server-only admin client.
 6. Optional recurrence settings are read from `schedule_event_recurrences` and
    expanded only for the requested date range in the stored IANA time zone.
-7. Multi-member event counts are based on unique occurrence IDs, even when the same
-   event appears in multiple member lanes.
-8. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
+   Modified/cancelled local dates from `schedule_event_occurrence_overrides`
+   are applied during expansion.
+7. Single-occurrence changes call one atomic override function. "This and
+   following" edits atomically truncate the earlier recurrence, create a new
+   series, and transfer future exceptions; deletes atomically truncate and
+   remove future exceptions. Entire-series changes retain the original event ID.
+8. Multi-member event counts are based on unique occurrence IDs, even when the
+   same event appears in multiple member lanes.
+9. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
    events assigned to at least one shared family member.
 
 Chore template flow:

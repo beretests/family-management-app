@@ -245,6 +245,7 @@ export function IcsImportForm({
 
           {preview ? (
             <PreviewList
+              browserTimeZone={browserTimeZone}
               preview={preview}
               selectedUids={selectedUids}
               toggleUid={toggleUid}
@@ -271,10 +272,12 @@ export function IcsImportForm({
 }
 
 function PreviewList({
+  browserTimeZone,
   preview,
   selectedUids,
   toggleUid,
 }: {
+  browserTimeZone: string;
   preview: IcsPreview;
   selectedUids: Set<string>;
   toggleUid: (uid: string, checked: boolean) => void;
@@ -333,7 +336,7 @@ function PreviewList({
                     </span>
                   </span>
                   <span className="mt-1 block text-xs text-[var(--muted)]">
-                    {formatEventDate(event)}
+                    {formatEventDate(event, browserTimeZone)}
                     {event.location ? ` · ${event.location}` : ""}
                   </span>
                   {event.recurrence ? (
@@ -359,7 +362,7 @@ function PreviewList({
   );
 }
 
-function formatEventDate(event: IcsPreviewEvent) {
+function formatEventDate(event: IcsPreviewEvent, timeZone: string) {
   if (!event.startsAt) {
     return "Date unavailable";
   }
@@ -367,7 +370,7 @@ function formatEventDate(event: IcsPreviewEvent) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: event.allDay ? undefined : "short",
-    timeZone: event.timeZone ?? undefined,
+    timeZone,
   }).format(new Date(event.startsAt));
 }
 

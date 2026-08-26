@@ -117,6 +117,14 @@ family/UID partial unique index, and the security-invoker
 `import_schedule_event` function. It does not add a dashboard setting or
 Storage bucket. Apply it before exposing the calendar import panel.
 
+Phase 22 requires
+`20260826170000_schedule_occurrence_overrides.sql`. It adds the family-scoped
+occurrence override and override-attendee tables, RLS policies, and three
+security-invoker functions for atomic single-occurrence replacement, series
+splitting, and series truncation. Apply it before exposing the new recurring
+event scope controls. No Supabase dashboard setting, Storage bucket, secret, or
+paid feature is required.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.
@@ -149,12 +157,17 @@ After migrations, verify:
 - Only parents can delete `schedule_events`; recurrence rows cascade when a
   parent deletes the series.
 - `schedule_event_recurrences` has RLS enabled and remains family-scoped.
+- Occurrence override tables have RLS enabled. Family members can read them;
+  parents can manage all overrides; event creators can modify overrides only
+  for their own self-assigned series. Cancellation and following-event
+  truncation remain parent-only.
 - ICS imports use the existing schedule-event, attendee, and recurrence RLS;
   the atomic import function does not broaden those policies.
 - Children cannot approve submissions or manage parent settings/templates.
 - Global starter chore templates are read-only reference data.
 
-The SQL helper `tests/sql/rls-verification.sql` provides lightweight local
+The SQL helpers in `tests/sql`, including
+`schedule-occurrence-overrides-verification.sql`, provide lightweight local
 verification.
 
 ## Maintenance

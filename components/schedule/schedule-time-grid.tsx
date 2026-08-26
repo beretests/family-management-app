@@ -12,8 +12,9 @@ import {
   formatShortDate,
   formatTimeRange,
   formatWeekday,
-  startOfDay,
+  toDateParam,
 } from "@/lib/dates/schedule";
+import { dateTimeLocalToUtc } from "@/lib/dates/time-zone";
 
 const wholeFamilyColor = "#64748b";
 
@@ -22,13 +23,15 @@ export function ScheduleTimeGrid({
   days,
   events,
   members,
+  timeZone = "UTC",
 }: {
   conflicts: Map<string, string[]>;
   days: Date[];
   events: ScheduleEvent[];
   members: FamilyMemberWithDetails[];
+  timeZone?: string;
 }) {
-  const { endHour, startHour } = getCalendarHourRange(events);
+  const { endHour, startHour } = getCalendarHourRange(events, timeZone);
   const hourCount = endHour - startHour;
   const gridHeight = hourCount * calendarHourHeight;
   const timeBands = Array.from(
@@ -88,7 +91,7 @@ export function ScheduleTimeGrid({
                   }`}
                   key={day.toISOString()}
                 >
-                  {eventsForDay(allDayEvents, day).map((event) => (
+                  {eventsForDay(allDayEvents, day, timeZone).map((event) => (
                     <AllDayEventCard
                       conflict={conflicts.has(event.id)}
                       event={event}
@@ -130,6 +133,7 @@ export function ScheduleTimeGrid({
                 endHour,
                 events,
                 startHour,
+                timeZone,
               });
 
               return (
@@ -152,6 +156,7 @@ export function ScheduleTimeGrid({
                       event={layout.event}
                       key={layout.event.id}
                       members={members}
+                      timeZone={timeZone}
                       style={{
                         top: layout.top + 2,
                         height: Math.max(8, layout.height - 4),
@@ -178,12 +183,14 @@ function TimedEventCard({
   height,
   members,
   style,
+  timeZone,
 }: {
   conflict: boolean;
   event: ScheduleEvent;
   height: number;
   members: FamilyMemberWithDetails[];
   style: CSSProperties;
+  timeZone: string;
 }) {
   const color = getEventColor(event, members);
   const attendeeLabel = getAttendeeLabel(event, members);
@@ -194,7 +201,7 @@ function TimedEventCard({
 
   return (
     <article
-      aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, false)}, ${attendeeLabel}`}
+      aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, false, timeZone)}, ${attendeeLabel}`}
       className="absolute z-10 overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-sm transition hover:z-20 hover:shadow-md"
       style={{
         ...style,
@@ -214,7 +221,7 @@ function TimedEventCard({
         ) : null}
       </div>
       <p className="truncate pl-1 text-[0.65rem] font-semibold leading-3.5 text-[var(--accent-strong)]">
-        {formatTimeRange(event.startsAt, event.endsAt, false)}
+        {formatTimeRange(event.startsAt, event.endsAt, false, timeZone)}
       </p>
       {height >= 48 ? (
         <p className="truncate pl-1 text-[0.62rem] leading-3.5 text-[var(--muted)]">
@@ -289,9 +296,15 @@ function ColorKeyItem({ color, label }: { color: string; label: string }) {
   );
 }
 
-function eventsForDay(events: ScheduleEvent[], day: Date) {
-  const dayStart = startOfDay(day).getTime();
-  const nextDayStart = addDays(startOfDay(day), 1).getTime();
+function eventsForDay(events: ScheduleEvent[], day: Date, timeZone: string) {
+  const dayStart = dateTimeLocalToUtc(
+    `${toDateParam(day)}T00:00`,
+    timeZone,
+  ).getTime();
+  const nextDayStart = dateTimeLocalToUtc(
+    `${toDateParam(addDays(day, 1))}T00:00`,
+    timeZone,
+  ).getTime();
 
   return events.filter((event) => {
     const startsAt = new Date(event.startsAt).getTime();

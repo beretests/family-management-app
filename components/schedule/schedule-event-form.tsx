@@ -12,6 +12,8 @@ import { scheduleEventTypeLabels } from "@/features/schedule/labels";
 import { scheduleEventTypes } from "@/features/schedule/schemas";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import type { ScheduleEvent } from "@/features/schedule/types";
+import type { ScheduleEventEditScope } from "@/features/schedule/types";
+import { getRecurrenceOccurrenceNumber } from "@/features/schedule/recurrence";
 import { toDateTimeLocalValue } from "@/lib/dates/schedule";
 
 const initialState: ScheduleActionState = {};
@@ -43,6 +45,7 @@ export function CreateScheduleEventForm({
   members,
   actorMemberId,
   canManageAll,
+  timeZone,
 }: {
   defaultEndsAt: string;
   defaultStartsAt: string;
@@ -50,6 +53,7 @@ export function CreateScheduleEventForm({
   members: FamilyMemberWithDetails[];
   actorMemberId: string;
   canManageAll: boolean;
+  timeZone: string;
 }) {
   const [state, formAction] = useActionState(createScheduleEvent, initialState);
 
@@ -60,6 +64,7 @@ export function CreateScheduleEventForm({
           Add schedule item
         </summary>
         <ScheduleEventFields
+          key={state.submissionId ?? "new-event"}
           action={formAction}
           defaultEndsAt={defaultEndsAt}
           defaultStartsAt={defaultStartsAt}
@@ -69,6 +74,7 @@ export function CreateScheduleEventForm({
           canManageAll={canManageAll}
           state={state}
           submitLabel="Add event"
+          timeZone={timeZone}
         />
       </details>
     </section>
@@ -82,6 +88,7 @@ export function EditScheduleEventForm({
   actorMemberId,
   canDelete,
   canManageAll,
+  timeZone,
 }: {
   event: ScheduleEvent;
   familyId: string;
@@ -89,6 +96,7 @@ export function EditScheduleEventForm({
   actorMemberId: string;
   canDelete: boolean;
   canManageAll: boolean;
+  timeZone: string;
 }) {
   const [updateState, updateAction] = useActionState(
     updateScheduleEvent,
@@ -110,15 +118,38 @@ export function EditScheduleEventForm({
         canManageAll={canManageAll}
         state={updateState}
         submitLabel="Save"
+        timeZone={timeZone}
       />
       {canDelete ? (
-        <form action={deleteAction}>
+        <form
+          action={deleteAction}
+          onSubmit={(submitEvent) => {
+            const data = new FormData(submitEvent.currentTarget);
+            const scope = data.get("editScope");
+            const label =
+              !event.recurrence || scope === "occurrence"
+                ? "this event"
+                : scope === "following"
+                  ? "this and all following events"
+                  : "the entire series";
+
+            if (!window.confirm(`Delete ${label}?`)) {
+              submitEvent.preventDefault();
+            }
+          }}
+        >
           <input name="familyId" type="hidden" value={familyId} />
           <input
             name="eventId"
             type="hidden"
             value={event.sourceEventId ?? event.id}
           />
+          <input
+            name="occurrenceDate"
+            type="hidden"
+            value={event.occurrenceDate ?? ""}
+          />
+          <DeleteScopeFields event={event} />
           <ActionMessage
             error={deleteState.error}
             success={deleteState.success}
@@ -145,6 +176,7 @@ function ScheduleEventFields({
   canManageAll,
   state,
   submitLabel,
+  timeZone: calendarTimeZone,
 }: {
   action: (formData: FormData) => void;
   defaultEndsAt?: string;
@@ -156,13 +188,15 @@ function ScheduleEventFields({
   canManageAll: boolean;
   state: ScheduleActionState;
   submitLabel: string;
+  timeZone: string;
 }) {
+  const formTimeZone = calendarTimeZone;
   const initialStartsAt = event
-    ? toDateTimeLocalValue(event.seriesStartsAt ?? event.startsAt)
-    : toDateTimeLocalValue(defaultStartsAt);
+    ? toDateTimeLocalValue(event.startsAt, formTimeZone)
+    : toDateTimeLocalValue(defaultStartsAt, formTimeZone);
   const initialEndsAt = event
-    ? toDateTimeLocalValue(event.seriesEndsAt ?? event.endsAt)
-    : toDateTimeLocalValue(defaultEndsAt);
+    ? toDateTimeLocalValue(event.endsAt, formTimeZone)
+    : toDateTimeLocalValue(defaultEndsAt, formTimeZone);
   const [startsAt, setStartsAt] = useState(initialStartsAt);
   const [endsAt, setEndsAt] = useState(
     new Date(initialEndsAt).getTime() > new Date(initialStartsAt).getTime()
@@ -186,10 +220,23 @@ function ScheduleEventFields({
         ? "after"
         : "never",
   );
-  const timeZone =
-    event?.recurrence?.timeZone ??
-    Intl.DateTimeFormat().resolvedOptions().timeZone ??
-    "UTC";
+  const [editScope, setEditScope] = useState<ScheduleEventEditScope>(
+    event?.recurrence ? "occurrence" : "series",
+  );
+  const occurrenceNumber =
+    event?.recurrence && event.occurrenceDate
+      ? getRecurrenceOccurrenceNumber({
+          occurrenceDate: event.occurrenceDate,
+          recurrence: event.recurrence,
+          seriesStartsAt: event.seriesStartsAt ?? event.startsAt,
+        })
+      : null;
+  const remainingOccurrenceCount = event?.recurrence?.occurrenceCount
+    ? Math.max(
+        1,
+        event.recurrence.occurrenceCount - (occurrenceNumber ?? 1) + 1,
+      )
+    : null;
   const activeMembers = members.filter(
     (member) => member.lifecycleStatus === "active",
   );
@@ -213,6 +260,28 @@ function ScheduleEventFields({
     );
   }
 
+  function handleEditScopeChange(scope: ScheduleEventEditScope) {
+    setEditScope(scope);
+
+    if (!event) {
+      return;
+    }
+
+    const useSeriesStart = scope === "series";
+    const nextStartsAt = toDateTimeLocalValue(
+      useSeriesStart
+        ? (event.seriesStartsAt ?? event.startsAt)
+        : event.startsAt,
+      formTimeZone,
+    );
+    const nextEndsAt = toDateTimeLocalValue(
+      useSeriesStart ? (event.seriesEndsAt ?? event.endsAt) : event.endsAt,
+      formTimeZone,
+    );
+    setStartsAt(nextStartsAt);
+    setEndsAt(nextEndsAt);
+  }
+
   return (
     <form action={action} className="mt-4 grid gap-4">
       <input name="familyId" type="hidden" value={familyId} />
@@ -226,14 +295,45 @@ function ScheduleEventFields({
           value={event.sourceEventId ?? event.id}
         />
       ) : null}
+      {event?.occurrenceDate ? (
+        <input
+          name="occurrenceDate"
+          type="hidden"
+          value={event.occurrenceDate}
+        />
+      ) : null}
       <input
         name="timeZone"
         suppressHydrationWarning
         type="hidden"
-        value={timeZone}
+        value={formTimeZone}
       />
 
+      <p className="text-xs text-[var(--muted)]">Times use {formTimeZone}.</p>
+
       <ActionMessage error={state.error} success={state.success} />
+
+      {event?.recurrence ? (
+        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+          Apply changes to
+          <select
+            className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
+            name="editScope"
+            onChange={(changeEvent) =>
+              handleEditScopeChange(
+                changeEvent.target.value as ScheduleEventEditScope,
+              )
+            }
+            value={editScope}
+          >
+            <option value="occurrence">This event</option>
+            <option value="following">This and following events</option>
+            <option value="series">Entire series</option>
+          </select>
+        </label>
+      ) : (
+        <input name="editScope" type="hidden" value="series" />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
         <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
@@ -356,130 +456,143 @@ function ScheduleEventFields({
         </fieldset>
       </div>
 
-      <fieldset className="grid gap-3 rounded-lg border border-[var(--line)] p-4">
-        <legend className="px-1 text-sm font-semibold text-[var(--foreground)]">
-          Repeat
-        </legend>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-            Repeats
-            <select
-              className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
-              name="repeatType"
-              onChange={(changeEvent) =>
-                setRepeatType(changeEvent.target.value)
-              }
-              value={repeatType}
-            >
-              <option value="none">Does not repeat</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="yearly">Yearly</option>
-              <option value="custom">Custom weekdays</option>
-            </select>
-          </label>
-          {repeatType !== "none" ? (
-            <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-              Repeat every
-              <span className="flex items-center gap-2">
-                <input
-                  className="min-h-11 w-24 rounded-md border border-[var(--line)] px-3 text-base"
-                  defaultValue={event?.recurrence?.interval ?? 1}
-                  max={365}
-                  min={1}
-                  name="recurrenceInterval"
-                  type="number"
-                />
-                {repeatType === "yearly"
-                  ? "year(s)"
-                  : repeatType === "daily"
-                    ? "day(s)"
-                    : "week(s)"}
-              </span>
-            </label>
-          ) : null}
-        </div>
-
-        {repeatType === "custom" ? (
-          <fieldset>
-            <legend className="text-sm font-medium text-[var(--foreground)]">
-              Weekdays
-            </legend>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                (label, index) => (
-                  <label
-                    className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm"
-                    key={label}
-                  >
-                    <input
-                      defaultChecked={
-                        event?.recurrence?.weekdays.includes(index) ??
-                        (index >= 1 && index <= 5)
-                      }
-                      name="recurrenceWeekdays"
-                      type="checkbox"
-                      value={index}
-                    />
-                    {label}
-                  </label>
-                ),
-              )}
-            </div>
-          </fieldset>
-        ) : null}
-
-        {repeatType !== "none" ? (
+      {editScope !== "occurrence" ? (
+        <fieldset className="grid gap-3 rounded-lg border border-[var(--line)] p-4">
+          <legend className="px-1 text-sm font-semibold text-[var(--foreground)]">
+            Repeat
+          </legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-              Series ends
+              Repeats
               <select
                 className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
-                name="recurrenceEndType"
+                name="repeatType"
                 onChange={(changeEvent) =>
-                  setRecurrenceEndType(changeEvent.target.value)
+                  setRepeatType(changeEvent.target.value)
                 }
-                value={recurrenceEndType}
+                value={repeatType}
               >
-                <option value="never">Never</option>
-                <option value="on">On date</option>
-                <option value="after">After occurrences</option>
+                <option value="none">Does not repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="yearly">Yearly</option>
+                <option value="custom">Custom weekdays</option>
               </select>
             </label>
-            {recurrenceEndType === "on" ? (
+            {repeatType !== "none" ? (
               <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-                End date
-                <input
-                  className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
-                  defaultValue={event?.recurrence?.endsOn ?? ""}
-                  name="recurrenceEndsOn"
-                  required
-                  type="date"
-                />
-              </label>
-            ) : null}
-            {recurrenceEndType === "after" ? (
-              <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-                Number of occurrences
-                <input
-                  className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
-                  defaultValue={event?.recurrence?.occurrenceCount ?? 10}
-                  max={1000}
-                  min={1}
-                  name="recurrenceCount"
-                  required
-                  type="number"
-                />
+                Repeat every
+                <span className="flex items-center gap-2">
+                  <input
+                    className="min-h-11 w-24 rounded-md border border-[var(--line)] px-3 text-base"
+                    defaultValue={event?.recurrence?.interval ?? 1}
+                    max={365}
+                    min={1}
+                    name="recurrenceInterval"
+                    type="number"
+                  />
+                  {repeatType === "yearly"
+                    ? "year(s)"
+                    : repeatType === "daily"
+                      ? "day(s)"
+                      : "week(s)"}
+                </span>
               </label>
             ) : null}
           </div>
-        ) : null}
-        {event?.recurrence ? (
-          <p className="text-xs text-[var(--muted)]">
-            Changes apply to the whole series.
-          </p>
-        ) : null}
-      </fieldset>
+
+          {repeatType === "custom" ? (
+            <fieldset>
+              <legend className="text-sm font-medium text-[var(--foreground)]">
+                Weekdays
+              </legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (label, index) => (
+                    <label
+                      className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm"
+                      key={label}
+                    >
+                      <input
+                        defaultChecked={
+                          event?.recurrence?.weekdays.includes(index) ??
+                          (index >= 1 && index <= 5)
+                        }
+                        name="recurrenceWeekdays"
+                        type="checkbox"
+                        value={index}
+                      />
+                      {label}
+                    </label>
+                  ),
+                )}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {repeatType !== "none" ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+                Series ends
+                <select
+                  className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
+                  name="recurrenceEndType"
+                  onChange={(changeEvent) =>
+                    setRecurrenceEndType(changeEvent.target.value)
+                  }
+                  value={recurrenceEndType}
+                >
+                  <option value="never">Never</option>
+                  <option value="on">On date</option>
+                  <option value="after">After occurrences</option>
+                </select>
+              </label>
+              {recurrenceEndType === "on" ? (
+                <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+                  End date
+                  <input
+                    className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
+                    defaultValue={event?.recurrence?.endsOn ?? ""}
+                    name="recurrenceEndsOn"
+                    required
+                    type="date"
+                  />
+                </label>
+              ) : null}
+              {recurrenceEndType === "after" ? (
+                <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+                  Number of occurrences
+                  <input
+                    className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
+                    defaultValue={
+                      editScope === "following"
+                        ? (remainingOccurrenceCount ?? 10)
+                        : (event?.recurrence?.occurrenceCount ?? 10)
+                    }
+                    max={1000}
+                    min={1}
+                    name="recurrenceCount"
+                    required
+                    type="number"
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+          {event?.recurrence ? (
+            <p className="text-xs text-[var(--muted)]">
+              {editScope === "following"
+                ? "The earlier events stay unchanged and a new series starts here."
+                : "Changes apply to the entire series."}
+            </p>
+          ) : null}
+        </fieldset>
+      ) : event?.recurrence ? (
+        <p className="rounded-md bg-[var(--info-soft)] p-3 text-sm text-[var(--info)]">
+          Only this occurrence will change. The rest of the series stays the
+          same.
+        </p>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
         <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
@@ -519,5 +632,26 @@ function ScheduleEventFields({
         </SubmitButton>
       </div>
     </form>
+  );
+}
+
+function DeleteScopeFields({ event }: { event: ScheduleEvent }) {
+  if (!event.recurrence) {
+    return <input name="editScope" type="hidden" value="series" />;
+  }
+
+  return (
+    <label className="mt-3 grid gap-2 text-sm font-medium text-[var(--foreground)]">
+      Delete
+      <select
+        className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
+        defaultValue="occurrence"
+        name="editScope"
+      >
+        <option value="occurrence">This event</option>
+        <option value="following">This and following events</option>
+        <option value="series">Entire series</option>
+      </select>
+    </label>
   );
 }

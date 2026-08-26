@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import {
   createScheduleEventSchema,
   deleteScheduleEventSchema,
@@ -15,10 +15,12 @@ import {
   type AppSupabaseClient,
 } from "@/features/schedule/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { getRecurrenceOccurrenceNumber } from "@/features/schedule/recurrence";
 
 export type ScheduleActionState = {
   error?: string;
   success?: string;
+  submissionId?: string;
 };
 
 function getString(formData: FormData, key: string) {
@@ -79,6 +81,8 @@ function readScheduleEventForm(formData: FormData) {
     recurrenceEndsOn: getString(formData, "recurrenceEndsOn"),
     recurrenceCount: getString(formData, "recurrenceCount"),
     timeZone: getString(formData, "timeZone") || "UTC",
+    editScope: getString(formData, "editScope") || "series",
+    occurrenceDate: getString(formData, "occurrenceDate") || undefined,
   };
 }
 
@@ -161,6 +165,27 @@ function recurrenceRow(
   };
 }
 
+function eventPayload(
+  input: ReturnType<typeof createScheduleEventSchema.parse>,
+) {
+  return {
+    event_type: input.eventType,
+    title: input.title,
+    description: input.description ?? null,
+    starts_at: dateTimeLocalToIso(input.startsAt, input.timeZone),
+    ends_at: dateTimeLocalToIso(input.endsAt, input.timeZone),
+    all_day: input.allDay,
+    location: input.location ?? null,
+    color: input.color ?? null,
+  };
+}
+
+function finishScheduleMutation() {
+  revalidatePath("/dashboard");
+  revalidatePath("/schedule");
+  refresh();
+}
+
 async function replaceScheduleEventRecurrence({
   eventId,
   familyId,
@@ -229,8 +254,8 @@ export async function createScheduleEvent(
       event_type: parsed.data.eventType,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
-      starts_at: dateTimeLocalToIso(parsed.data.startsAt),
-      ends_at: dateTimeLocalToIso(parsed.data.endsAt),
+      starts_at: dateTimeLocalToIso(parsed.data.startsAt, parsed.data.timeZone),
+      ends_at: dateTimeLocalToIso(parsed.data.endsAt, parsed.data.timeZone),
       all_day: parsed.data.allDay,
       location: parsed.data.location ?? null,
       color: parsed.data.color ?? null,
@@ -273,9 +298,11 @@ export async function createScheduleEvent(
     return { error: errorMessage(error) };
   }
 
-  revalidatePath("/dashboard");
-  revalidatePath("/schedule");
-  return { success: "Schedule event added." };
+  finishScheduleMutation();
+  return {
+    success: "Schedule event added.",
+    submissionId: crypto.randomUUID(),
+  };
 }
 
 export async function updateScheduleEvent(
@@ -305,7 +332,7 @@ export async function updateScheduleEvent(
 
     const { data: existingEvent, error: existingError } = await supabase
       .from("schedule_events")
-      .select("id,created_by_member_id")
+      .select("id,created_by_member_id,starts_at")
       .eq("family_id", actor.familyId)
       .eq("id", parsed.data.eventId)
       .maybeSingle();
@@ -325,44 +352,130 @@ export async function updateScheduleEvent(
       return { error: "You can edit only schedule events you added." };
     }
 
-    const { data: updatedEvent, error } = await actor.writeClient
-      .from("schedule_events")
-      .update({
-        member_id: memberIds[0] ?? null,
-        event_type: parsed.data.eventType,
-        title: parsed.data.title,
-        description: parsed.data.description ?? null,
-        starts_at: dateTimeLocalToIso(parsed.data.startsAt),
-        ends_at: dateTimeLocalToIso(parsed.data.endsAt),
-        all_day: parsed.data.allDay,
-        location: parsed.data.location ?? null,
-        color: parsed.data.color ?? null,
-      })
+    const { data: recurrence, error: recurrenceError } = await supabase
+      .from("schedule_event_recurrences")
+      .select(
+        "frequency,interval_count,weekdays,ends_on,occurrence_count,time_zone",
+      )
       .eq("family_id", actor.familyId)
-      .eq("id", parsed.data.eventId)
-      .select("id")
+      .eq("event_id", parsed.data.eventId)
       .maybeSingle();
 
-    if (error) {
-      return { error: error.message };
+    if (recurrenceError) {
+      return { error: recurrenceError.message };
     }
 
-    if (!updatedEvent) {
-      return { error: "You do not have permission to edit this event." };
+    if (parsed.data.editScope !== "series" && !recurrence) {
+      return { error: "This event is not part of a recurring series." };
     }
 
-    await replaceScheduleEventMembers({
-      eventId: parsed.data.eventId,
-      familyId: actor.familyId,
-      memberIds,
-      supabase: actor.writeClient,
-    });
-    await replaceScheduleEventRecurrence({
-      eventId: parsed.data.eventId,
-      familyId: actor.familyId,
-      input: parsed.data,
-      supabase: actor.writeClient,
-    });
+    const occurrenceNumber =
+      recurrence && parsed.data.occurrenceDate
+        ? getRecurrenceOccurrenceNumber({
+            occurrenceDate: parsed.data.occurrenceDate,
+            recurrence: {
+              frequency: recurrence.frequency,
+              interval: recurrence.interval_count,
+              weekdays: recurrence.weekdays,
+              endsOn: recurrence.ends_on,
+              occurrenceCount: recurrence.occurrence_count,
+              timeZone: recurrence.time_zone,
+            },
+            seriesStartsAt: existingEvent.starts_at,
+          })
+        : null;
+
+    if (parsed.data.editScope !== "series" && !occurrenceNumber) {
+      return { error: "The selected occurrence is not part of this series." };
+    }
+
+    const isFirstOccurrence = occurrenceNumber === 1;
+
+    if (parsed.data.editScope === "occurrence") {
+      const { error } = await actor.writeClient.rpc(
+        "upsert_schedule_occurrence_override",
+        {
+          p_actor_member_id: actor.memberId,
+          p_event: eventPayload(parsed.data),
+          p_family_id: actor.familyId,
+          p_member_ids: memberIds,
+          p_occurrence_date: parsed.data.occurrenceDate,
+          p_series_event_id: parsed.data.eventId,
+          p_status: "modified",
+        },
+      );
+
+      if (error) {
+        return { error: error.message };
+      }
+    } else if (parsed.data.editScope === "following" && !isFirstOccurrence) {
+      const newEventId = crypto.randomUUID();
+      const row = recurrenceRow(newEventId, actor.familyId, parsed.data);
+
+      if (!row) {
+        return {
+          error:
+            "This and following events must continue as a repeating series.",
+        };
+      }
+
+      const { error } = await actor.writeClient.rpc(
+        "split_schedule_event_series",
+        {
+          p_actor_member_id: actor.memberId,
+          p_event: eventPayload(parsed.data),
+          p_family_id: actor.familyId,
+          p_member_ids: memberIds,
+          p_new_event_id: newEventId,
+          p_recurrence: {
+            ends_on: row.ends_on,
+            frequency: row.frequency,
+            interval_count: row.interval_count,
+            occurrence_count: row.occurrence_count,
+            time_zone: row.time_zone,
+            weekdays: row.weekdays,
+          },
+          p_series_event_id: parsed.data.eventId,
+          p_split_date: parsed.data.occurrenceDate,
+        },
+      );
+
+      if (error) {
+        return { error: error.message };
+      }
+    } else {
+      const { data: updatedEvent, error } = await actor.writeClient
+        .from("schedule_events")
+        .update({
+          member_id: memberIds[0] ?? null,
+          ...eventPayload(parsed.data),
+        })
+        .eq("family_id", actor.familyId)
+        .eq("id", parsed.data.eventId)
+        .select("id")
+        .maybeSingle();
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (!updatedEvent) {
+        return { error: "You do not have permission to edit this event." };
+      }
+
+      await replaceScheduleEventMembers({
+        eventId: parsed.data.eventId,
+        familyId: actor.familyId,
+        memberIds,
+        supabase: actor.writeClient,
+      });
+      await replaceScheduleEventRecurrence({
+        eventId: parsed.data.eventId,
+        familyId: actor.familyId,
+        input: parsed.data,
+        supabase: actor.writeClient,
+      });
+    }
 
     await insertAuditEvent({
       action: "schedule_event.updated",
@@ -371,6 +484,8 @@ export async function updateScheduleEvent(
       supabase: actor.writeClient,
       target: {
         eventId: parsed.data.eventId,
+        editScope: parsed.data.editScope,
+        occurrenceDate: parsed.data.occurrenceDate,
         memberIds,
         repeatType: parsed.data.repeatType,
       },
@@ -379,9 +494,11 @@ export async function updateScheduleEvent(
     return { error: errorMessage(error) };
   }
 
-  revalidatePath("/dashboard");
-  revalidatePath("/schedule");
-  return { success: "Schedule event updated." };
+  finishScheduleMutation();
+  return {
+    success: "Schedule event updated.",
+    submissionId: crypto.randomUUID(),
+  };
 }
 
 export async function deleteScheduleEvent(
@@ -391,6 +508,8 @@ export async function deleteScheduleEvent(
   const parsed = deleteScheduleEventSchema.safeParse({
     familyId: getString(formData, "familyId"),
     eventId: getString(formData, "eventId"),
+    editScope: getString(formData, "editScope") || "series",
+    occurrenceDate: getString(formData, "occurrenceDate") || undefined,
   });
 
   if (!parsed.success) {
@@ -401,11 +520,84 @@ export async function deleteScheduleEvent(
 
   try {
     const parent = await requireParentContext(supabase, parsed.data.familyId);
-    const { error } = await supabase
+    const { data: existingEvent, error: existingError } = await supabase
       .from("schedule_events")
-      .delete()
+      .select("id,starts_at")
       .eq("family_id", parent.familyId)
-      .eq("id", parsed.data.eventId);
+      .eq("id", parsed.data.eventId)
+      .maybeSingle();
+
+    if (existingError) {
+      return { error: existingError.message };
+    }
+
+    if (!existingEvent) {
+      return { error: "Schedule event not found." };
+    }
+
+    const { data: recurrence, error: recurrenceError } = await supabase
+      .from("schedule_event_recurrences")
+      .select(
+        "frequency,interval_count,weekdays,ends_on,occurrence_count,time_zone",
+      )
+      .eq("family_id", parent.familyId)
+      .eq("event_id", parsed.data.eventId)
+      .maybeSingle();
+
+    if (recurrenceError) {
+      return { error: recurrenceError.message };
+    }
+
+    if (parsed.data.editScope !== "series" && !recurrence) {
+      return { error: "This event is not part of a recurring series." };
+    }
+
+    const occurrenceNumber =
+      recurrence && parsed.data.occurrenceDate
+        ? getRecurrenceOccurrenceNumber({
+            occurrenceDate: parsed.data.occurrenceDate,
+            recurrence: {
+              frequency: recurrence.frequency,
+              interval: recurrence.interval_count,
+              weekdays: recurrence.weekdays,
+              endsOn: recurrence.ends_on,
+              occurrenceCount: recurrence.occurrence_count,
+              timeZone: recurrence.time_zone,
+            },
+            seriesStartsAt: existingEvent.starts_at,
+          })
+        : null;
+
+    if (parsed.data.editScope !== "series" && !occurrenceNumber) {
+      return { error: "The selected occurrence is not part of this series." };
+    }
+
+    const isFirstOccurrence = occurrenceNumber === 1;
+    let error: { message: string } | null = null;
+
+    if (parsed.data.editScope === "occurrence") {
+      ({ error } = await supabase.rpc("upsert_schedule_occurrence_override", {
+        p_actor_member_id: parent.memberId,
+        p_event: null,
+        p_family_id: parent.familyId,
+        p_member_ids: [],
+        p_occurrence_date: parsed.data.occurrenceDate,
+        p_series_event_id: parsed.data.eventId,
+        p_status: "cancelled",
+      }));
+    } else if (parsed.data.editScope === "following" && !isFirstOccurrence) {
+      ({ error } = await supabase.rpc("truncate_schedule_event_series", {
+        p_family_id: parent.familyId,
+        p_series_event_id: parsed.data.eventId,
+        p_split_date: parsed.data.occurrenceDate,
+      }));
+    } else {
+      ({ error } = await supabase
+        .from("schedule_events")
+        .delete()
+        .eq("family_id", parent.familyId)
+        .eq("id", parsed.data.eventId));
+    }
 
     if (error) {
       return { error: error.message };
@@ -416,13 +608,19 @@ export async function deleteScheduleEvent(
       actorMemberId: parent.memberId,
       familyId: parent.familyId,
       supabase,
-      target: { eventId: parsed.data.eventId },
+      target: {
+        eventId: parsed.data.eventId,
+        editScope: parsed.data.editScope,
+        occurrenceDate: parsed.data.occurrenceDate,
+      },
     });
   } catch (error) {
     return { error: errorMessage(error) };
   }
 
-  revalidatePath("/dashboard");
-  revalidatePath("/schedule");
-  return { success: "Schedule event deleted." };
+  finishScheduleMutation();
+  return {
+    success: "Schedule event deleted.",
+    submissionId: crypto.randomUUID(),
+  };
 }
