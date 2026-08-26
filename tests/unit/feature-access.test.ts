@@ -43,6 +43,8 @@ describe("routeRequiresFullApp", () => {
     "/schedule",
     "/sign-in",
     "/sign-up",
+    "/forgot-password",
+    "/reset-password",
     "/callback",
     "/family/setup",
     "/family/invite/accept",

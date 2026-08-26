@@ -50,6 +50,13 @@ https://your-custom-domain.example/callback
 ```
 
 5. Enable email/password auth.
+   - Password recovery uses the existing `/callback` URL and Supabase's
+     recovery email template. Keep the generated confirmation link intact if
+     the template is customized.
+   - The built-in email sender is for testing, restricts recipients, and is
+     currently limited to two project-wide auth emails per hour. Use a reviewed
+     SMTP provider for real-user delivery and configure rate limits appropriate
+     for the family app's expected traffic.
 6. Configure Google OAuth if Google sign-in is used:
    - Create OAuth credentials in Google Cloud.
    - Add the Supabase callback URL shown in the Google provider screen.
@@ -62,6 +69,10 @@ Adult family invitations use Supabase Auth invite emails. Keep
 `SUPABASE_SECRET_KEY` configured server-side and verify that `/callback` is in
 the redirect allow-list for local and production domains. The app sends invite
 links back through `/callback?next=/family/invite/accept?...`.
+
+Password recovery also returns through the allow-listed callback, using
+`/callback?next=/reset-password`. No migration, extra redirect allow-list
+entry, secret key, or public environment variable is required.
 
 ## Local CLI
 

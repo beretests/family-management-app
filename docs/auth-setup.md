@@ -7,6 +7,7 @@ Implemented auth paths:
 
 - email/password sign-up
 - email/password sign-in
+- email password recovery
 - Google OAuth sign-in entry point
 - sign-out
 - protected app routes
@@ -74,6 +75,12 @@ https://your-custom-domain.example/callback
 6. Enable email auth. Supabase hosted email sending has limits; use it for
    development and low-volume testing unless the owner approves a separate
    provider.
+   - Verify the password recovery email template still uses Supabase's
+     generated confirmation link so the app-provided redirect is preserved.
+   - For production delivery, configure an approved SMTP provider and review
+     the Auth email rate limits. The built-in sender is intended for testing,
+     restricts recipients, and is currently limited to two auth emails per
+     hour per project.
 7. Configure Google OAuth:
    - Create OAuth credentials in Google Cloud.
    - Add the Supabase callback URL shown in the Supabase provider setup.
@@ -86,6 +93,10 @@ https://your-custom-domain.example/callback
 
 - `/sign-in`: email/password and Google sign-in.
 - `/sign-up`: parent/caregiver email/password sign-up.
+- `/forgot-password`: requests a password recovery email without revealing
+  whether an account exists.
+- `/reset-password`: accepts a new password only after the recovery link has
+  established an authenticated Supabase session.
 - `/callback`: exchanges Supabase auth codes for a server-managed session.
 - `/dashboard`: protected family dashboard.
 - `/kid-mode`: unlocks or exits a parent-managed child profile.
@@ -107,11 +118,38 @@ With Supabase env vars configured:
 6. Sign in and confirm `/dashboard` renders.
 7. Sign out and confirm you return to `/`.
 8. Test Google sign-in after Google provider setup is complete.
-9. As a parent, add a child, set a Kid Mode PIN in Family settings, unlock the
-   child from `/kid-mode`, and confirm parent-only routes redirect away.
-10. As a parent, invite another parent or caregiver from Family settings. The
+9. Select **Forgot password?**, submit the parent email, and confirm the UI
+   always shows the neutral "if an account exists" response.
+10. Open the recovery message. For local Supabase, use Mailpit at
+    `http://127.0.0.1:55424`. Confirm the link returns through `/callback`, opens
+    `/reset-password`, rejects mismatched passwords, updates a matching valid
+    password, signs out, and accepts the new password at `/sign-in`.
+11. Confirm an expired or already-used link offers a path to request a new
+    recovery email.
+12. As a parent, add a child, set a Kid Mode PIN in Family settings, unlock the
+    child from `/kid-mode`, and confirm parent-only routes redirect away.
+13. As a parent, invite another parent or caregiver from Family settings. The
     invited adult must sign in with the invited email address and accept from
     `/family/invite/accept?invite=<id>`.
+
+## Password Recovery Flow
+
+1. `/forgot-password` validates and normalizes the submitted email.
+2. The server calls `resetPasswordForEmail()` with
+   `/callback?next=/reset-password` as the redirect. The response stays neutral
+   for known and unknown addresses to reduce account-enumeration risk.
+3. `/callback` exchanges the short-lived PKCE code for the cookie-backed
+   recovery session. Invalid or expired recovery callbacks return to
+   `/forgot-password` with a retry path.
+4. `/reset-password` checks for a verified Supabase session before rendering
+   the form. Its server action validates matching passwords and calls
+   `updateUser()`.
+5. After the password update, the app signs out the recovery session and sends
+   the user to `/sign-in`.
+
+No additional redirect URL is needed: the existing allow-listed `/callback`
+URL covers password recovery. Recovery codes are short-lived, single-use PKCE
+codes and must be opened in the same browser that requested the email.
 
 ## Kid Mode Security
 

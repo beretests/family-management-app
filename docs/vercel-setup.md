@@ -57,6 +57,11 @@ https://your-app.vercel.app/callback
 https://your-custom-domain.example/callback
 ```
 
+The same callback handles sign-up, OAuth, adult invitations, and password
+recovery. Password recovery uses a query parameter to continue to
+`/reset-password`, so it does not require another Vercel environment variable
+or Supabase redirect entry.
+
 For preview auth testing, add a tightly scoped preview callback URL. Avoid broad
 wildcards unless the risk is understood.
 
@@ -115,6 +120,9 @@ After deployment:
    `/schedule`, `/chores`, `/assignments`, `/my-today`, `/approvals`, `/rewards`,
    `/leaderboard`, and `/reminders` load for the test family.
 6. Confirm Supabase redirects return through `/callback`.
-7. Confirm `/api/cron/daily-maintenance` returns `401` without the cron secret.
-8. Trigger the cron route manually only with the correct secret from a trusted
+7. Request a password reset from `/forgot-password`, open the email in the same
+   browser, update the password, and confirm the app returns to `/sign-in` and
+   accepts the new password.
+8. Confirm `/api/cron/daily-maintenance` returns `401` without the cron secret.
+9. Trigger the cron route manually only with the correct secret from a trusted
    environment.

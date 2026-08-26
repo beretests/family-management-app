@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import type { AuthActionState } from "@/features/auth/actions";
 import {
@@ -9,6 +9,10 @@ import {
   signInWithGoogle,
   signUpWithEmail,
 } from "@/features/auth/actions";
+import {
+  AuthNotice,
+  AuthSubmitButton,
+} from "@/components/auth/auth-form-controls";
 import { Spinner } from "@/components/family/form-status";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -96,14 +100,22 @@ export function AuthForm({
             required
             type="password"
           />
+          {mode === "sign-in" ? (
+            <Link
+              className="justify-self-end text-sm font-semibold text-[var(--accent-strong)] underline-offset-4 hover:underline"
+              href="/forgot-password"
+            >
+              Forgot password?
+            </Link>
+          ) : null}
         </label>
 
-        <SubmitButton
+        <AuthSubmitButton
           disabled={!isSupabaseConfigured}
           pendingLabel={mode === "sign-in" ? "Signing in..." : "Creating..."}
         >
           {mode === "sign-in" ? "Sign in with email" : "Create account"}
-        </SubmitButton>
+        </AuthSubmitButton>
       </form>
 
       <form action={signInWithGoogle} className="mt-3">
@@ -142,31 +154,6 @@ export function AuthForm({
   );
 }
 
-function SubmitButton({
-  children,
-  disabled,
-  pendingLabel,
-}: {
-  children: React.ReactNode;
-  disabled: boolean;
-  pendingLabel: string;
-}) {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      className="min-h-11 rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
-      disabled={disabled || pending}
-      type="submit"
-    >
-      <span className="inline-flex items-center justify-center gap-2">
-        {pending ? <Spinner /> : null}
-        {pending ? pendingLabel : children}
-      </span>
-    </button>
-  );
-}
-
 function GoogleSubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
 
@@ -181,46 +168,5 @@ function GoogleSubmitButton({ disabled }: { disabled: boolean }) {
         {pending ? "Opening Google..." : "Continue with Google"}
       </span>
     </button>
-  );
-}
-
-function AuthNotice({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: "success" | "warning";
-}) {
-  const noticeKey = `${tone}:${String(children)}`;
-  const [dismissedNoticeKey, setDismissedNoticeKey] = useState<string | null>(
-    null,
-  );
-  const className =
-    tone === "success"
-      ? "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent-strong)]"
-      : "border-[var(--warning-soft)] bg-[var(--warning-soft)] text-[var(--warning)]";
-
-  useEffect(() => {
-    const timeout = window.setTimeout(
-      () => {
-        setDismissedNoticeKey(noticeKey);
-      },
-      tone === "success" ? 4500 : 10000,
-    );
-
-    return () => window.clearTimeout(timeout);
-  }, [noticeKey, tone]);
-
-  if (dismissedNoticeKey === noticeKey) {
-    return null;
-  }
-
-  return (
-    <div
-      className={`mt-4 rounded-md border p-3 text-sm ${className}`}
-      role={tone === "warning" ? "alert" : "status"}
-    >
-      {children}
-    </div>
   );
 }
