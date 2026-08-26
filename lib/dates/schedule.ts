@@ -1,3 +1,9 @@
+import {
+  dateTimeLocalToUtc,
+  formatZonedDateTimeLocal,
+  getZonedDateParts,
+} from "@/lib/dates/time-zone";
+
 const dateParamPattern = /^\d{4}-\d{2}-\d{2}$/;
 
 export function toDateParam(date: Date) {
@@ -84,7 +90,12 @@ export function formatDateHeading(date: Date) {
   }).format(date);
 }
 
-export function formatTimeRange(startsAt: string, endsAt: string, allDay: boolean) {
+export function formatTimeRange(
+  startsAt: string,
+  endsAt: string,
+  allDay: boolean,
+  timeZone?: string,
+) {
   if (allDay) {
     return "All day";
   }
@@ -92,6 +103,7 @@ export function formatTimeRange(startsAt: string, endsAt: string, allDay: boolea
   const formatter = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
   });
 
   return `${formatter.format(new Date(startsAt))} - ${formatter.format(
@@ -99,7 +111,11 @@ export function formatTimeRange(startsAt: string, endsAt: string, allDay: boolea
   )}`;
 }
 
-export function toDateTimeLocalValue(value?: string | null) {
+export function toDateTimeLocalValue(value?: string | null, timeZone?: string) {
+  if (value && timeZone) {
+    return formatZonedDateTimeLocal(value, timeZone);
+  }
+
   const date = value ? new Date(value) : new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -110,6 +126,15 @@ export function toDateTimeLocalValue(value?: string | null) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-export function dateTimeLocalToIso(value: string) {
-  return new Date(value).toISOString();
+export function dateTimeLocalToIso(value: string, timeZone?: string) {
+  return timeZone
+    ? dateTimeLocalToUtc(value, timeZone).toISOString()
+    : new Date(value).toISOString();
+}
+
+export function zonedDateParam(date: Date, timeZone: string) {
+  const parts = getZonedDateParts(date, timeZone);
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(
+    parts.day,
+  ).padStart(2, "0")}`;
 }

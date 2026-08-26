@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   ScheduleEvent,
   ScheduleEventType,
+  ScheduleOccurrenceOverride,
 } from "@/features/schedule/types";
 import { expandRecurringEvent } from "@/features/schedule/recurrence";
 
@@ -38,6 +39,27 @@ type ScheduleEventRecurrenceRow = {
   time_zone: string;
 };
 
+type ScheduleOccurrenceOverrideRow = {
+  id: string;
+  series_event_id: string;
+  occurrence_date: string;
+  status: "modified" | "cancelled";
+  event_type: ScheduleEventType | null;
+  title: string | null;
+  description: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  all_day: boolean | null;
+  location: string | null;
+  color: string | null;
+  updated_at: string;
+};
+
+type ScheduleOccurrenceOverrideMemberRow = {
+  override_id: string;
+  member_id: string;
+};
+
 type SupabaseErrorLike = {
   code?: string;
   message?: string;
@@ -63,6 +85,19 @@ function isMissingRecurrenceTable(error: SupabaseErrorLike) {
     error.code === "42P01" ||
     error.code === "PGRST205" ||
     (message.includes("schedule_event_recurrences") &&
+      (message.includes("Could not find") ||
+        message.includes("does not exist") ||
+        message.includes("schema cache")))
+  );
+}
+
+function isMissingOccurrenceOverrideTable(error: SupabaseErrorLike) {
+  const message = error.message ?? "";
+
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    (message.includes("schedule_event_occurrence_override") &&
       (message.includes("Could not find") ||
         message.includes("does not exist") ||
         message.includes("schema cache")))
@@ -215,6 +250,75 @@ export async function getScheduleEvents({
     recurrenceRows.map((row) => [row.event_id, row]),
   );
 
+  let overrideRows: ScheduleOccurrenceOverrideRow[] = [];
+
+  if (recurrenceEventIds.length > 0) {
+    const { data: overrideData, error: overrideError } = await supabase
+      .from("schedule_event_occurrence_overrides")
+      .select(
+        "id,series_event_id,occurrence_date,status,event_type,title,description,starts_at,ends_at,all_day,location,color,updated_at",
+      )
+      .eq("family_id", familyId)
+      .in("series_event_id", recurrenceEventIds);
+
+    if (overrideError && !isMissingOccurrenceOverrideTable(overrideError)) {
+      throw new Error(overrideError.message);
+    }
+
+    overrideRows = (overrideData ?? []) as ScheduleOccurrenceOverrideRow[];
+  }
+  const overrideIds = overrideRows.map((row) => row.id);
+  let overrideMemberRows: ScheduleOccurrenceOverrideMemberRow[] = [];
+
+  if (overrideIds.length > 0) {
+    const { data, error: overrideMemberError } = await supabase
+      .from("schedule_event_occurrence_override_members")
+      .select("override_id,member_id")
+      .eq("family_id", familyId)
+      .in("override_id", overrideIds);
+
+    if (
+      overrideMemberError &&
+      !isMissingOccurrenceOverrideTable(overrideMemberError)
+    ) {
+      throw new Error(overrideMemberError.message);
+    }
+
+    overrideMemberRows = (data ?? []) as ScheduleOccurrenceOverrideMemberRow[];
+  }
+
+  const membersByOverride = new Map<string, string[]>();
+
+  for (const row of overrideMemberRows) {
+    membersByOverride.set(row.override_id, [
+      ...(membersByOverride.get(row.override_id) ?? []),
+      row.member_id,
+    ]);
+  }
+
+  const overridesByEvent = new Map<string, ScheduleOccurrenceOverride[]>();
+
+  for (const row of overrideRows) {
+    overridesByEvent.set(row.series_event_id, [
+      ...(overridesByEvent.get(row.series_event_id) ?? []),
+      {
+        id: row.id,
+        occurrenceDate: row.occurrence_date,
+        status: row.status,
+        memberIds: membersByOverride.get(row.id) ?? [],
+        eventType: row.event_type,
+        title: row.title,
+        description: row.description,
+        startsAt: row.starts_at,
+        endsAt: row.ends_at,
+        allDay: row.all_day,
+        location: row.location,
+        color: row.color,
+        updatedAt: row.updated_at,
+      },
+    ]);
+  }
+
   return eventRows
     .flatMap((row) =>
       expandRecurringEvent(
@@ -225,6 +329,7 @@ export async function getScheduleEvents({
         ),
         startsAt,
         endsAt,
+        overridesByEvent.get(row.id) ?? [],
       ),
     )
     .sort(

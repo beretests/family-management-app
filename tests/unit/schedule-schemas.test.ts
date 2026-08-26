@@ -143,6 +143,46 @@ describe("updateScheduleEventSchema", () => {
 
     expect(parsed.success).toBe(false);
   });
+
+  it("requires an occurrence date for occurrence and following scopes", () => {
+    const input = {
+      eventId,
+      familyId,
+      memberIds: [memberId],
+      wholeFamily: false,
+      eventType: "extracurricular",
+      title: "Practice",
+      startsAt: "2026-08-19T16:00",
+      endsAt: "2026-08-19T17:00",
+      allDay: false,
+      repeatType: "weekly",
+      recurrenceInterval: 1,
+      recurrenceEndType: "never",
+      timeZone: "America/Regina",
+    };
+
+    expect(
+      updateScheduleEventSchema.safeParse({
+        ...input,
+        editScope: "occurrence",
+      }).success,
+    ).toBe(false);
+    expect(
+      updateScheduleEventSchema.safeParse({
+        ...input,
+        editScope: "following",
+        occurrenceDate: "2026-08-19",
+        repeatType: "none",
+      }).success,
+    ).toBe(false);
+    expect(
+      updateScheduleEventSchema.safeParse({
+        ...input,
+        editScope: "following",
+        occurrenceDate: "2026-08-19",
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe("deleteScheduleEventSchema", () => {
@@ -152,6 +192,24 @@ describe("deleteScheduleEventSchema", () => {
         eventId,
         familyId,
       }),
-    ).toEqual({ eventId, familyId });
+    ).toEqual({ eventId, familyId, editScope: "series" });
+  });
+
+  it("requires an occurrence date for deleting part of a series", () => {
+    expect(
+      deleteScheduleEventSchema.safeParse({
+        eventId,
+        familyId,
+        editScope: "following",
+      }).success,
+    ).toBe(false);
+    expect(
+      deleteScheduleEventSchema.safeParse({
+        eventId,
+        familyId,
+        editScope: "following",
+        occurrenceDate: "2026-08-19",
+      }).success,
+    ).toBe(true);
   });
 });

@@ -14,6 +14,7 @@ export function ScheduleBoard({
   events,
   familyId,
   members,
+  timeZone,
 }: {
   actorMemberId: string;
   canManageAll: boolean;
@@ -22,6 +23,7 @@ export function ScheduleBoard({
   events: ScheduleEvent[];
   familyId: string;
   members: FamilyMemberWithDetails[];
+  timeZone: string;
 }) {
   const sortedEvents = [...events].sort(
     (left, right) =>
@@ -35,46 +37,78 @@ export function ScheduleBoard({
         days={[startOfDay(day)]}
         events={events}
         members={members}
+        timeZone={timeZone}
       />
 
-      <section
-        aria-labelledby="event-details-heading"
-        className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm"
-      >
-        <div>
-          <h2
-            className="text-lg font-semibold text-[var(--foreground)]"
-            id="event-details-heading"
-          >
-            Event details
-          </h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            {canManageAll
-              ? "Review notes and locations, or edit any event."
-              : "Review notes and locations, or edit events you added."}
-          </p>
-        </div>
-
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {sortedEvents.length === 0 ? (
-            <p className="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)] lg:col-span-2">
-              Nothing scheduled.
-            </p>
-          ) : null}
-          {sortedEvents.map((event) => (
-            <ScheduleEventCard
-              actorMemberId={actorMemberId}
-              canManageAll={canManageAll}
-              conflicts={conflicts.get(event.id) ?? []}
-              event={event}
-              familyId={familyId}
-              key={event.id}
-              members={members}
-            />
-          ))}
-        </div>
-      </section>
+      <ScheduleEventDetails
+        actorMemberId={actorMemberId}
+        canManageAll={canManageAll}
+        conflicts={conflicts}
+        events={sortedEvents}
+        familyId={familyId}
+        members={members}
+        timeZone={timeZone}
+      />
     </div>
+  );
+}
+
+export function ScheduleEventDetails({
+  actorMemberId,
+  canManageAll,
+  conflicts,
+  events,
+  familyId,
+  members,
+  timeZone,
+}: {
+  actorMemberId: string;
+  canManageAll: boolean;
+  conflicts: Map<string, string[]>;
+  events: ScheduleEvent[];
+  familyId: string;
+  members: FamilyMemberWithDetails[];
+  timeZone: string;
+}) {
+  return (
+    <section
+      aria-labelledby="event-details-heading"
+      className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm"
+    >
+      <div>
+        <h2
+          className="text-lg font-semibold text-[var(--foreground)]"
+          id="event-details-heading"
+        >
+          Event details
+        </h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          {canManageAll
+            ? "Review notes and locations, or edit any event."
+            : "Review notes and locations, or edit events you added."}
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {events.length === 0 ? (
+          <p className="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)] lg:col-span-2">
+            Nothing scheduled.
+          </p>
+        ) : null}
+        {events.map((event) => (
+          <ScheduleEventCard
+            actorMemberId={actorMemberId}
+            canManageAll={canManageAll}
+            conflicts={conflicts.get(event.id) ?? []}
+            event={event}
+            familyId={familyId}
+            key={event.id}
+            members={members}
+            timeZone={timeZone}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -85,6 +119,7 @@ function ScheduleEventCard({
   event,
   familyId,
   members,
+  timeZone,
 }: {
   actorMemberId: string;
   canManageAll: boolean;
@@ -92,6 +127,7 @@ function ScheduleEventCard({
   event: ScheduleEvent;
   familyId: string;
   members: FamilyMemberWithDetails[];
+  timeZone: string;
 }) {
   const attendees = members.filter((member) =>
     event.memberIds.includes(member.id),
@@ -114,8 +150,13 @@ function ScheduleEventCard({
             {event.title}
           </h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            {formatTimeRange(event.startsAt, event.endsAt, event.allDay)} ·{" "}
-            {scheduleEventTypeLabels[event.eventType]}
+            {formatTimeRange(
+              event.startsAt,
+              event.endsAt,
+              event.allDay,
+              timeZone,
+            )}{" "}
+            · {scheduleEventTypeLabels[event.eventType]}
           </p>
           {event.recurrence ? (
             <p className="mt-1 text-sm font-medium text-[var(--accent)]">
@@ -149,6 +190,7 @@ function ScheduleEventCard({
             actorMemberId={actorMemberId}
             canDelete={canManageAll}
             canManageAll={canManageAll}
+            timeZone={timeZone}
           />
         </details>
       ) : null}

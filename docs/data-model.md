@@ -125,6 +125,10 @@ supportive feedback in `rejection_reason`, and keeps the task resubmittable.
 - `schedule_event_recurrences`: optional one-to-one recurrence settings for a
   schedule event, including frequency, interval, custom weekdays, end limit,
   and the IANA time zone used to preserve local wall-clock time.
+- `schedule_event_occurrence_overrides`: modified or cancelled instances keyed
+  by the parent series and its original recurrence-local date.
+- `schedule_event_occurrence_override_members`: attendee rows for a modified
+  occurrence; no rows continue to mean the whole family.
 
 Phase 5 uses the existing `schedule_events` table without adding a migration.
 Parent Server Actions create, update, and delete rows after resolving active
@@ -148,12 +152,20 @@ Phase 14 also adds the schedule event types `parent_away` and
 `parent_activity`. These represent parent availability or parent-only plans that
 can affect chore timing without implying a child assignment.
 
-Phase 19 adds `schedule_event_recurrences` without materializing individual
+Phase 19 adds `schedule_event_recurrences` without materializing ordinary
 occurrences. The server expands only the requested day/week range, so daily or
 long-running series do not create unbounded rows. Supported patterns are daily,
 weekly, yearly, and custom weekday sets such as Monday-Friday. An end date and
-an occurrence count are mutually exclusive optional limits. Editing or deleting
-a recurring event currently applies to the whole series.
+an occurrence count are mutually exclusive optional limits.
+
+Phase 22 keeps ordinary occurrences virtual but stores exceptions in
+`schedule_event_occurrence_overrides`. A modified exception carries its own
+event fields and attendees; a cancelled exception suppresses only that local
+date. "This and following events" editing atomically truncates the earlier
+series, creates a new series at the selected occurrence, and transfers later
+exceptions. Deleting that scope atomically truncates the series and removes
+later exceptions. Selecting the first occurrence behaves like an entire-series
+operation.
 
 Phase 19 also narrows non-parent writes: an active authenticated family member
 may create and update an event only when they created it and it is assigned only

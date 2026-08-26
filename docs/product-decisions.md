@@ -83,10 +83,18 @@ default for custom). Series can run indefinitely, end on a date, or stop after
 a chosen occurrence count. The event's browser IANA time zone is stored so its
 local time remains stable through daylight-saving transitions.
 
-Series editing and deletion apply to the entire series. Exceptions and
-single-occurrence edits remain deferred. All active family members can add
-events, but non-parents can assign/edit only their own events; only parents can
-delete schedule events.
+Phase 22 offers three explicit scopes for recurring changes: this event, this
+and following events, or the entire series. A single edit is stored as an
+exception and a single delete as a cancellation. A following edit splits the
+series at the selected local date; a following delete truncates it. Selecting
+the first occurrence has the same result as changing the entire series. Earlier
+exceptions stay with the earlier series and applicable exceptions move to the
+new series. All active family members can add events, but non-parents can
+assign/edit only their own events; only parents can delete schedule events.
+
+The visible calendar time zone is the browser's IANA zone and is carried in the
+schedule URL. Query boundaries, grid positions, labels, manual datetime saves,
+and ICS previews use that same zone. Timestamps remain stored as UTC instants.
 
 ## ICS Import
 
@@ -105,5 +113,6 @@ The import maps timed/all-day events, UTC/floating/IANA time zones, and the
 app's daily, weekly, yearly, and custom-weekday recurrence subset. It reports
 monthly/complex recurrence, exception dates, recurrence overrides, proprietary
 time zones, and malformed required fields without blocking other supported
-events. ICS export remains deferred. See `docs/ics-import.md` for the exact
+events. Imported recurrence exceptions remain deferred; app-created occurrence
+overrides are supported independently. ICS export remains deferred. See `docs/ics-import.md` for the exact
 compatibility rules.

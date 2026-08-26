@@ -21,6 +21,11 @@ export const scheduleRepeatTypes = [
 ] as const;
 
 export const scheduleRecurrenceEndTypes = ["never", "on", "after"] as const;
+export const scheduleEventEditScopes = [
+  "occurrence",
+  "following",
+  "series",
+] as const;
 
 const optionalTrimmedString = (maxLength: number, message: string) =>
   z
@@ -129,14 +134,48 @@ const scheduleEventBaseSchema = z
 
 export const createScheduleEventSchema = scheduleEventBaseSchema;
 
-export const updateScheduleEventSchema = scheduleEventBaseSchema.extend({
-  eventId: z.string().uuid("Missing schedule event."),
-});
+export const updateScheduleEventSchema = scheduleEventBaseSchema
+  .extend({
+    eventId: z.string().uuid("Missing schedule event."),
+    editScope: z.enum(scheduleEventEditScopes).default("series"),
+    occurrenceDate: z.string().date().optional(),
+  })
+  .refine(
+    (value) => value.editScope === "series" || Boolean(value.occurrenceDate),
+    { message: "Missing recurring occurrence.", path: ["occurrenceDate"] },
+  )
+  .refine(
+    (value) => value.editScope !== "following" || value.repeatType !== "none",
+    {
+      message: "This and following events must continue as a repeating series.",
+      path: ["repeatType"],
+    },
+  )
+  .refine(
+    (value) =>
+      value.editScope !== "following" ||
+      value.repeatType !== "custom" ||
+      !value.occurrenceDate ||
+      value.recurrenceWeekdays.includes(
+        new Date(`${value.occurrenceDate}T00:00:00.000Z`).getUTCDay(),
+      ),
+    {
+      message: "Keep the selected event's weekday in the new series.",
+      path: ["recurrenceWeekdays"],
+    },
+  );
 
-export const deleteScheduleEventSchema = z.object({
-  familyId: z.string().uuid("Missing family."),
-  eventId: z.string().uuid("Missing schedule event."),
-});
+export const deleteScheduleEventSchema = z
+  .object({
+    familyId: z.string().uuid("Missing family."),
+    eventId: z.string().uuid("Missing schedule event."),
+    editScope: z.enum(scheduleEventEditScopes).default("series"),
+    occurrenceDate: z.string().date().optional(),
+  })
+  .refine(
+    (value) => value.editScope === "series" || Boolean(value.occurrenceDate),
+    { message: "Missing recurring occurrence.", path: ["occurrenceDate"] },
+  );
 
 export type CreateScheduleEventInput = z.infer<
   typeof createScheduleEventSchema

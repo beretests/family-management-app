@@ -20,9 +20,29 @@ export type ScheduleRecurrence = {
   timeZone: string;
 };
 
+export type ScheduleEventEditScope = "occurrence" | "following" | "series";
+
+export type ScheduleOccurrenceOverride = {
+  id: string;
+  occurrenceDate: string;
+  status: "modified" | "cancelled";
+  memberIds: string[];
+  eventType: ScheduleEventType | null;
+  title: string | null;
+  description: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  allDay: boolean | null;
+  location: string | null;
+  color: string | null;
+  updatedAt: string;
+};
+
 export type ScheduleEvent = {
   id: string;
   sourceEventId?: string;
+  occurrenceDate?: string;
+  occurrenceOverrideId?: string;
   seriesStartsAt?: string;
   seriesEndsAt?: string;
   familyId: string;

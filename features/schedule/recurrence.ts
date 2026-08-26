@@ -1,5 +1,6 @@
 import type {
   ScheduleEvent,
+  ScheduleOccurrenceOverride,
   ScheduleRecurrence,
 } from "@/features/schedule/types";
 import {
@@ -69,10 +70,71 @@ function matchesRule({
   );
 }
 
+export function getRecurrenceOccurrenceNumber({
+  occurrenceDate,
+  recurrence,
+  seriesStartsAt,
+}: {
+  occurrenceDate: string;
+  recurrence: ScheduleRecurrence;
+  seriesStartsAt: string;
+}) {
+  if (recurrence.endsOn && occurrenceDate > recurrence.endsOn) {
+    return null;
+  }
+
+  const anchor = getZonedDateParts(
+    new Date(seriesStartsAt),
+    recurrence.timeZone,
+  );
+  const anchorDate = localDay(anchor);
+  const target = new Date(`${occurrenceDate}T00:00:00.000Z`);
+  const differenceDays =
+    (target.getTime() - anchorDate.getTime()) / dayMilliseconds;
+
+  if (differenceDays < 0 || differenceDays > maxCandidateDays) {
+    return null;
+  }
+
+  let occurrenceNumber = 0;
+
+  for (
+    let candidate = new Date(anchorDate);
+    candidate <= target;
+    candidate = new Date(candidate.getTime() + dayMilliseconds)
+  ) {
+    if (!matchesRule({ anchor, candidate, recurrence })) {
+      continue;
+    }
+
+    occurrenceNumber += 1;
+
+    if (
+      recurrence.occurrenceCount &&
+      occurrenceNumber > recurrence.occurrenceCount
+    ) {
+      return null;
+    }
+
+    if (
+      dateKey({
+        year: candidate.getUTCFullYear(),
+        month: candidate.getUTCMonth() + 1,
+        day: candidate.getUTCDate(),
+      }) === occurrenceDate
+    ) {
+      return occurrenceNumber;
+    }
+  }
+
+  return null;
+}
+
 export function expandRecurringEvent(
   event: ScheduleEvent,
   rangeStartsAt: Date,
   rangeEndsAt: Date,
+  overrides: ScheduleOccurrenceOverride[] = [],
 ) {
   const recurrence = event.recurrence;
 
@@ -91,6 +153,10 @@ export function expandRecurringEvent(
     getZonedDateParts(rangeEndsAt, recurrence.timeZone),
   );
   const occurrences: ScheduleEvent[] = [];
+  const overridesByDate = new Map(
+    overrides.map((override) => [override.occurrenceDate, override]),
+  );
+  const seenOverrideIds = new Set<string>();
   let occurrenceNumber = 0;
 
   for (
@@ -132,19 +198,86 @@ export function expandRecurringEvent(
 
     const occurrenceStart = zonedDateToUtc(candidateParts, recurrence.timeZone);
     const occurrenceEnd = new Date(occurrenceStart.getTime() + duration);
+    const occurrenceDate = dateKey(candidateParts);
+    const override = overridesByDate.get(occurrenceDate);
 
-    if (occurrenceStart < rangeEndsAt && occurrenceEnd > rangeStartsAt) {
+    if (override) {
+      seenOverrideIds.add(override.id);
+    }
+
+    if (override?.status === "cancelled") {
+      continue;
+    }
+
+    const occurrence = override
+      ? applyOccurrenceOverride(event, override)
+      : {
+          ...event,
+          startsAt: occurrenceStart.toISOString(),
+          endsAt: occurrenceEnd.toISOString(),
+        };
+
+    if (
+      new Date(occurrence.startsAt) < rangeEndsAt &&
+      new Date(occurrence.endsAt) > rangeStartsAt
+    ) {
       occurrences.push({
-        ...event,
+        ...occurrence,
         id: `${event.id}:${occurrenceStart.toISOString()}`,
         sourceEventId: event.id,
+        occurrenceDate,
+        occurrenceOverrideId: override?.id,
         seriesStartsAt: event.startsAt,
         seriesEndsAt: event.endsAt,
-        startsAt: occurrenceStart.toISOString(),
-        endsAt: occurrenceEnd.toISOString(),
+      });
+    }
+  }
+
+  for (const override of overrides) {
+    if (
+      override.status !== "modified" ||
+      seenOverrideIds.has(override.id) ||
+      !override.startsAt ||
+      !override.endsAt
+    ) {
+      continue;
+    }
+
+    if (
+      new Date(override.startsAt) < rangeEndsAt &&
+      new Date(override.endsAt) > rangeStartsAt
+    ) {
+      occurrences.push({
+        ...applyOccurrenceOverride(event, override),
+        id: `${event.id}:${override.occurrenceDate}`,
+        sourceEventId: event.id,
+        occurrenceDate: override.occurrenceDate,
+        occurrenceOverrideId: override.id,
+        seriesStartsAt: event.startsAt,
+        seriesEndsAt: event.endsAt,
       });
     }
   }
 
   return occurrences;
+}
+
+function applyOccurrenceOverride(
+  event: ScheduleEvent,
+  override: ScheduleOccurrenceOverride,
+): ScheduleEvent {
+  return {
+    ...event,
+    memberIds: override.memberIds,
+    memberId: override.memberIds[0] ?? null,
+    eventType: override.eventType ?? event.eventType,
+    title: override.title ?? event.title,
+    description: override.description,
+    startsAt: override.startsAt ?? event.startsAt,
+    endsAt: override.endsAt ?? event.endsAt,
+    allDay: override.allDay ?? event.allDay,
+    location: override.location,
+    color: override.color,
+    updatedAt: override.updatedAt,
+  };
 }

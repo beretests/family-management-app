@@ -1,4 +1,6 @@
 import type { ScheduleEvent } from "@/features/schedule/types";
+import { dateTimeLocalToUtc, getZonedDateParts } from "@/lib/dates/time-zone";
+import { toDateParam } from "@/lib/dates/schedule";
 
 export const calendarDefaultStartHour = 6;
 export const calendarDefaultEndHour = 22;
@@ -30,6 +32,7 @@ const millisecondsPerHour = 60 * 60 * 1000;
 
 export function getCalendarHourRange(
   events: ScheduleEvent[],
+  timeZone?: string,
 ): CalendarHourRange {
   let startHour = calendarDefaultStartHour;
   let endHour = calendarDefaultEndHour;
@@ -46,13 +49,28 @@ export function getCalendarHourRange(
       continue;
     }
 
-    startHour = Math.min(startHour, startsAt.getHours(), endsAt.getHours());
+    const startParts = timeZone
+      ? getZonedDateParts(startsAt, timeZone)
+      : {
+          hour: startsAt.getHours(),
+          minute: startsAt.getMinutes(),
+          second: startsAt.getSeconds(),
+        };
+    const endParts = timeZone
+      ? getZonedDateParts(endsAt, timeZone)
+      : {
+          hour: endsAt.getHours(),
+          minute: endsAt.getMinutes(),
+          second: endsAt.getSeconds(),
+        };
+
+    startHour = Math.min(startHour, startParts.hour, endParts.hour);
     endHour = Math.max(
       endHour,
-      startsAt.getHours() + 1,
-      endsAt.getMinutes() > 0 || endsAt.getSeconds() > 0
-        ? endsAt.getHours() + 1
-        : endsAt.getHours(),
+      startParts.hour + 1,
+      endParts.minute > 0 || endParts.second > 0
+        ? endParts.hour + 1
+        : endParts.hour,
     );
   }
 
@@ -68,15 +86,17 @@ export function layoutCalendarEventsForDay({
   events,
   hourHeight = calendarHourHeight,
   startHour,
+  timeZone,
 }: {
   day: Date;
   endHour: number;
   events: ScheduleEvent[];
   hourHeight?: number;
   startHour: number;
+  timeZone?: string;
 }): CalendarEventLayout[] {
-  const rangeStart = atHour(day, startHour).getTime();
-  const rangeEnd = atHour(day, endHour).getTime();
+  const rangeStart = atHour(day, startHour, timeZone).getTime();
+  const rangeEnd = atHour(day, endHour, timeZone).getTime();
 
   const positioned = events
     .filter((event) => !event.allDay)
@@ -163,7 +183,22 @@ function splitIntoOverlapGroups(events: PositionedEvent[]) {
   return groups;
 }
 
-function atHour(day: Date, hour: number) {
+function atHour(day: Date, hour: number, timeZone?: string) {
+  if (timeZone) {
+    const dateKey = toDateParam(day);
+
+    if (hour === 24) {
+      const nextDay = new Date(day);
+      nextDay.setDate(nextDay.getDate() + 1);
+      return dateTimeLocalToUtc(`${toDateParam(nextDay)}T00:00`, timeZone);
+    }
+
+    return dateTimeLocalToUtc(
+      `${dateKey}T${String(hour).padStart(2, "0")}:00`,
+      timeZone,
+    );
+  }
+
   if (hour === 24) {
     return new Date(
       day.getFullYear(),

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CreateScheduleEventForm } from "@/components/schedule/schedule-event-form";
 import { IcsImportForm } from "@/components/schedule/ics-import-form";
+import { CalendarTimeZoneSync } from "@/components/schedule/calendar-time-zone-sync";
 import { ScheduleBoard } from "@/components/schedule/schedule-board";
 import { ScheduleWeekView } from "@/components/schedule/schedule-week-view";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -19,6 +20,7 @@ import { countUniqueScheduleEvents } from "@/features/schedule/metrics";
 import { getScheduleEvents } from "@/features/schedule/queries";
 import {
   addDays,
+  dateTimeLocalToIso,
   endOfDay,
   endOfWeek,
   formatDateHeading,
@@ -29,6 +31,11 @@ import {
   toDateParam,
 } from "@/lib/dates/schedule";
 import { isFullAppEnabled } from "@/lib/feature-flags";
+import {
+  isValidTimeZone,
+  startOfZonedDay,
+  zonedDateKey,
+} from "@/lib/dates/time-zone";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +44,7 @@ type SchedulePageProps = {
     date?: string;
     member?: string;
     view?: string;
+    timeZone?: string;
   }>;
 };
 
@@ -44,6 +52,10 @@ export default async function SchedulePage({
   searchParams,
 }: SchedulePageProps) {
   const params = await searchParams;
+  const timeZone =
+    params?.timeZone && isValidTimeZone(params.timeZone)
+      ? params.timeZone
+      : "UTC";
   const selectedDate = startOfDay(parseDateParam(params?.date));
   const view = resolveCalendarView(params?.view, isFullAppEnabled());
   const context = await getFamilyContext();
@@ -56,10 +68,15 @@ export default async function SchedulePage({
     view === "week" ? startOfWeek(selectedDate) : selectedDate;
   const rangeEndsAt =
     view === "week" ? endOfWeek(selectedDate) : endOfDay(selectedDate);
+  const queryStartsAt = startOfZonedDay(toDateParam(rangeStartsAt), timeZone);
+  const queryEndsAt = startOfZonedDay(
+    toDateParam(addDays(rangeEndsAt, 1)),
+    timeZone,
+  );
   const events = await getScheduleEvents({
-    endsAt: rangeEndsAt,
+    endsAt: queryEndsAt,
     familyId: context.family.id,
-    startsAt: rangeStartsAt,
+    startsAt: queryStartsAt,
   });
   const activeMembers = context.members.filter(
     (member) => member.lifecycleStatus === "active",
@@ -71,10 +88,15 @@ export default async function SchedulePage({
   );
   const conflicts = findScheduleConflicts(visibleEvents);
   const canManageAll = context.currentMember.role === "parent";
-  const defaultStartsAt = new Date(selectedDate);
-  defaultStartsAt.setHours(16, 0, 0, 0);
-  const defaultEndsAt = new Date(selectedDate);
-  defaultEndsAt.setHours(17, 0, 0, 0);
+  const selectedDateKey = toDateParam(selectedDate);
+  const defaultStartsAt = dateTimeLocalToIso(
+    `${selectedDateKey}T16:00`,
+    timeZone,
+  );
+  const defaultEndsAt = dateTimeLocalToIso(
+    `${selectedDateKey}T17:00`,
+    timeZone,
+  );
   const eventCount = countUniqueScheduleEvents(visibleEvents);
   const duration = formatScheduleDuration(
     getScheduleDurationMinutes(visibleEvents),
@@ -86,6 +108,7 @@ export default async function SchedulePage({
 
   return (
     <section className="grid gap-5">
+      <CalendarTimeZoneSync timeZone={timeZone} />
       <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -110,6 +133,7 @@ export default async function SchedulePage({
               date={selectedDate}
               memberId={selectedMember?.id ?? null}
               view={view}
+              timeZone={timeZone}
             />
           </div>
         </div>
@@ -120,13 +144,18 @@ export default async function SchedulePage({
         members={activeMembers}
         selectedMemberId={selectedMember?.id ?? null}
         view={view}
+        timeZone={timeZone}
       />
 
       {view === "week" ? (
         <ScheduleWeekView
+          actorMemberId={context.currentMember.id}
+          canManageAll={canManageAll}
           conflicts={conflicts}
           events={visibleEvents}
+          familyId={context.family.id}
           members={context.members}
+          timeZone={timeZone}
           weekStartsAt={rangeStartsAt}
         />
       ) : (
@@ -138,16 +167,18 @@ export default async function SchedulePage({
           events={visibleEvents}
           familyId={context.family.id}
           members={context.members}
+          timeZone={timeZone}
         />
       )}
 
       <CreateScheduleEventForm
         actorMemberId={context.currentMember.id}
         canManageAll={canManageAll}
-        defaultEndsAt={defaultEndsAt.toISOString()}
-        defaultStartsAt={defaultStartsAt.toISOString()}
+        defaultEndsAt={defaultEndsAt}
+        defaultStartsAt={defaultStartsAt}
         familyId={context.family.id}
         members={context.members}
+        timeZone={timeZone}
       />
 
       <IcsImportForm
@@ -165,11 +196,13 @@ function CalendarMemberSelector({
   members,
   selectedMemberId,
   view,
+  timeZone,
 }: {
   date: Date;
   members: FamilyMemberWithDetails[];
   selectedMemberId: string | null;
   view: "day" | "week";
+  timeZone: string;
 }) {
   const linkClass =
     "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--foreground)] shadow-sm transition hover:border-[var(--accent)]";
@@ -180,7 +213,7 @@ function CalendarMemberSelector({
     <nav aria-label="Calendar view" className="flex gap-2 overflow-x-auto pb-1">
       <Link
         className={selectedMemberId === null ? activeLinkClass : linkClass}
-        href={getScheduleHref({ date, memberId: null, view })}
+        href={getScheduleHref({ date, memberId: null, view, timeZone })}
       >
         Whole family
       </Link>
@@ -189,7 +222,7 @@ function CalendarMemberSelector({
           className={
             selectedMemberId === member.id ? activeLinkClass : linkClass
           }
-          href={getScheduleHref({ date, memberId: member.id, view })}
+          href={getScheduleHref({ date, memberId: member.id, view, timeZone })}
           key={member.id}
         >
           <span
@@ -208,12 +241,15 @@ function ScheduleControls({
   date,
   memberId,
   view,
+  timeZone,
 }: {
   date: Date;
   memberId: string | null;
   view: "day" | "week";
+  timeZone: string;
 }) {
   const step = view === "week" ? 7 : 1;
+  const today = parseDateParam(zonedDateKey(new Date(), timeZone));
   const linkClass =
     "inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--line)] px-3 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]";
   const activeLinkClass =
@@ -228,13 +264,14 @@ function ScheduleControls({
             date: addDays(date, -step),
             memberId,
             view,
+            timeZone,
           })}
         >
           Previous
         </Link>
         <Link
           className={linkClass}
-          href={getScheduleHref({ date: new Date(), memberId, view })}
+          href={getScheduleHref({ date: today, memberId, view, timeZone })}
         >
           Today
         </Link>
@@ -244,6 +281,7 @@ function ScheduleControls({
             date: addDays(date, step),
             memberId,
             view,
+            timeZone,
           })}
         >
           Next
@@ -252,19 +290,20 @@ function ScheduleControls({
       <div className="grid grid-cols-2 gap-2">
         <Link
           className={view === "day" ? activeLinkClass : linkClass}
-          href={getScheduleHref({ date, memberId, view: "day" })}
+          href={getScheduleHref({ date, memberId, view: "day", timeZone })}
         >
           Day
         </Link>
         <Link
           className={view === "week" ? activeLinkClass : linkClass}
-          href={getScheduleHref({ date, memberId, view: "week" })}
+          href={getScheduleHref({ date, memberId, view: "week", timeZone })}
         >
           Week
         </Link>
       </div>
       <form action="/schedule" className="flex items-end gap-2" method="get">
         <input name="view" type="hidden" value={view} />
+        <input name="timeZone" type="hidden" value={timeZone} />
         {memberId ? (
           <input name="member" type="hidden" value={memberId} />
         ) : null}
@@ -289,14 +328,17 @@ function getScheduleHref({
   date,
   memberId,
   view,
+  timeZone,
 }: {
   date: Date;
   memberId: string | null;
   view: "day" | "week";
+  timeZone: string;
 }) {
   const searchParams = new URLSearchParams({
     date: toDateParam(date),
     view,
+    timeZone,
   });
 
   if (memberId) {

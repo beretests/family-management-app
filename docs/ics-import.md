@@ -5,6 +5,10 @@ The selected file is parsed in the browser for feedback, then uploaded to a
 Server Action and parsed again before any database write. The original file is
 never stored in Supabase Storage or on Vercel.
 
+Phase 22 displays the preview and saved calendar in the importing browser's
+IANA time zone while continuing to store UTC instants. This keeps previewed and
+saved wall-clock times aligned even when the server runs in UTC.
+
 ## Limits
 
 - `.ics` filename and a recognized calendar/plain-text MIME type

@@ -14,6 +14,7 @@ Then open the local SQL editor or connect with `psql` and run:
 \i tests/sql/rls-verification.sql
 \i tests/sql/schedule-permissions-verification.sql
 \i tests/sql/ics-import-verification.sql
+\i tests/sql/schedule-occurrence-overrides-verification.sql
 ```
 
 Expected result:
@@ -24,6 +25,8 @@ Expected result:
 - schedule permission verification completes without an exception and rolls back.
 - ICS import verification checks atomic writes, duplicate UIDs, self-only child
   assignment, and parent whole-family imports, then rolls back.
+- schedule occurrence verification checks single-event overrides, parent-only
+  deletion, atomic series splitting, override reassignment, and truncation.
 
 These checks do not replace RLS integration tests with authenticated JWTs. They
 are a low-cost Phase 3 sanity check until app-level data access exists.
