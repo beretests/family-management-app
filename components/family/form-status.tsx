@@ -17,10 +17,10 @@ export function SubmitButton({
   const { pending } = useFormStatus();
   const className =
     tone === "danger"
-      ? "min-h-10 rounded-md border border-[var(--warning)] px-4 text-sm font-semibold text-[var(--warning)] transition hover:bg-[var(--warning-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+      ? "min-h-11 w-full rounded-md border border-[var(--warning)] px-4 text-sm font-semibold text-[var(--warning)] transition hover:bg-[var(--warning-soft)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       : tone === "secondary"
-        ? "min-h-10 rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-        : "min-h-10 rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60";
+        ? "min-h-11 w-full rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        : "min-h-11 w-full rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto";
 
   return (
     <button className={className} disabled={pending || disabled} type="submit">

@@ -109,11 +109,11 @@ export default async function SchedulePage({
   return (
     <section className="grid gap-5">
       <CalendarTimeZoneSync timeZone={timeZone} />
-      <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+      <div className="min-w-0 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <StatusPill tone="info">Calendar</StatusPill>
-            <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[var(--foreground)]">
+            <h1 className="mt-4 break-words text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">
               {calendarOwner} {calendarPeriod} Calendar
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
@@ -125,8 +125,8 @@ export default async function SchedulePage({
                 : " · Everyone's plans in one place."}
             </p>
           </div>
-          <div className="grid gap-3 lg:justify-items-end">
-            <div className="rounded-xl border border-[var(--info)]/25 bg-[var(--info-soft)] px-4 py-3 text-sm font-extrabold uppercase tracking-wide text-[var(--info)]">
+          <div className="grid min-w-0 gap-3 lg:justify-items-end">
+            <div className="rounded-xl border border-[var(--info)]/25 bg-[var(--info-soft)] px-3 py-3 text-center text-xs font-extrabold uppercase tracking-wide text-[var(--info)] sm:px-4 sm:text-sm">
               {eventCount} {eventCount === 1 ? "event" : "events"} · {duration}
             </div>
             <ScheduleControls
@@ -210,7 +210,10 @@ function CalendarMemberSelector({
     "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm";
 
   return (
-    <nav aria-label="Calendar view" className="flex gap-2 overflow-x-auto pb-1">
+    <nav
+      aria-label="Calendar view"
+      className="flex max-w-full gap-2 overflow-x-auto pb-1"
+    >
       <Link
         className={selectedMemberId === null ? activeLinkClass : linkClass}
         href={getScheduleHref({ date, memberId: null, view, timeZone })}
@@ -301,16 +304,20 @@ function ScheduleControls({
           Week
         </Link>
       </div>
-      <form action="/schedule" className="flex items-end gap-2" method="get">
+      <form
+        action="/schedule"
+        className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2"
+        method="get"
+      >
         <input name="view" type="hidden" value={view} />
         <input name="timeZone" type="hidden" value={timeZone} />
         {memberId ? (
           <input name="member" type="hidden" value={memberId} />
         ) : null}
-        <label className="grid flex-1 gap-1 text-xs font-semibold text-[var(--muted)]">
+        <label className="grid min-w-0 gap-1 text-xs font-semibold text-[var(--muted)]">
           Jump to date
           <input
-            className="min-h-10 rounded-md border border-[var(--line)] px-2 text-sm text-[var(--foreground)]"
+            className="min-h-10 min-w-0 rounded-md border border-[var(--line)] px-2 text-sm text-[var(--foreground)]"
             defaultValue={toDateParam(date)}
             name="date"
             type="date"

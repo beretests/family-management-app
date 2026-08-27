@@ -54,7 +54,7 @@ export function AppShell({
     : [{ href: "/schedule", label: "Calendar", icon: CalendarDays }];
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen min-w-0 overflow-x-clip">
       <header className="border-b border-[var(--line)] bg-[var(--panel)]">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -90,7 +90,10 @@ export function AppShell({
               </form>
             </div>
           </div>
-          <nav aria-label="Primary" className="flex gap-2 overflow-x-auto pb-1">
+          <nav
+            aria-label="Primary"
+            className="flex max-w-full gap-2 overflow-x-auto pb-1"
+          >
             {navItems.map((item) => (
               <Link className={navLinkClass} href={item.href} key={item.href}>
                 <item.icon aria-hidden="true" className="size-4" />
@@ -101,7 +104,7 @@ export function AppShell({
           </nav>
         </div>
       </header>
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto min-w-0 w-full max-w-6xl px-3 py-4 min-[360px]:px-4 sm:px-6 sm:py-6 lg:px-8">
         {children}
       </div>
     </main>

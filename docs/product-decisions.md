@@ -96,6 +96,13 @@ The visible calendar time zone is the browser's IANA zone and is carried in the
 schedule URL. Query boundaries, grid positions, labels, manual datetime saves,
 and ICS previews use that same zone. Timestamps remain stored as UTC instants.
 
+Calendar event cards are compact launch controls rather than a second details
+surface. Selecting a timed or all-day event opens one accessible modal with its
+full details and, when permitted, the existing edit/delete controls. Day view
+fits the phone viewport without page-level horizontal scrolling; Week view
+keeps its seven-column canvas and contains horizontal scrolling inside the
+calendar so the app shell remains responsive.
+
 ## ICS Import
 
 Phase 20 uses a preview-first `.ics` import. The browser parses for immediate

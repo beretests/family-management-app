@@ -124,12 +124,12 @@ export function IcsImportForm({
   }
 
   return (
-    <section className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+    <section className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
       <details>
         <summary className="cursor-pointer text-xl font-semibold text-[var(--foreground)]">
           Import calendar file
         </summary>
-        <form action={formAction} className="mt-4 grid gap-5">
+        <form action={formAction} className="mt-4 min-w-0 grid gap-5">
           <input name="familyId" type="hidden" value={familyId} />
           <input
             name="browserTimeZone"
@@ -151,7 +151,7 @@ export function IcsImportForm({
               iCalendar file
               <input
                 accept=".ics,text/calendar"
-                className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[var(--accent-soft)] file:px-3 file:py-1.5 file:font-semibold file:text-[var(--accent-strong)]"
+                className="min-h-11 w-full min-w-0 rounded-md border border-[var(--line)] bg-white px-2 py-2 text-sm file:mr-2 file:max-w-full file:rounded-md file:border-0 file:bg-[var(--accent-soft)] file:px-2 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--accent-strong)] sm:px-3 sm:file:mr-3 sm:file:px-3 sm:file:text-sm"
                 name="calendarFile"
                 onChange={() => {
                   setPreview(null);

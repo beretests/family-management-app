@@ -58,7 +58,7 @@ export function CreateScheduleEventForm({
   const [state, formAction] = useActionState(createScheduleEvent, initialState);
 
   return (
-    <section className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+    <section className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
       <details>
         <summary className="cursor-pointer text-xl font-semibold text-[var(--foreground)]">
           Add schedule item
@@ -283,7 +283,7 @@ function ScheduleEventFields({
   }
 
   return (
-    <form action={action} className="mt-4 grid gap-4">
+    <form action={action} className="mt-4 min-w-0 grid gap-4">
       <input name="familyId" type="hidden" value={familyId} />
       {!canManageAll ? (
         <input name="memberIds" type="hidden" value={actorMemberId} />

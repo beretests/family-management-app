@@ -1,4 +1,8 @@
+"use client";
+
 import type { CSSProperties } from "react";
+import { useState } from "react";
+import { ScheduleEventModal } from "@/components/schedule/schedule-event-modal";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import {
   calendarHourHeight,
@@ -19,18 +23,26 @@ import { dateTimeLocalToUtc } from "@/lib/dates/time-zone";
 const wholeFamilyColor = "#64748b";
 
 export function ScheduleTimeGrid({
+  actorMemberId = "",
+  canManageAll = false,
   conflicts,
   days,
   events,
+  familyId = "",
   members,
   timeZone = "UTC",
 }: {
+  actorMemberId?: string;
+  canManageAll?: boolean;
   conflicts: Map<string, string[]>;
   days: Date[];
   events: ScheduleEvent[];
+  familyId?: string;
   members: FamilyMemberWithDetails[];
   timeZone?: string;
 }) {
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const selectedEvent = events.find((event) => event.id === selectedEventId);
   const { endHour, startHour } = getCalendarHourRange(events, timeZone);
   const hourCount = endHour - startHour;
   const gridHeight = hourCount * calendarHourHeight;
@@ -42,14 +54,16 @@ export function ScheduleTimeGrid({
     }),
   );
   const isWeek = days.length > 1;
-  const gridColumns = `4.75rem repeat(${days.length}, minmax(${isWeek ? "8.5rem" : "24rem"}, 1fr))`;
+  const gridColumns = isWeek
+    ? `4rem repeat(${days.length}, minmax(7.5rem, 1fr))`
+    : "3.5rem minmax(0, 1fr)";
   const allDayEvents = events.filter((event) => event.allDay);
 
   return (
     <section aria-label={isWeek ? "Weekly calendar" : "Daily calendar"}>
       <div className="overflow-x-auto rounded-xl border border-[var(--line)] bg-white shadow-sm">
         <div
-          className={isWeek ? "min-w-[68rem]" : "min-w-[34rem]"}
+          className={isWeek ? "min-w-[58rem]" : "min-w-0"}
           data-testid="schedule-time-grid"
         >
           <div
@@ -97,6 +111,7 @@ export function ScheduleTimeGrid({
                       event={event}
                       key={event.id}
                       members={members}
+                      onSelect={() => setSelectedEventId(event.id)}
                     />
                   ))}
                 </div>
@@ -156,6 +171,7 @@ export function ScheduleTimeGrid({
                       event={layout.event}
                       key={layout.event.id}
                       members={members}
+                      onSelect={() => setSelectedEventId(layout.event.id)}
                       timeZone={timeZone}
                       style={{
                         top: layout.top + 2,
@@ -173,6 +189,19 @@ export function ScheduleTimeGrid({
       </div>
 
       <ScheduleColorKey members={members} />
+
+      {selectedEvent ? (
+        <ScheduleEventModal
+          actorMemberId={actorMemberId}
+          canManageAll={canManageAll}
+          conflicts={conflicts.get(selectedEvent.id) ?? []}
+          event={selectedEvent}
+          familyId={familyId || selectedEvent.familyId}
+          members={members}
+          onClose={() => setSelectedEventId(null)}
+          timeZone={timeZone}
+        />
+      ) : null}
     </section>
   );
 }
@@ -182,6 +211,7 @@ function TimedEventCard({
   event,
   height,
   members,
+  onSelect,
   style,
   timeZone,
 }: {
@@ -189,6 +219,7 @@ function TimedEventCard({
   event: ScheduleEvent;
   height: number;
   members: FamilyMemberWithDetails[];
+  onSelect: () => void;
   style: CSSProperties;
   timeZone: string;
 }) {
@@ -200,15 +231,17 @@ function TimedEventCard({
   const participantDetails = `${attendeeLabel} · ${scheduleEventTypeLabels[event.eventType]}`;
 
   return (
-    <article
+    <button
       aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, false, timeZone)}, ${attendeeLabel}`}
-      className="absolute z-10 overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-sm transition hover:z-20 hover:shadow-md"
+      className="absolute z-10 cursor-pointer overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-sm transition hover:z-20 hover:shadow-md focus-visible:z-30"
+      onClick={onSelect}
       style={{
         ...style,
         backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
         borderColor: `color-mix(in srgb, ${color} 45%, white)`,
         boxShadow: `inset 5px 0 0 ${color}`,
       }}
+      type="button"
     >
       <div className="flex items-start justify-between gap-1 pl-1">
         <p className="truncate text-xs font-bold leading-4 text-[var(--foreground)]">
@@ -233,7 +266,7 @@ function TimedEventCard({
           {participantDetails}
         </p>
       ) : null}
-    </article>
+    </button>
   );
 }
 
@@ -241,25 +274,29 @@ function AllDayEventCard({
   conflict,
   event,
   members,
+  onSelect,
 }: {
   conflict: boolean;
   event: ScheduleEvent;
   members: FamilyMemberWithDetails[];
+  onSelect: () => void;
 }) {
   const color = getEventColor(event, members);
 
   return (
-    <article
+    <button
       aria-label={`${event.title}, all day, ${getAttendeeLabel(event, members)}`}
-      className="truncate rounded-md border px-2 py-1 text-[0.65rem] font-semibold text-[var(--foreground)]"
+      className="min-h-10 w-full cursor-pointer truncate rounded-md border px-2 py-1 text-left text-[0.65rem] font-semibold text-[var(--foreground)] transition hover:brightness-95"
+      onClick={onSelect}
       style={{
         backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
         borderColor: color,
       }}
+      type="button"
     >
       {event.title}
       {conflict ? " · Conflict" : ""}
-    </article>
+    </button>
   );
 }
 

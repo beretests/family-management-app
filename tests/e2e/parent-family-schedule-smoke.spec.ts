@@ -6,6 +6,9 @@ test.describe("parent family setup smoke flow", () => {
     page,
   }) => {
     test.slow();
+    const browserErrors: string[] = [];
+    page.on("pageerror", (error) => browserErrors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
 
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const email = `parent-${runId}@example.com`;
@@ -43,6 +46,7 @@ test.describe("parent family setup smoke flow", () => {
     await expect(
       page.getByRole("heading", { name: "Create your family workspace" }),
     ).toBeVisible();
+    await expectNoPageOverflow(page);
 
     await page.getByLabel("Family name").fill(familyName);
     await page.getByLabel("Your display name").fill(parentName);
@@ -50,6 +54,7 @@ test.describe("parent family setup smoke flow", () => {
 
     await expect(page).toHaveURL(/\/settings\/family/);
     await expect(page.getByRole("heading", { name: familyName })).toBeVisible();
+    await expectNoPageOverflow(page);
 
     const childForm = page.locator("form").filter({
       has: page.getByRole("button", { name: "Add child" }),
@@ -95,22 +100,41 @@ test.describe("parent family setup smoke flow", () => {
     await scheduleForm.getByLabel("Number of occurrences").fill("10");
     await scheduleForm.getByRole("button", { name: "Add event" }).click();
 
-    const eventCard = page
-      .getByRole("heading", { name: eventTitle })
-      .locator("xpath=ancestor::article[1]");
-    await expect(eventCard).toBeVisible();
-    await expect(eventCard.getByText("Community field").first()).toBeVisible();
+    await expect(eventButton(page, eventTitle)).toBeVisible();
+    await expectNoPageOverflow(page);
+    await eventButton(page, eventTitle).click();
+    expect(browserErrors).toEqual([]);
+    const eventDialog = page.getByRole("dialog", { name: eventTitle });
+    await expect(eventDialog).toBeVisible();
     await expect(
-      eventCard.getByText("Bring water bottle.").first(),
+      eventDialog.getByText("Community field").first(),
     ).toBeVisible();
+    await expect(
+      eventDialog.getByText("Bring water bottle.").first(),
+    ).toBeVisible();
+    await expectDialogFitsViewport(page, eventDialog);
+    await eventDialog
+      .getByRole("button", { name: "Close event details" })
+      .click();
+    await expect(eventDialog).toHaveCount(0);
     await expect(page.getByRole("link", { name: childName })).toBeVisible();
 
+    await page.goto("/schedule?date=2026-07-12&view=week");
+    await expect(
+      page.getByRole("region", { name: "Weekly calendar" }),
+    ).toBeVisible();
+    await expectNoPageOverflow(page);
+
     await page.goto("/schedule?date=2026-07-19&view=day");
-    await expect(page.getByText(eventTitle).first()).toBeVisible();
-    await expect(page.getByText("Repeats daily")).toBeVisible();
+    await expect(eventButton(page, eventTitle)).toBeVisible();
+    await eventButton(page, eventTitle).click();
+    await expect(
+      page.getByRole("dialog", { name: eventTitle }).getByText("Repeats daily"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Close event details" }).click();
 
     await page.goto("/schedule?date=2026-07-25&view=day");
-    await expect(page.getByText(eventTitle)).toHaveCount(0);
+    await expect(eventButton(page, eventTitle)).toHaveCount(0);
 
     await page.getByText("Import calendar file", { exact: true }).click();
     const importForm = page.locator("form").filter({
@@ -126,11 +150,17 @@ test.describe("parent family setup smoke flow", () => {
     await expect(importForm.getByText("1 imported.")).toBeVisible();
 
     await page.goto("/schedule?date=2026-07-20&view=day");
-    await expect(page.getByText(importedEventTitle).first()).toBeVisible();
-    await expect(page.getByText("Repeats weekly")).toBeVisible();
+    await expect(eventButton(page, importedEventTitle)).toBeVisible();
+    await eventButton(page, importedEventTitle).click();
+    await expect(
+      page
+        .getByRole("dialog", { name: importedEventTitle })
+        .getByText("Repeats weekly"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Close event details" }).click();
 
     await page.goto("/schedule?date=2026-07-22&view=day");
-    await expect(page.getByText(importedEventTitle).first()).toBeVisible();
+    await expect(eventButton(page, importedEventTitle)).toBeVisible();
 
     await page.getByText("Import calendar file", { exact: true }).click();
     const duplicateImportForm = page.locator("form").filter({
@@ -151,6 +181,7 @@ test.describe("parent family setup smoke flow", () => {
     await expect(
       page.getByRole("heading", { name: "Build the family chore library" }),
     ).toBeVisible();
+    await expectNoPageOverflow(page);
 
     await page
       .getByRole("button", { name: "Generate chore templates" })
@@ -169,6 +200,7 @@ test.describe("parent family setup smoke flow", () => {
     await expect(
       page.getByRole("heading", { name: "Plan daily chores" }),
     ).toBeVisible();
+    await expectNoPageOverflow(page);
     await page.getByRole("button", { name: "Create assignments" }).click();
     await expect(page.getByText("Assignments created.")).toBeVisible();
 
@@ -182,6 +214,7 @@ test.describe("parent family setup smoke flow", () => {
         .getByText("Children update and submit chores from their own profiles.")
         .first(),
     ).toBeVisible();
+    await expectNoPageOverflow(page);
   });
 });
 
@@ -192,6 +225,7 @@ async function signInWithLocalSession(
 ) {
   await page.goto("/sign-in?next=/family/setup");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await expectNoPageOverflow(page);
   await expect(page.getByText("Supabase is not configured yet.")).toHaveCount(
     0,
   );
@@ -214,4 +248,38 @@ async function signInWithLocalSession(
   } else {
     await expect(page).toHaveURL(/\/(family\/setup|settings\/family)/);
   }
+}
+
+function eventButton(page: Page, title: string) {
+  return page.getByRole("button", {
+    name: new RegExp(`^${escapeRegExp(title)},`),
+  });
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function expectNoPageOverflow(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
+}
+
+async function expectDialogFitsViewport(
+  page: Page,
+  dialog: ReturnType<Page["getByRole"]>,
+) {
+  const box = await dialog.boundingBox();
+  const viewport = page.viewportSize();
+
+  expect(box).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.width).toBeLessThanOrEqual(viewport!.width);
+  expect(box!.height).toBeLessThanOrEqual(viewport!.height);
 }

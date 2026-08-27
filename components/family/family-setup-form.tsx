@@ -1,7 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import { createFamily, type FamilyActionState } from "@/features/family/actions";
+import {
+  createFamily,
+  type FamilyActionState,
+} from "@/features/family/actions";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
 
 const initialState: FamilyActionState = {};
@@ -12,7 +15,7 @@ export function FamilySetupForm() {
   return (
     <form
       action={formAction}
-      className="grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm"
+      className="min-w-0 grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5"
     >
       <div>
         <p className="text-sm font-semibold uppercase text-[var(--accent-strong)]">
@@ -52,7 +55,9 @@ export function FamilySetupForm() {
       </label>
 
       <div>
-        <SubmitButton pendingLabel="Creating family...">Create family</SubmitButton>
+        <SubmitButton pendingLabel="Creating family...">
+          Create family
+        </SubmitButton>
       </div>
     </form>
   );

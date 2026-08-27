@@ -1,5 +1,4 @@
 import { ScheduleTimeGrid } from "@/components/schedule/schedule-time-grid";
-import { ScheduleEventDetails } from "@/components/schedule/schedule-board";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import type { ScheduleEvent } from "@/features/schedule/types";
 import { addDays, startOfDay } from "@/lib/dates/schedule";
@@ -28,23 +27,15 @@ export function ScheduleWeekView({
   );
 
   return (
-    <div className="grid gap-5">
-      <ScheduleTimeGrid
-        conflicts={conflicts}
-        days={days}
-        events={events}
-        members={members}
-        timeZone={timeZone}
-      />
-      <ScheduleEventDetails
-        actorMemberId={actorMemberId}
-        canManageAll={canManageAll}
-        conflicts={conflicts}
-        events={events}
-        familyId={familyId}
-        members={members}
-        timeZone={timeZone}
-      />
-    </div>
+    <ScheduleTimeGrid
+      actorMemberId={actorMemberId}
+      canManageAll={canManageAll}
+      conflicts={conflicts}
+      days={days}
+      events={events}
+      familyId={familyId}
+      members={members}
+      timeZone={timeZone}
+    />
   );
 }

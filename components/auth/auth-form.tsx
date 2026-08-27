@@ -47,7 +47,7 @@ export function AuthForm({
       : `/sign-in?next=${encodeURIComponent(nextPath)}`;
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
+    <div className="min-w-0 w-full max-w-md rounded-lg border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
       <div>
         <p className="text-sm font-semibold uppercase text-[var(--accent-strong)]">
           Family Chore Hub
