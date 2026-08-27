@@ -17,7 +17,7 @@ export function AuthSubmitButton({
 
   return (
     <button
-      className="min-h-11 rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+      className="min-h-11 w-full rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
       disabled={disabled || pending}
       type="submit"
     >

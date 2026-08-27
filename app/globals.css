@@ -24,20 +24,10 @@
   --playful-coral: #c84b31;
   --playful-coral-soft: #ffe4dc;
   --font-sans:
-    ui-rounded,
-    "Nunito Sans",
-    "Avenir Next",
-    "Segoe UI",
-    Arial,
-    Helvetica,
+    ui-rounded, "Nunito Sans", "Avenir Next", "Segoe UI", Arial, Helvetica,
     sans-serif;
   --font-display:
-    ui-rounded,
-    "Avenir Next",
-    "Segoe UI",
-    Arial,
-    Helvetica,
-    sans-serif;
+    ui-rounded, "Avenir Next", "Segoe UI", Arial, Helvetica, sans-serif;
 }
 
 * {
@@ -55,6 +45,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  overflow-wrap: anywhere;
 }
 
 a {
@@ -67,6 +58,11 @@ input,
 select,
 textarea {
   font: inherit;
+  max-width: 100%;
+}
+
+dialog {
+  color: inherit;
 }
 
 ::selection {

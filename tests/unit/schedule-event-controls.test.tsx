@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { ScheduleEventDetails } from "@/components/schedule/schedule-board";
+import { ScheduleTimeGrid } from "@/components/schedule/schedule-time-grid";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import type { ScheduleEvent } from "@/features/schedule/types";
 
@@ -22,20 +22,32 @@ const member: FamilyMemberWithDetails = {
 };
 
 describe("schedule event controls", () => {
-  it("offers occurrence, following, and series scopes for recurring events", () => {
+  it("shows details only in a modal opened from an event", () => {
+    const event = recurringOccurrence();
     render(
-      <ScheduleEventDetails
+      <ScheduleTimeGrid
         actorMemberId={member.id}
         canManageAll
         conflicts={new Map()}
-        events={[recurringOccurrence()]}
+        days={[new Date(2026, 7, 20)]}
+        events={[event]}
         familyId={member.familyId}
         members={[member]}
         timeZone="America/Regina"
       />,
     );
 
-    screen.getByText("Edit", { exact: true }).click();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Event details")).not.toBeInTheDocument();
+
+    const eventButton = screen.getByRole("button", { name: /Practice/ });
+    eventButton.focus();
+    fireEvent.click(eventButton);
+
+    const dialog = screen.getByRole("dialog", { name: "Practice" });
+    expect(dialog).toBeVisible();
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.click(within(dialog).getByText("Edit event"));
 
     const editScope = screen.getByLabelText("Apply changes to");
     const deleteScope = screen.getByLabelText("Delete");
@@ -53,6 +65,13 @@ describe("schedule event controls", () => {
     ).toBeInTheDocument();
     expect(within(deleteScope).getAllByRole("option")).toHaveLength(3);
     expect(screen.getByRole("button", { name: "Delete event" })).toBeVisible();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Close event details" }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+    expect(eventButton).toHaveFocus();
   });
 });
 

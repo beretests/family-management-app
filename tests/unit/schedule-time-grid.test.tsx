@@ -41,6 +41,7 @@ describe("ScheduleTimeGrid", () => {
     expect(screen.getByLabelText(/Dance practice/)).toBeInTheDocument();
     expect(screen.getByText("Studio A")).toBeVisible();
     expect(screen.getByText("6-8 AM")).toBeVisible();
+    expect(screen.getByTestId("schedule-time-grid")).toHaveClass("min-w-0");
   });
 
   it("keeps all-day events in a separate row", () => {
@@ -61,6 +62,27 @@ describe("ScheduleTimeGrid", () => {
 
     expect(screen.getByText("All day")).toBeVisible();
     expect(screen.getByText("Rest day · Conflict")).toBeVisible();
+  });
+
+  it("contains week overflow inside a scrollable calendar canvas", () => {
+    render(
+      <ScheduleTimeGrid
+        conflicts={new Map()}
+        days={Array.from(
+          { length: 7 },
+          (_, index) => new Date(2026, 6, 12 + index),
+        )}
+        events={[]}
+        members={[member]}
+      />,
+    );
+
+    expect(screen.getByTestId("schedule-time-grid")).toHaveClass(
+      "min-w-[58rem]",
+    );
+    expect(
+      screen.getByRole("region", { name: "Weekly calendar" }).firstChild,
+    ).toHaveClass("overflow-x-auto");
   });
 });
 
