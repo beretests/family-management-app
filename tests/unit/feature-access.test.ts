@@ -49,6 +49,7 @@ describe("routeRequiresFullApp", () => {
     "/callback",
     "/family/setup",
     "/family/invite/accept",
+    "/family/child-invite/accept",
     "/settings/family",
     "/api/cron/daily-maintenance",
   ])("keeps the calendar support route %s available", (pathname) => {

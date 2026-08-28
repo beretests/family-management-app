@@ -4,9 +4,11 @@ import { AddChildMemberForm } from "@/components/family/family-member-form";
 import { FamilyMemberList } from "@/components/family/family-member-list";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
+  getChildEmailInvitations,
   getFamilyContext,
   getFamilyInvitations,
 } from "@/features/family/queries";
+import { isFullAppEnabled } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +20,17 @@ export default async function FamilySettingsPage() {
   }
 
   if (context.currentMember?.role !== "parent") {
-    redirect("/dashboard");
+    redirect("/schedule");
   }
 
   const activeChildren = context.members.filter(
-    (member) =>
-      member.role === "child" && member.lifecycleStatus === "active",
+    (member) => member.role === "child" && member.lifecycleStatus === "active",
   );
-  const invitations = await getFamilyInvitations(context.family.id);
+  const [invitations, childInvitations] = await Promise.all([
+    getFamilyInvitations(context.family.id),
+    getChildEmailInvitations(context.family.id),
+  ]);
+  const fullAppEnabled = isFullAppEnabled();
 
   return (
     <section className="grid gap-5">
@@ -40,22 +45,25 @@ export default async function FamilySettingsPage() {
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
               Manage parent-created child profiles, ability notes, preferences,
-              and sick or rest status.
+              sick or rest status, Kid Mode access, and child email accounts.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <StatusPill tone="success">{activeChildren.length} active kids</StatusPill>
+            <StatusPill tone="success">
+              {activeChildren.length} active kids
+            </StatusPill>
             <Link
               className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-              href="/dashboard"
+              href={fullAppEnabled ? "/dashboard" : "/schedule"}
             >
-              Dashboard
+              {fullAppEnabled ? "Dashboard" : "Calendar"}
             </Link>
           </div>
         </div>
       </div>
 
       <FamilyMemberList
+        childInvitations={childInvitations}
         currentMemberId={context.currentMember.id}
         familyId={context.family.id}
         invitations={invitations}

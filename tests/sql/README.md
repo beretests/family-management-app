@@ -17,6 +17,7 @@ Then open the local SQL editor or connect with `psql` and run:
 \i tests/sql/schedule-occurrence-overrides-verification.sql
 \i tests/sql/no-school-verification.sql
 \i tests/sql/grocery-lists-verification.sql
+\i tests/sql/child-email-invitations-verification.sql
 ```
 
 Expected result:
@@ -34,6 +35,9 @@ Expected result:
 - Grocery list verification checks family contributions, column grants, parent
   lifecycle controls, one-open-list enforcement, 90-day retention timestamps,
   item cascade deletion, and reusable catalog preservation.
+- Child email invitation verification checks parent-only invitation visibility,
+  exact-profile linking without duplication, linked-child family access, email
+  scrubbing, and account disconnection without deleting the child or Auth user.
 
 These checks do not replace RLS integration tests with authenticated JWTs. They
 are a low-cost Phase 3 sanity check until app-level data access exists.

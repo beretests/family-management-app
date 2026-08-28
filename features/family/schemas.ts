@@ -143,6 +143,44 @@ export const revokeFamilyInvitationSchema = z.object({
   invitationId: z.string().uuid("Missing invitation."),
 });
 
+export const childEmailInviteSchema = z.object({
+  familyId: z.string().uuid("Missing family."),
+  memberId: z.string().uuid("Choose a child profile."),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address.")
+    .toLowerCase()
+    .max(254, "Use 254 characters or fewer."),
+  consent: z.literal("on", {
+    error: "Confirm that you are authorized to use this child's email.",
+  }),
+});
+
+export const childEmailInvitationMutationSchema = z.object({
+  familyId: z.string().uuid("Missing family."),
+  invitationId: z.string().uuid("Missing child invitation."),
+});
+
+export const disconnectChildEmailAccountSchema = z.object({
+  familyId: z.string().uuid("Missing family."),
+  memberId: z.string().uuid("Missing child profile."),
+});
+
+export const acceptChildEmailInvitationSchema = z
+  .object({
+    invitationId: z.string().uuid("Missing child invitation."),
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters for the password.")
+      .max(72, "Use 72 characters or fewer for the password."),
+    confirmPassword: z.string(),
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  });
+
 export const deactivateAdultMemberSchema = z.object({
   familyId: z.string().uuid("Missing family."),
   memberId: z.string().uuid("Missing adult profile."),

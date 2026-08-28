@@ -52,7 +52,8 @@ CRON_SECRET=
 
 Rules:
 
-- Keep `ENABLE_FULL_APP=false` (or omit it) for the calendar-only experience.
+- Keep `ENABLE_FULL_APP=false` (or omit it) for the planner experience with
+  Calendar, Groceries, and parent-only Family settings.
   Set it to `true` and restart the development server to restore the complete
   dashboard, chores, assignments, approvals, rewards, leaderboard, reminders,
   and Kid Mode navigation and routes.
@@ -116,8 +117,9 @@ supabase db reset
 ```
 
 With the default shared-tools flag, sign-in and gated feature URLs lead to
-`/schedule`; Calendar and `/groceries` remain available. A new account can still use `/family/setup` and
-`/settings/family` to create the family and its members. Calendar supports a
+`/schedule`; Calendar, `/groceries`, and parent-only `/settings/family` remain
+available. A new account can use `/family/setup` and `/settings/family` to
+create the family and its members. Calendar supports a
 whole-family view and one view for each active member; member views also include
 whole-family events.
 
@@ -128,6 +130,12 @@ controls; Phase 19 requires `schedule_event_recurrences` and its RLS policies.
 The import panel accepts `.ics` files after the Phase 20 migration adds import
 provenance and the atomic import function. See `docs/ics-import.md` for size,
 recurrence, time-zone, and duplicate rules.
+
+To verify Phase 26 locally, create an active child in Family settings and use
+**Connect email** with a unique address. Open Mailpit at
+`http://127.0.0.1:55424`, follow the invite in the same browser, and create the
+child password. The connected account should open Calendar and have no Family
+navigation. The parent can disconnect it without removing the child profile.
 
 With `ENABLE_FULL_APP=true`, the existing full product surface is restored:
 dashboard at `/dashboard`, family management at `/settings/family`, day/week

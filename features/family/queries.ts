@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   Family,
+  ChildEmailInvitation,
   FamilyContext,
   FamilyInvitation,
   FamilyMember,
@@ -75,6 +76,10 @@ type FamilyInvitationRow = {
   revoked_at: string | null;
 };
 
+type ChildEmailInvitationRow = Omit<FamilyInvitationRow, "role"> & {
+  email_normalized: string | null;
+};
+
 function mapFamily(row: FamilyRow): Family {
   return {
     id: row.id,
@@ -110,6 +115,24 @@ function mapInvitation(row: FamilyInvitationRow): FamilyInvitation {
     memberId: row.member_id,
     emailNormalized: row.email_normalized,
     role: row.role,
+    status: row.status,
+    invitedByMemberId: row.invited_by_member_id,
+    acceptedByProfileId: row.accepted_by_profile_id,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    acceptedAt: row.accepted_at,
+    revokedAt: row.revoked_at,
+  };
+}
+
+function mapChildEmailInvitation(
+  row: ChildEmailInvitationRow,
+): ChildEmailInvitation {
+  return {
+    id: row.id,
+    familyId: row.family_id,
+    memberId: row.member_id,
+    emailNormalized: row.email_normalized,
     status: row.status,
     invitedByMemberId: row.invited_by_member_id,
     acceptedByProfileId: row.accepted_by_profile_id,
@@ -221,6 +244,7 @@ export async function getFamilyContext(): Promise<FamilyContext> {
       family: null,
       currentMember: null,
       members: [],
+      isKidMode: false,
     };
   }
 
@@ -240,6 +264,7 @@ export async function getFamilyContext(): Promise<FamilyContext> {
       family: null,
       currentMember: mapMember(currentMemberRow),
       members: [],
+      isKidMode: Boolean(childSession),
     };
   }
 
@@ -315,6 +340,7 @@ export async function getFamilyContext(): Promise<FamilyContext> {
       currentStatus: statusesByMember.get(row.id) ?? null,
       hasKidModePin: pinMemberIds.has(row.id),
     })),
+    isKidMode: Boolean(childSession),
   };
 }
 
@@ -335,4 +361,25 @@ export async function getFamilyInvitations(
   }
 
   return ((data ?? []) as FamilyInvitationRow[]).map(mapInvitation);
+}
+
+export async function getChildEmailInvitations(
+  familyId: string,
+): Promise<ChildEmailInvitation[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("family_child_invitations")
+    .select(
+      "id,family_id,member_id,email_normalized,status,invited_by_member_id,accepted_by_profile_id,created_at,expires_at,accepted_at,revoked_at",
+    )
+    .eq("family_id", familyId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as ChildEmailInvitationRow[]).map(
+    mapChildEmailInvitation,
+  );
 }

@@ -4,12 +4,16 @@ import { useActionState, useState } from "react";
 import {
   deactivateAdultMember,
   deactivateChildMember,
+  disconnectChildEmailAccount,
   type FamilyActionState,
+  inviteChildByEmail,
   inviteAdultMember,
+  revokeChildEmailInvitation,
   revokeFamilyInvitation,
   updateParentProfile,
 } from "@/features/family/actions";
 import type {
+  ChildEmailInvitation,
   FamilyInvitation,
   FamilyMemberWithDetails,
 } from "@/features/family/types";
@@ -29,11 +33,13 @@ const statusLabels = {
 };
 
 export function FamilyMemberList({
+  childInvitations,
   currentMemberId,
   familyId,
   invitations,
   members,
 }: {
+  childInvitations: ChildEmailInvitation[];
   currentMemberId: string;
   familyId: string;
   invitations: FamilyInvitation[];
@@ -48,6 +54,11 @@ export function FamilyMemberList({
   );
   const invitationByMemberId = new Map(
     pendingInvitations.map((invitation) => [invitation.memberId, invitation]),
+  );
+  const pendingChildInvitationByMemberId = new Map(
+    childInvitations
+      .filter((invitation) => invitation.status === "pending")
+      .map((invitation) => [invitation.memberId, invitation]),
   );
 
   return (
@@ -102,7 +113,12 @@ export function FamilyMemberList({
           ) : null}
 
           {children.map((member) => (
-            <ChildCard familyId={familyId} key={member.id} member={member} />
+            <ChildCard
+              familyId={familyId}
+              invitation={pendingChildInvitationByMemberId.get(member.id)}
+              key={member.id}
+              member={member}
+            />
           ))}
         </div>
       </div>
@@ -153,13 +169,13 @@ function AdultCard({
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
           {canEdit ? (
-          <button
-            className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-            onClick={() => setIsEditing((current) => !current)}
-            type="button"
-          >
-            {isEditing ? "Cancel edit" : "Edit profile"}
-          </button>
+            <button
+              className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+              onClick={() => setIsEditing((current) => !current)}
+              type="button"
+            >
+              {isEditing ? "Cancel edit" : "Edit profile"}
+            </button>
           ) : null}
           {isPending && invitation ? (
             <RevokeInvitationForm
@@ -231,7 +247,9 @@ function InviteAdultForm({ familyId }: { familyId: string }) {
             <option value="caregiver">Caregiver</option>
           </select>
         </label>
-        <SubmitButton pendingLabel="Sending invite...">Send invite</SubmitButton>
+        <SubmitButton pendingLabel="Sending invite...">
+          Send invite
+        </SubmitButton>
       </div>
     </form>
   );
@@ -272,15 +290,19 @@ function ParentProfileForm({
 
 function ChildCard({
   familyId,
+  invitation,
   member,
 }: {
   familyId: string;
+  invitation?: ChildEmailInvitation;
   member: FamilyMemberWithDetails;
 }) {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [isInvitingByEmail, setIsInvitingByEmail] = useState(false);
   const isInactive = member.lifecycleStatus === "inactive";
+  const hasConnectedAccount = Boolean(member.profileId);
   const statusNote = member.currentStatus?.note?.trim();
 
   return (
@@ -301,6 +323,21 @@ function ChildCard({
               </StatusPill>
               <StatusPill tone={member.hasKidModePin ? "success" : "warning"}>
                 {member.hasKidModePin ? "Kid PIN set" : "No Kid PIN"}
+              </StatusPill>
+              <StatusPill
+                tone={
+                  hasConnectedAccount
+                    ? "success"
+                    : invitation
+                      ? "info"
+                      : "warning"
+                }
+              >
+                {hasConnectedAccount
+                  ? "Email connected"
+                  : invitation
+                    ? "Email invite pending"
+                    : "No email account"}
               </StatusPill>
             </div>
             <p className="mt-1 text-sm text-[var(--muted)]">
@@ -342,12 +379,37 @@ function ChildCard({
             >
               {isEditingPin ? "Cancel PIN" : "Kid PIN"}
             </button>
+            {!hasConnectedAccount && !invitation ? (
+              <button
+                className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+                onClick={() => setIsInvitingByEmail((current) => !current)}
+                type="button"
+              >
+                {isInvitingByEmail ? "Cancel invite" : "Connect email"}
+              </button>
+            ) : null}
+            {invitation ? (
+              <RevokeChildEmailInvitationForm
+                familyId={familyId}
+                invitationId={invitation.id}
+              />
+            ) : null}
+            {hasConnectedAccount ? (
+              <DisconnectChildEmailAccountForm
+                familyId={familyId}
+                memberId={member.id}
+              />
+            ) : null}
             <DeactivateChildForm familyId={familyId} memberId={member.id} />
           </div>
         ) : null}
       </div>
 
-      {!isInactive && (isEditingProfile || isEditingStatus || isEditingPin) ? (
+      {!isInactive &&
+      (isEditingProfile ||
+        isEditingStatus ||
+        isEditingPin ||
+        isInvitingByEmail) ? (
         <div className="mt-5 grid gap-5 border-t border-[var(--line)] pt-5">
           {isEditingProfile ? (
             <section className="rounded-md bg-[var(--background)] p-4">
@@ -377,6 +439,18 @@ function ChildCard({
               />
             </section>
           ) : null}
+          {isInvitingByEmail && !hasConnectedAccount && !invitation ? (
+            <section className="rounded-md bg-[var(--background)] p-4">
+              <h4 className="text-sm font-semibold uppercase text-[var(--muted)]">
+                Connect a child email
+              </h4>
+              <InviteChildByEmailForm
+                childName={member.displayName}
+                familyId={familyId}
+                memberId={member.id}
+              />
+            </section>
+          ) : null}
         </div>
       ) : null}
     </article>
@@ -401,6 +475,110 @@ function DeactivateChildForm({
       <input name="memberId" type="hidden" value={memberId} />
       <SubmitButton pendingLabel="Deactivating..." tone="danger">
         Deactivate
+      </SubmitButton>
+      <ActionMessage error={state.error} success={state.success} />
+    </form>
+  );
+}
+
+function InviteChildByEmailForm({
+  childName,
+  familyId,
+  memberId,
+}: {
+  childName: string;
+  familyId: string;
+  memberId: string;
+}) {
+  const [state, formAction] = useActionState(inviteChildByEmail, initialState);
+
+  return (
+    <form action={formAction} className="mt-3 grid gap-4">
+      <input name="familyId" type="hidden" value={familyId} />
+      <input name="memberId" type="hidden" value={memberId} />
+      <p className="text-sm leading-6 text-[var(--muted)]">
+        Send {childName} a one-time email link. Accepting it connects a new
+        sign-in to this existing profile; Kid Mode and its PIN still work.
+      </p>
+      <ActionMessage error={state.error} success={state.success} />
+      <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+        Child email
+        <input
+          autoComplete="email"
+          className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+          maxLength={254}
+          name="email"
+          required
+          type="email"
+        />
+      </label>
+      <label className="flex items-start gap-3 text-sm leading-6 text-[var(--foreground)]">
+        <input
+          className="mt-1 size-4"
+          name="consent"
+          required
+          type="checkbox"
+        />
+        <span>
+          I am the parent or guardian and am authorized to use this child&apos;s
+          email address for their family account.
+        </span>
+      </label>
+      <p className="text-xs leading-5 text-[var(--muted)]">
+        For this MVP, the email must not already have an account in this app.
+        Invitations expire after 14 days.
+      </p>
+      <div>
+        <SubmitButton pendingLabel="Sending invitation...">
+          Send child invite
+        </SubmitButton>
+      </div>
+    </form>
+  );
+}
+
+function RevokeChildEmailInvitationForm({
+  familyId,
+  invitationId,
+}: {
+  familyId: string;
+  invitationId: string;
+}) {
+  const [state, formAction] = useActionState(
+    revokeChildEmailInvitation,
+    initialState,
+  );
+
+  return (
+    <form action={formAction} className="grid gap-2">
+      <input name="familyId" type="hidden" value={familyId} />
+      <input name="invitationId" type="hidden" value={invitationId} />
+      <SubmitButton pendingLabel="Revoking..." tone="secondary">
+        Revoke email invite
+      </SubmitButton>
+      <ActionMessage error={state.error} success={state.success} />
+    </form>
+  );
+}
+
+function DisconnectChildEmailAccountForm({
+  familyId,
+  memberId,
+}: {
+  familyId: string;
+  memberId: string;
+}) {
+  const [state, formAction] = useActionState(
+    disconnectChildEmailAccount,
+    initialState,
+  );
+
+  return (
+    <form action={formAction} className="grid gap-2">
+      <input name="familyId" type="hidden" value={familyId} />
+      <input name="memberId" type="hidden" value={memberId} />
+      <SubmitButton pendingLabel="Disconnecting..." tone="danger">
+        Disconnect email
       </SubmitButton>
       <ActionMessage error={state.error} success={state.success} />
     </form>

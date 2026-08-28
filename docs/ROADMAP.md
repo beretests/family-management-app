@@ -512,6 +512,30 @@ approved phase scope.
 - Recommended commit message:
   `fix(schedule): stack calendar controls on mobile`
 
+## Phase 26: Family Profiles and Child Email Accounts
+
+- Branch: `phase/26-family-child-email`
+- Worktree: `../family-app-phase-26-family-child-email`
+- Scope: expose parent-only Family navigation in the Calendar/Groceries
+  rollout; connect a new Supabase Auth account to an existing active child
+  profile by email; allow pending-invite revocation and account disconnection;
+  preserve Kid Mode/PIN access and child history.
+- Security: exact invited-email matching, 14-day expiry, one active link per
+  family member/profile, parent-only invite management, server-only acceptance,
+  email scrubbing after terminal states, and audited accept/disconnect actions.
+- Tests: schema/component tests, parent/child navigation checks, SQL RLS and
+  atomic-link verification, followed by lint, typecheck, full tests, browser
+  smoke testing, and production build.
+- Supabase impact: apply the two Phase 26 child-invitation migrations and keep
+  `SUPABASE_SECRET_KEY` server-only. Ensure `/callback` remains allow-listed.
+- Vercel/environment impact: no new variable; reuse `NEXT_PUBLIC_APP_URL`, the
+  Supabase public variables, and `SUPABASE_SECRET_KEY`.
+- Free-tier risk: Supabase's built-in email sender is suitable only for testing
+  and has a low project-wide auth-email limit. Production delivery to arbitrary
+  recipients requires a reviewed SMTP provider, which is not configured here.
+- Recommended commit message:
+  `feat(family): add child email invites and planner family access`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

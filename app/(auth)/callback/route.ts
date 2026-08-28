@@ -7,6 +7,13 @@ function redirectTo(request: NextRequest, pathname: string) {
   return NextResponse.redirect(new URL(pathname, request.url));
 }
 
+function isInvitationAcceptPath(path: string) {
+  return (
+    path.startsWith("/family/invite/accept?invite=") ||
+    path.startsWith("/family/child-invite/accept?invite=")
+  );
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -39,6 +46,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code) {
+    if (isInvitationAcceptPath(next)) {
+      return redirectTo(
+        request,
+        `/invite-callback?next=${encodeURIComponent(next)}`,
+      );
+    }
+
     return redirectTo(
       request,
       buildAuthRedirect(

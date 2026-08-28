@@ -38,8 +38,9 @@ Rules:
 
 - `NEXT_PUBLIC_APP_URL` must be the deployed app origin, for example
   `https://your-app.vercel.app` or the custom domain.
-- Keep `ENABLE_FULL_APP=false` for the calendar-only rollout. Set it to `true`
-  only when the complete existing app should be visible and reachable again.
+- Keep `ENABLE_FULL_APP=false` for the Calendar/Groceries/Family rollout. Set
+  it to `true` only when the complete existing app should be visible and
+  reachable again.
 - Use Supabase's `sb_publishable_...` key for
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - Use Supabase's `sb_secret_...` key for `SUPABASE_SECRET_KEY`.
@@ -114,13 +115,16 @@ After deployment:
 1. Open `NEXT_PUBLIC_APP_URL`.
 2. Confirm the landing page loads.
 3. Sign in with a test parent account.
-4. With `ENABLE_FULL_APP=false`, confirm `/schedule` and `/groceries` load,
-   Calendar offers Whole family and active-member views, and a request for
+4. With `ENABLE_FULL_APP=false`, confirm `/schedule`, `/groceries`, and
+   parent-only `/settings/family` load, Calendar offers Whole family and
+   active-member views, a child cannot see Family navigation, and a request for
    `/dashboard` redirects to `/schedule`.
 5. In a Preview deployment with `ENABLE_FULL_APP=true`, confirm `/dashboard`,
    `/schedule`, `/chores`, `/assignments`, `/my-today`, `/approvals`, `/rewards`,
    `/leaderboard`, `/reminders`, and `/groceries` load for the test family.
-6. Confirm Supabase redirects return through `/callback`.
+6. Confirm Supabase password recovery, adult invites, and child email invites
+   return through `/callback`. For a child invite, verify acceptance connects
+   the existing child profile and parent disconnect preserves it.
 7. Request a password reset from `/forgot-password`, open the email in the same
    browser, update the password, and confirm the app returns to `/sign-in` and
    accepts the new password.

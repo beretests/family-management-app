@@ -32,7 +32,74 @@ export async function createConfirmedParentUser({
   }
 }
 
-function getSupabaseLocalEnv(): SupabaseLocalEnv {
+type MailpitMessage = {
+  ID: string;
+  To?: Array<{ Address?: string }>;
+};
+
+export async function getLocalAuthEmailLink({
+  email,
+  pathIncludes,
+}: {
+  email: string;
+  pathIncludes: string;
+}) {
+  const mailpitUrl = process.env.MAILPIT_URL ?? "http://127.0.0.1:55424";
+  const deadline = Date.now() + 15_000;
+
+  while (Date.now() < deadline) {
+    const response = await fetch(`${mailpitUrl}/api/v1/messages`);
+
+    if (response.ok) {
+      const payload = (await response.json()) as {
+        messages?: MailpitMessage[];
+      };
+      const message = payload.messages?.find((candidate) =>
+        candidate.To?.some(
+          (recipient) =>
+            recipient.Address?.toLowerCase() === email.toLowerCase(),
+        ),
+      );
+
+      if (message) {
+        const detailResponse = await fetch(
+          `${mailpitUrl}/api/v1/message/${message.ID}`,
+        );
+        const detail = (await detailResponse.json()) as {
+          HTML?: string;
+          Text?: string;
+        };
+        const content = `${detail.HTML ?? ""}\n${detail.Text ?? ""}`.replaceAll(
+          "&amp;",
+          "&",
+        );
+        const links = content.match(/https?:\/\/[^\s"'<>]+/g) ?? [];
+        const link = links.find((candidate) => {
+          let decodedCandidate = candidate;
+
+          for (let count = 0; count < 2; count += 1) {
+            decodedCandidate = decodeURIComponent(decodedCandidate);
+          }
+
+          return (
+            candidate.includes("/auth/v1/verify") &&
+            decodedCandidate.includes(pathIncludes)
+          );
+        });
+
+        if (link) {
+          return link.replace(/[).]+$/, "");
+        }
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Could not find a local auth email for ${email}.`);
+}
+
+export function getSupabaseLocalEnv(): SupabaseLocalEnv {
   const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const adminKey = process.env.SUPABASE_SECRET_KEY;
 

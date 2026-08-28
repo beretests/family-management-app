@@ -70,8 +70,23 @@ export type FamilyInvitation = {
   revokedAt: string | null;
 };
 
+export type ChildEmailInvitation = {
+  id: string;
+  familyId: string;
+  memberId: string;
+  emailNormalized: string | null;
+  status: FamilyInvitationStatus;
+  invitedByMemberId: string | null;
+  acceptedByProfileId: string | null;
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+};
+
 export type FamilyContext = {
   family: Family | null;
   currentMember: FamilyMember | null;
   members: FamilyMemberWithDetails[];
+  isKidMode: boolean;
 };
