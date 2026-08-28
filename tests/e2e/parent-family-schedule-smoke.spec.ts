@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createConfirmedParentUser } from "./supabase-local";
 
 test.describe("parent family setup smoke flow", () => {
@@ -150,8 +150,17 @@ test.describe("parent family setup smoke flow", () => {
     ).toBeVisible();
 
     const addEventButton = page.getByRole("button", { name: "Add event" });
+    const importCalendarButton = page.getByRole("button", {
+      name: "Import calendar",
+    });
+    const calendarViewLinks = await page
+      .getByRole("navigation", { name: "Calendar view" })
+      .getByRole("link")
+      .all();
     const calendarRegion = page.getByRole("region", { name: "Daily calendar" });
     await expect(addEventButton).toBeVisible();
+    await expectVerticallyStacked([addEventButton, importCalendarButton]);
+    await expectVerticallyStacked(calendarViewLinks);
     await expectButtonBeforeRegion(addEventButton, calendarRegion);
     await addEventButton.click();
     const addDialog = page.getByRole("dialog", { name: "Add schedule item" });
@@ -232,6 +241,16 @@ test.describe("parent family setup smoke flow", () => {
 
     await page.setViewportSize({ width: 1024, height: 900 });
     await page.goto("/schedule?date=2026-07-13&view=day");
+    await expectHorizontallyAligned([
+      page.getByRole("button", { name: "Add event" }),
+      page.getByRole("button", { name: "Import calendar" }),
+    ]);
+    await expectHorizontallyAligned(
+      await page
+        .getByRole("navigation", { name: "Calendar view" })
+        .getByRole("link")
+        .all(),
+    );
     const allDayCoverage = page.getByTestId("all-day-coverage-2026-07-13");
     await expect(allDayCoverage).toBeVisible();
     await expect
@@ -396,6 +415,37 @@ async function expectButtonBeforeRegion(
   expect(buttonBox).not.toBeNull();
   expect(regionBox).not.toBeNull();
   expect(buttonBox!.y + buttonBox!.height).toBeLessThan(regionBox!.y);
+}
+
+async function expectVerticallyStacked(items: Locator[]) {
+  const boxes = await Promise.all(items.map((item) => item.boundingBox()));
+
+  expect(boxes.length).toBeGreaterThan(1);
+  boxes.forEach((box) => expect(box).not.toBeNull());
+
+  for (let index = 1; index < boxes.length; index += 1) {
+    const previous = boxes[index - 1]!;
+    const current = boxes[index]!;
+
+    expect(current.y).toBeGreaterThan(previous.y + previous.height - 1);
+    expect(Math.abs(current.x - boxes[0]!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(current.width - boxes[0]!.width)).toBeLessThanOrEqual(1);
+  }
+}
+
+async function expectHorizontallyAligned(items: Locator[]) {
+  const boxes = await Promise.all(items.map((item) => item.boundingBox()));
+
+  expect(boxes.length).toBeGreaterThan(1);
+  boxes.forEach((box) => expect(box).not.toBeNull());
+
+  for (let index = 1; index < boxes.length; index += 1) {
+    const previous = boxes[index - 1]!;
+    const current = boxes[index]!;
+
+    expect(Math.abs(current.y - boxes[0]!.y)).toBeLessThanOrEqual(1);
+    expect(current.x).toBeGreaterThan(previous.x + previous.width - 1);
+  }
 }
 
 async function expectDialogFitsViewport(

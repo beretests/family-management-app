@@ -491,6 +491,27 @@ approved phase scope.
 - Recommended commit message:
   `feat(groceries): add shared shopping lists and retention cleanup`
 
+## Phase 25: Calendar Mobile Control Stacking
+
+- Branch: `phase/25-calendar-mobile-controls`
+- Worktree: `../family-app-phase-25-calendar-mobile-controls`
+- Scope: stack Add event and Import calendar as full-width mobile controls;
+  stack Whole family and family-member calendar filters as full-width readable
+  rows on phones; restore compact horizontal controls at the `sm` breakpoint.
+- Accessibility and responsive behavior: retain semantic buttons, links, and
+  navigation labels; preserve at least 44-pixel touch targets; allow member
+  names to wrap by words without narrow vertical-letter chips; avoid page-level
+  horizontal overflow.
+- Tests: component assertions for responsive utility classes plus Playwright
+  bounding-box checks at 390 x 844 and 1024 x 900, followed by the full lint,
+  typecheck, unit/component, browser, and production-build checks.
+- Database/RLS/Supabase impact: none.
+- Vercel/environment impact: none.
+- Free-tier and cost risk: none; this phase changes only existing layout and
+  regression coverage.
+- Recommended commit message:
+  `fix(schedule): stack calendar controls on mobile`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

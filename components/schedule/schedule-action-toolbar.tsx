@@ -36,9 +36,12 @@ export function ScheduleActionToolbar({
 
   return (
     <div className="grid w-full gap-2 lg:justify-items-end">
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
+      <div
+        className="grid grid-cols-1 gap-2 sm:flex sm:flex-nowrap lg:justify-end"
+        data-testid="schedule-action-buttons"
+      >
         <button
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] sm:px-4"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] sm:w-auto sm:px-4 sm:whitespace-nowrap"
           onClick={() => {
             setStatus(undefined);
             setOpenAction("create");
@@ -49,7 +52,7 @@ export function ScheduleActionToolbar({
           Add event
         </button>
         <button
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-bold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)] sm:px-4"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[var(--accent)] bg-white px-3 text-sm font-bold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)] sm:w-auto sm:px-4 sm:whitespace-nowrap"
           onClick={() => {
             setStatus(undefined);
             setOpenAction("import");
