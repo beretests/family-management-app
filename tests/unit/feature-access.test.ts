@@ -41,6 +41,7 @@ describe("routeRequiresFullApp", () => {
   it.each([
     "/",
     "/schedule",
+    "/groceries",
     "/sign-in",
     "/sign-up",
     "/forgot-password",

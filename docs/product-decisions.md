@@ -57,13 +57,13 @@ Avoid storing child photos longer than needed. The default retention target for
 future evidence files remains 30 days after approve/reject unless the owner
 changes it.
 
-## Calendar-Only Rollout
+## Calendar And Grocery Rollout
 
-Calendar is the default product surface. With `ENABLE_FULL_APP` omitted or set
-to `false`, the public messaging, signed-in navigation, and protected feature
-routes expose Calendar only. Authentication, invitation acceptance, initial
-family/member setup, and API/cron infrastructure remain available because they
-support the calendar and account lifecycle.
+Calendar and Groceries are the default product surfaces. With `ENABLE_FULL_APP`
+omitted or set to `false`, signed-in navigation exposes those two shared family
+tools while the remaining full-app feature routes stay gated. Authentication,
+invitation acceptance, initial family/member setup, and API/cron infrastructure
+remain available because they support the shared tools and account lifecycle.
 
 Setting `ENABLE_FULL_APP=true` restores the existing dashboard, chores,
 assignments, approvals, rewards, leaderboard, reminders, family-settings
@@ -71,8 +71,29 @@ navigation, and Kid Mode without deleting or migrating any feature data.
 Calendar offers a
 whole-family view and a view for each active family member. An individual view
 includes events assigned to that member and events assigned to the whole
-family. Calendar-only mode opens on Week by default to provide the at-a-glance
+family. Calendar opens on Week by default in the limited rollout to provide the at-a-glance
 layout; the full app retains its existing Day default.
+
+## Grocery Shopping Lists
+
+Phase 24 provides one open grocery list per family. Any active family member,
+including a verified Kid Mode profile, can start the list when none exists and
+can add, check, return, or remove its items. Parents alone complete, archive,
+reopen, or permanently delete a whole list and hide or restore saved catalog
+items.
+
+Every newly typed grocery becomes a normalized, family-scoped catalog item.
+Catalog names collapse surrounding/repeated spaces and compare
+case-insensitively, preventing duplicates such as `Milk` and `milk`. List
+items store name/category snapshots so old list history remains understandable
+if the reusable catalog later changes. The MVP stores optional quantity, unit,
+category, and note fields but does not model pantry inventory, prices, barcode
+scanning, stores, or automatic stock depletion.
+
+Completing or archiving a list sets its deletion date to 90 days later.
+Reopening clears that date. The daily secured maintenance job hard-deletes only
+closed lists whose date has passed; item rows cascade with the list while the
+reusable catalog remains. Open lists are never automatically deleted.
 
 ## Recurring Schedule Events
 

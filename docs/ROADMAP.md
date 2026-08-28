@@ -457,6 +457,40 @@ approved phase scope.
 - Recommended commit message:
   `feat(schedule): add safe ICS calendar import`
 
+## Phase 24: Grocery Shopping Lists
+
+- Branch: `phase/24-grocery-shopping-list`
+- Worktree: `../family-app-phase-24-grocery-shopping-list`
+- Scope: one open family grocery list, household item contributions, reusable
+  normalized catalog items, optional quantity/unit/category/note fields,
+  check-off attribution, parent list lifecycle controls, recent history, and
+  90-day cleanup for completed/archived lists.
+- Permissions: every active family member can start the list when none exists
+  and add/check/return/remove items; only parents can complete, archive, reopen,
+  permanently delete lists, or hide/restore saved catalog items.
+- Data model: `grocery_catalog_items`, `grocery_lists`, and
+  `grocery_list_items`, with one-open-list and normalized-name uniqueness,
+  explicit column grants, operation-specific RLS, and cascading list-item
+  deletion that preserves catalog rows.
+- Retention: closing a list sets `delete_after` to 90 days later; reopening
+  clears it; the existing secured daily maintenance route deletes eligible
+  lists in batches of at most 100.
+- Deferred: pantry inventory, automatic low-stock detection, prices/budgets,
+  barcode scanning, multiple simultaneous lists, stores/aisles, push reminders,
+  and Supabase Realtime subscriptions.
+- Checks to run: `npm run lint`, `npm run typecheck`, `npm test`, SQL permission
+  verification, the Playwright family flow, and `npm run build`.
+- Supabase setup impact: apply
+  `20260828190000_grocery_shopping_lists.sql`; no dashboard setting or Storage
+  bucket.
+- Vercel/environment impact: no new cron or variable; reuse the daily route and
+  existing `CRON_SECRET`/`SUPABASE_SECRET_KEY`.
+- Free-tier risks: catalog rows are retained while closed list history is
+  bounded; cleanup must stay batched to protect function duration and database
+  usage.
+- Recommended commit message:
+  `feat(groceries): add shared shopping lists and retention cleanup`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

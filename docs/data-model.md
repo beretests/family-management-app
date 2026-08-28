@@ -190,6 +190,29 @@ following local midnight and remains correct through daylight-saving changes.
 No School is informational and is excluded from conflict and chore-availability
 calculations.
 
+## Grocery Shopping
+
+- `grocery_catalog_items`: normalized family grocery names with optional
+  category and default quantity/unit values for reuse on future lists.
+- `grocery_lists`: the family list lifecycle (`open`, `completed`, or
+  `archived`), contributor/closer attribution, and the 90-day `delete_after`
+  timestamp.
+- `grocery_list_items`: list-specific snapshots, quantities, notes, check-off
+  attribution, and links back to reusable catalog items.
+
+A partial unique index allows only one open list per family. A family/name
+unique constraint uses `normalize_grocery_item_name` to collapse whitespace and
+case for catalog deduplication. Deleting a closed list cascades its list items
+but does not delete catalog items. Column-level grants keep family contributors
+from rewriting ownership, list relationships, and item snapshots through the
+API. Operation-specific RLS lets active members contribute to open lists while
+reserving whole-list lifecycle and catalog visibility changes for parents.
+
+Completed and archived lists receive a deletion timestamp 90 days after they
+close. The existing server-only daily maintenance client removes expired lists
+in bounded batches. Reopening a list clears its retention timestamp, and open
+lists are excluded from cleanup.
+
 ## Swaps, Rewards, Points, Reminders
 
 - `swap_requests`: sibling swap request and parent approval workflow.

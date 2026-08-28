@@ -115,8 +115,8 @@ supabase start
 supabase db reset
 ```
 
-With the default calendar-only flag, sign-in and gated feature URLs lead to
-`/schedule`. A new account can still use `/family/setup` and
+With the default shared-tools flag, sign-in and gated feature URLs lead to
+`/schedule`; Calendar and `/groceries` remain available. A new account can still use `/family/setup` and
 `/settings/family` to create the family and its members. Calendar supports a
 whole-family view and one view for each active member; member views also include
 whole-family events.
@@ -148,7 +148,8 @@ Phase 8 creates a private `task-evidence` bucket through migration. Evidence
 uploads are limited to JPEG, PNG, WebP, or GIF files up to 5 MB.
 
 Phase 11 adds automated retention cleanup through the secured daily maintenance
-route.
+route. Phase 24 extends the same route to delete completed/archived grocery
+lists after 90 days without deleting reusable catalog items.
 
 ## Vercel
 

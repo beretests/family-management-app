@@ -16,6 +16,7 @@ Then open the local SQL editor or connect with `psql` and run:
 \i tests/sql/ics-import-verification.sql
 \i tests/sql/schedule-occurrence-overrides-verification.sql
 \i tests/sql/no-school-verification.sql
+\i tests/sql/grocery-lists-verification.sql
 ```
 
 Expected result:
@@ -30,6 +31,9 @@ Expected result:
   deletion, atomic series splitting, override reassignment, and truncation.
 - No School verification checks that the additive schedule enum value and
   all-day database constraints are available after migrations run.
+- Grocery list verification checks family contributions, column grants, parent
+  lifecycle controls, one-open-list enforcement, 90-day retention timestamps,
+  item cascade deletion, and reusable catalog preservation.
 
 These checks do not replace RLS integration tests with authenticated JWTs. They
 are a low-cost Phase 3 sanity check until app-level data access exists.

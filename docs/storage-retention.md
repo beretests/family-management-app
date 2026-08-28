@@ -44,6 +44,26 @@ Phase 11 cleanup behavior:
 Keep evidence uploads small and avoid using evidence for long-term photo
 storage.
 
+## Grocery List Retention
+
+Phase 24 also uses the daily maintenance route for database-only grocery list
+retention:
+
+- Completing or archiving a list sets `delete_after` to 90 days after
+  `closed_at`.
+- Reopening the list clears `closed_at`, `closed_by_member_id`, and
+  `delete_after`.
+- Open lists are never selected for automatic cleanup.
+- Cleanup scans no more than 100 eligible lists per run and deletes the list;
+  its list items cascade automatically.
+- Cleanup rechecks status and expiry when deleting so a concurrently reopened
+  list is preserved, and records a parent-visible retention audit event for
+  every list actually deleted.
+- `grocery_catalog_items` are deliberately preserved so the family can reuse
+  them on future lists.
+- A parent may permanently delete a list sooner through the app. Automatic
+  deletion after the retention date is not recoverable through the app.
+
 ## Scheduled Cleanup
 
 Phase 11 adds a secured daily maintenance route:

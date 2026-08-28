@@ -1,7 +1,7 @@
 # Family Chore Hub
 
-A private, mobile-first family management app for schedules, chores, rewards,
-reminders, evidence review, and fair workload planning.
+A private, mobile-first family management app for schedules, shared grocery
+lists, chores, rewards, reminders, evidence review, and fair workload planning.
 
 This repository is built iteratively with the workflow in `AGENTS.md`:
 
@@ -13,11 +13,14 @@ This repository is built iteratively with the workflow in `AGENTS.md`:
 
 ## Current Status
 
-The MVP implementation is complete through Phase 12 deployment polish. It
-includes Supabase Auth, family and child profiles, schedule views, house-based
-chore templates, fair assignments, kid task submissions with private evidence,
-parent reviews and points, rewards, leaderboard, reminders, and daily evidence
-cleanup.
+The implementation is complete through Phase 23, with the approved Phase 24
+grocery-list work ready for review. It includes Supabase Auth, family and child
+profiles, responsive schedule views, a reusable shared grocery-item catalog,
+one open household shopping list, house-based chore templates, fair
+assignments, kid task submissions with private evidence, parent reviews and
+points, rewards, leaderboard, reminders, and daily retention cleanup. Completed
+or archived grocery lists are deleted after 90 days; open lists and catalog
+items are retained.
 
 No paid services are required by default.
 
@@ -111,7 +114,7 @@ Follow:
 - `docs/deployment-checklist.md`: end-to-end deployment checklist
 - `docs/data-model.md`: database tables and RLS policy intent
 - `docs/product-decisions.md`: product rules represented in the schema
-- `docs/storage-retention.md`: evidence storage and cleanup
+- `docs/storage-retention.md`: evidence and grocery-list retention cleanup
 - `docs/PHASE_HANDOFF.md`: current handoff notes
 - `docs/WORKTREE_PHASE_WORKFLOW.md`: branch/worktree process
 - `docs/PRODUCT_SPEC.md`: product and UX requirements

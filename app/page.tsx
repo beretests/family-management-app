@@ -10,6 +10,7 @@ import {
   HeartHandshake,
   LogIn,
   ShieldCheck,
+  ShoppingBasket,
   Sparkles,
   Star,
   Trophy,
@@ -104,9 +105,9 @@ const calendarSteps = [
     icon: CalendarDays,
   },
   {
-    title: "See it together",
-    description: "Switch between the whole family and one member at a glance.",
-    icon: CheckCircle2,
+    title: "Track what is running low",
+    description: "Add reusable grocery items to one shared household list.",
+    icon: ShoppingBasket,
   },
 ] satisfies FeatureItem[];
 
@@ -122,9 +123,9 @@ const calendarFamilyFeatures = [
     icon: UsersRound,
   },
   {
-    title: "Conflict awareness",
-    description: "Spot overlapping plans while there is still time to adjust.",
-    icon: ShieldCheck,
+    title: "One shared grocery list",
+    description: "Keep low groceries visible until someone checks them off.",
+    icon: ShoppingBasket,
   },
 ] satisfies FeatureItem[];
 
@@ -140,8 +141,8 @@ const calendarMemberFeatures = [
     icon: HeartHandshake,
   },
   {
-    title: "Works on small screens",
-    description: "The full week stays readable with touch-friendly scrolling.",
+    title: "Everyone can contribute",
+    description: "Any active family member can add, check, or remove an item.",
     icon: CheckCircle2,
   },
 ] satisfies FeatureItem[];
@@ -171,12 +172,12 @@ export default function Home() {
             <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-normal text-[var(--foreground)] sm:text-5xl">
               {fullAppEnabled
                 ? "Chores, schedules, and rewards that feel fair for the whole family."
-                : "One clear calendar for the whole family."}
+                : "One clear calendar and grocery list for the whole family."}
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-[var(--muted)]">
               {fullAppEnabled
                 ? "Family Chore Hub helps parents plan around real life while kids get a clear, colorful view of what to do next."
-                : "See the whole week together, then focus on any family member without losing shared family plans."}
+                : "See the whole week together and keep one shared list of groceries that are running low."}
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -202,6 +203,11 @@ export default function Home() {
               <span className="rounded-md bg-white px-3 py-2 shadow-sm">
                 {fullAppEnabled ? "Kid Mode ready" : "Member views included"}
               </span>
+              {!fullAppEnabled ? (
+                <span className="rounded-md bg-white px-3 py-2 shadow-sm">
+                  Shared grocery list
+                </span>
+              ) : null}
               <span className="rounded-md bg-white px-3 py-2 shadow-sm">
                 Free-tier friendly
               </span>
@@ -220,7 +226,7 @@ export default function Home() {
           <h2 className="mt-2 text-3xl font-bold text-[var(--foreground)]">
             {fullAppEnabled
               ? "A calmer flow from family setup to chore approval."
-              : "A simple path to a shared weekly view."}
+              : "A simple path to shared plans and shopping."}
           </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
@@ -244,7 +250,7 @@ export default function Home() {
             title={
               fullAppEnabled
                 ? "Plan with context, not guesswork."
-                : "See busy time before plans collide."
+                : "Keep plans and essentials in view."
             }
           />
           <FeatureGroup
@@ -253,7 +259,7 @@ export default function Home() {
             title={
               fullAppEnabled
                 ? "Make today's work easy to understand."
-                : "Give everyone a focused calendar view."
+                : "Let everyone help keep the list current."
             }
           />
         </div>
@@ -267,7 +273,7 @@ export default function Home() {
           <h2 className="mt-2 text-3xl font-bold text-[var(--foreground)]">
             {fullAppEnabled
               ? "Create the parent account first, then invite the family into the routine."
-              : "Create the parent account, then bring the family week into one place."}
+              : "Create the parent account, then bring the family week and grocery list into one place."}
           </h2>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -301,12 +307,12 @@ function BrandMark() {
       </span>
       <div>
         <p className="text-sm font-extrabold uppercase text-[var(--accent-strong)]">
-          {fullAppEnabled ? "Family Chore Hub" : "Family Calendar"}
+          {fullAppEnabled ? "Family Chore Hub" : "Family Planner"}
         </p>
         <p className="text-xs font-semibold text-[var(--muted)]">
           {fullAppEnabled
             ? "Fair plans for busy families"
-            : "One week, every family member"}
+            : "Shared calendar and groceries"}
         </p>
       </div>
     </div>
@@ -367,9 +373,9 @@ function ProductPreview({ fullAppEnabled }: { fullAppEnabled: boolean }) {
               tone="mint"
             />
             <PreviewRow
-              icon={HeartHandshake}
-              meta="Included everywhere"
-              title="Keep shared family events visible"
+              icon={ShoppingBasket}
+              meta="Shared grocery list"
+              title="Add what is running low"
               tone="berry"
             />
           </>

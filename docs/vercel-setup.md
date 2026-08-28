@@ -93,7 +93,8 @@ Authorization: Bearer <CRON_SECRET>
 ```
 
 Vercel Hobby cron is low-frequency and not minute-precise. The maintenance route
-is idempotent and batch-limited, so it is safe to rerun.
+is idempotent and batch-limited, so it is safe to rerun. Phase 24 reuses this
+same daily invocation for 90-day grocery-list cleanup and adds no cron entry.
 
 ## Free-Tier Guardrails
 
@@ -101,8 +102,8 @@ is idempotent and batch-limited, so it is safe to rerun.
   external worker services without owner approval.
 - Monitor Vercel usage after enabling cron and evidence uploads.
 - Keep cron daily or low-frequency.
-- Watch function logs for maintenance failures, especially evidence cleanup
-  errors caused by missing `SUPABASE_SECRET_KEY`.
+- Watch function logs for maintenance failures, especially evidence or grocery
+  cleanup errors caused by missing `SUPABASE_SECRET_KEY`.
 - Large evidence uploads can still consume function time and Supabase
   storage/egress.
 
@@ -113,12 +114,12 @@ After deployment:
 1. Open `NEXT_PUBLIC_APP_URL`.
 2. Confirm the landing page loads.
 3. Sign in with a test parent account.
-4. With `ENABLE_FULL_APP=false`, confirm `/schedule` loads, offers Whole family
-   and active-member views, and a request for `/dashboard` redirects to
-   `/schedule`.
+4. With `ENABLE_FULL_APP=false`, confirm `/schedule` and `/groceries` load,
+   Calendar offers Whole family and active-member views, and a request for
+   `/dashboard` redirects to `/schedule`.
 5. In a Preview deployment with `ENABLE_FULL_APP=true`, confirm `/dashboard`,
    `/schedule`, `/chores`, `/assignments`, `/my-today`, `/approvals`, `/rewards`,
-   `/leaderboard`, and `/reminders` load for the test family.
+   `/leaderboard`, `/reminders`, and `/groceries` load for the test family.
 6. Confirm Supabase redirects return through `/callback`.
 7. Request a password reset from `/forgot-password`, open the email in the same
    browser, update the password, and confirm the app returns to `/sign-in` and

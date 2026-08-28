@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe("AppShell feature flag", () => {
-  it("shows only Calendar navigation by default", () => {
+  it("shows Calendar and Groceries navigation by default", () => {
     delete process.env.ENABLE_FULL_APP;
 
     render(<AppShell>Calendar content</AppShell>);
@@ -23,6 +23,10 @@ describe("AppShell feature flag", () => {
     expect(screen.getByRole("link", { name: "Calendar" })).toHaveAttribute(
       "href",
       "/schedule",
+    );
+    expect(screen.getByRole("link", { name: "Groceries" })).toHaveAttribute(
+      "href",
+      "/groceries",
     );
     expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Chores" })).toBeNull();
@@ -40,6 +44,7 @@ describe("AppShell feature flag", () => {
     expect(screen.getByRole("link", { name: "Assignments" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Approvals" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Rewards" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Groceries" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Leaderboard" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Reminders" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Family" })).toBeVisible();
