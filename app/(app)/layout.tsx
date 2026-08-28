@@ -33,7 +33,11 @@ export default async function ProtectedAppLayout({
   const context = await getFamilyContext();
 
   return (
-    <AppShell currentMember={context.currentMember} email={email}>
+    <AppShell
+      currentMember={context.currentMember}
+      email={email}
+      isKidMode={context.isKidMode}
+    >
       {children}
     </AppShell>
   );

@@ -1,7 +1,7 @@
 # Architecture
 
-This document reflects the implementation through the Phase 24 grocery-list
-work. It should be updated whenever a later phase changes app-facing storage,
+This document reflects the implementation through the Phase 26 child-email
+account work. It should be updated whenever a later phase changes app-facing storage,
 cron, auth, database, or deployment behavior.
 
 ## Current Shape
@@ -135,6 +135,14 @@ Family profile flow:
 5. Adult invitations are tracked in `family_invitations`; invite acceptance
    validates the signed-in email before linking the Supabase Auth user to the
    pending adult `family_members` row.
+6. Child invitations are tracked separately in `family_child_invitations` and
+   target an existing active child. Exact-email acceptance atomically attaches
+   the Auth profile/link; parent disconnect atomically revokes access while
+   preserving the child and Kid Mode.
+7. Invite links that use Supabase's token-fragment response pass through the
+   invitation-only `/invite-callback` client bridge. It stores the auth session
+   in cookies and removes the fragment before opening the accept page; ordinary
+   PKCE callbacks remain server-exchanged.
 
 Schedule flow:
 
@@ -257,6 +265,10 @@ Auth security decisions:
   actions for reversible enablement
 - keeps the shared `/groceries` route available beside Calendar, with
   family-member contribution checks in Server Actions and RLS
+- keeps parent-only `/settings/family` navigation available in the limited
+  Calendar/Groceries rollout while hiding it from child and caregiver accounts
+- sends adult and child invitations only from server actions using the secret
+  Supabase client; child acceptance and disconnect use atomic database functions
 - reuses the secured daily maintenance route for bounded 90-day grocery-list
   cleanup while preserving the reusable family catalog
 

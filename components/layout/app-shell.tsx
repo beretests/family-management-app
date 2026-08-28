@@ -44,19 +44,25 @@ export function AppShell({
   children,
   currentMember,
   email,
+  isKidMode = false,
 }: {
   children: React.ReactNode;
   currentMember?: FamilyMember | null;
   email?: string;
+  isKidMode?: boolean;
 }) {
-  const isKidMode = currentMember?.role === "child";
+  const isParent = currentMember?.role === "parent";
+  const isLinkedChild = currentMember?.role === "child" && !isKidMode;
   const fullAppEnabled = isFullAppEnabled();
-  const navItems = fullAppEnabled
-    ? fullAppNavItems
-    : [
-        { href: "/schedule", label: "Calendar", icon: CalendarDays },
-        { href: "/groceries", label: "Groceries", icon: ShoppingBasket },
-      ];
+  const navItems = (
+    fullAppEnabled
+      ? fullAppNavItems
+      : [
+          { href: "/schedule", label: "Calendar", icon: CalendarDays },
+          { href: "/groceries", label: "Groceries", icon: ShoppingBasket },
+          { href: "/settings/family", label: "Family", icon: Settings },
+        ]
+  ).filter((item) => item.href !== "/settings/family" || isParent);
 
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip">
@@ -78,7 +84,13 @@ export function AppShell({
               {isKidMode ? (
                 <p className="mt-2 inline-flex items-center gap-2 rounded-md bg-[var(--playful-yellow-soft)] px-3 py-1 text-sm font-bold text-[var(--playful-yellow)]">
                   <Sparkles aria-hidden="true" className="size-4" />
-                  Kid Mode: {currentMember.displayName}
+                  Kid Mode: {currentMember?.displayName ?? "Child"}
+                </p>
+              ) : null}
+              {isLinkedChild ? (
+                <p className="mt-2 inline-flex items-center gap-2 rounded-md bg-[var(--accent-soft)] px-3 py-1 text-sm font-bold text-[var(--accent-strong)]">
+                  <Sparkles aria-hidden="true" className="size-4" />
+                  Child account: {currentMember.displayName}
                 </p>
               ) : null}
             </div>

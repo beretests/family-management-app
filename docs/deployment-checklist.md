@@ -53,7 +53,8 @@ CRON_SECRET=
 ```
 
 - Confirm `NEXT_PUBLIC_APP_URL` matches the deployed origin.
-- Confirm `ENABLE_FULL_APP=false` for a calendar-only production rollout. Test
+- Confirm `ENABLE_FULL_APP=false` for a Calendar/Groceries/Family production
+  rollout. Test
   `true` in Preview before exposing the complete app.
 - Confirm `vercel.json` includes `/api/cron/daily-maintenance`.
 - Redeploy after env var changes.
@@ -75,6 +76,9 @@ Add preview callback URLs only when preview auth testing is needed.
 - Parent can sign up/sign in.
 - Parent can create or open a family.
 - Calendar loads in whole-family and individual-member views.
+- Parent-only Family settings load and can send a test child invitation.
+- The invited child connects to the existing profile, can sign in, and cannot
+  see Family navigation; parent disconnect preserves the child profile.
 - With `ENABLE_FULL_APP=false`, full-app routes redirect to Calendar.
 - In a Preview with `ENABLE_FULL_APP=true`, Dashboard, Chores, Assignments, My
   Today, Approvals, Rewards, Leaderboard, Reminders, Family settings, and Kid

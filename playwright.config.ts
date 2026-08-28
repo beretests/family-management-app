@@ -1,10 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
+import { getSupabaseLocalEnv } from "./tests/e2e/supabase-local";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3106";
 const browserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL ?? "chrome";
 const serverPort = new URL(baseURL).port || "3106";
 const localSupabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+let localSupabase: ReturnType<typeof getSupabaseLocalEnv> | undefined;
+
+try {
+  localSupabase = getSupabaseLocalEnv();
+} catch {
+  localSupabase = undefined;
+}
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -33,7 +41,11 @@ export default defineConfig({
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
         localSupabaseAnonKey,
       NEXT_PUBLIC_SUPABASE_URL:
-        process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:55421",
+        process.env.NEXT_PUBLIC_SUPABASE_URL ??
+        localSupabase?.apiUrl ??
+        "http://127.0.0.1:55421",
+      SUPABASE_SECRET_KEY:
+        process.env.SUPABASE_SECRET_KEY ?? localSupabase?.adminKey ?? "",
     },
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "true",
     timeout: 120_000,

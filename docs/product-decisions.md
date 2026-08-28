@@ -59,20 +59,29 @@ changes it.
 
 ## Calendar And Grocery Rollout
 
-Calendar and Groceries are the default product surfaces. With `ENABLE_FULL_APP`
-omitted or set to `false`, signed-in navigation exposes those two shared family
-tools while the remaining full-app feature routes stay gated. Authentication,
+Calendar and Groceries are the default shared surfaces. Active parents also see
+Family settings so they can manage the household profiles those tools depend
+on. Children and caregivers do not see the parent-only Family control. With
+`ENABLE_FULL_APP` omitted or set to `false`, the remaining full-app feature
+routes stay gated. Authentication,
 invitation acceptance, initial family/member setup, and API/cron infrastructure
 remain available because they support the shared tools and account lifecycle.
 
 Setting `ENABLE_FULL_APP=true` restores the existing dashboard, chores,
-assignments, approvals, rewards, leaderboard, reminders, family-settings
-navigation, and Kid Mode without deleting or migrating any feature data.
+assignments, approvals, rewards, leaderboard, reminders, and Kid Mode without
+deleting or migrating any feature data.
 Calendar offers a
 whole-family view and a view for each active family member. An individual view
 includes events assigned to that member and events assigned to the whole
 family. Calendar opens on Week by default in the limited rollout to provide the at-a-glance
 layout; the full app retains its existing Day default.
+
+Phase 26 lets a parent invite an older child by email only by selecting that
+child's existing profile and confirming guardian authority. Acceptance links
+the new sign-in to that profile; it never creates a duplicate child. Kid Mode
+remains available in parallel. Pending invite revocation and connected-account
+disconnection preserve the child and history. Automatic invitation of an email
+that already has an app account is deferred beyond this MVP.
 
 ## Grocery Shopping Lists
 

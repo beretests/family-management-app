@@ -11,7 +11,8 @@ rewards, redemption review, point deductions, and a constructive family
 leaderboard into the app UI. Phase 11 wires in-app reminders and evidence
 retention cleanup into the existing reminder and evidence tables. Phase 14 adds
 multi-member schedule attendance and parent profile editing. Phase 16 adds
-adult family invitations and birthdate-based child age calculation.
+adult family invitations and birthdate-based child age calculation. Phase 26
+adds parent-managed child email invitations and atomic account linking.
 
 ## Identity And Families
 
@@ -23,6 +24,8 @@ adult family invitations and birthdate-based child age calculation.
   member, used for older kids or caregiver linking.
 - `family_invitations`: parent-created pending, accepted, revoked, or expired
   invites for other parent/caregiver accounts.
+- `family_child_invitations`: parent-created invitations that target one
+  existing active child profile.
 - `family_member_preferences`: disliked/preferred chores and notes.
 - `family_member_statuses`: normal, under-the-weather, sick, and rest-day
   status history.
@@ -50,6 +53,13 @@ Child profile management:
   `family_member_pin_credentials`, which is restricted to active parents by RLS.
 - Older kids may use real Supabase Auth accounts linked through
   `family_member_auth_links`.
+- Phase 26 creates those links only after a 14-day invitation is accepted by
+  the exact invited email. Partial unique indexes allow only one active auth
+  link per child and one active member link per auth profile within a family.
+- Child invitation emails are nullable and scrubbed on acceptance, revocation,
+  or expiry. Revocation does not deactivate the child. Disconnecting clears
+  `family_members.profile_id` and revokes the auth link without deleting the
+  Auth user, child profile, Kid Mode PIN, or family history.
 - Parent-entered preferences and dislikes are stored in
   `family_member_preferences.notes` until chore templates exist.
 - Removing a child from active use sets `lifecycle_status = 'inactive'` and

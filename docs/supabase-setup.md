@@ -70,6 +70,11 @@ Adult family invitations use Supabase Auth invite emails. Keep
 the redirect allow-list for local and production domains. The app sends invite
 links back through `/callback?next=/family/invite/accept?...`.
 
+Child email invitations reuse the same callback allow-list and server-only
+secret. Their destination is
+`/callback?next=/family/child-invite/accept?...`; no additional redirect URL or
+environment variable is required.
+
 Password recovery also returns through the allow-listed callback, using
 `/callback?next=/reset-password`. No migration, extra redirect allow-list
 entry, secret key, or public environment variable is required.
@@ -138,6 +143,12 @@ indexes; explicit grants; and operation-specific RLS. Apply it before exposing
 `/groceries`. It requires no dashboard setting, Storage bucket, new secret, or
 paid Supabase feature.
 
+Phase 26 requires `20260828210000_child_email_invitations.sql` and
+`20260828211000_fix_child_disconnect_actor.sql`. They add parent-scoped child
+invitation records, active-link uniqueness, exact-email atomic acceptance, and
+parent-only atomic disconnect. Apply them before enabling child email invites.
+They require no Storage bucket or dashboard schema edits.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.
@@ -162,6 +173,10 @@ After migrations, verify:
   reviews, reminders, and audit records.
 - Parents can select and manage `family_invitations`; invited adults are linked
   only after signing in with the invited email and accepting the invite.
+- Only parents can read/create/revoke `family_child_invitations`; acceptance is
+  server-only, exact-email matched, and connects an existing active child.
+- Disconnecting a child account revokes its active auth link without deleting
+  the child profile, history, Kid Mode credential, or Auth user.
 - Parents can select and manage `family_member_pin_credentials`; child accounts
   cannot read PIN hashes.
 - Children can read family schedule and their own assignments/submissions.
@@ -187,6 +202,8 @@ The SQL helpers in `tests/sql`, including
 `schedule-occurrence-overrides-verification.sql` and
 `no-school-verification.sql`, and `grocery-lists-verification.sql` provide
 lightweight local verification.
+`child-email-invitations-verification.sql` covers Phase 26 linking and
+disconnection boundaries.
 
 ## Maintenance
 

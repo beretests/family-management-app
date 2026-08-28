@@ -1,6 +1,29 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AppShell } from "@/components/layout/app-shell";
+import type { FamilyMember } from "@/features/family/types";
+
+const parentMember: FamilyMember = {
+  id: "11111111-1111-4111-8111-111111111111",
+  familyId: "22222222-2222-4222-8222-222222222222",
+  profileId: "33333333-3333-4333-8333-333333333333",
+  displayName: "Parent",
+  role: "parent",
+  birthdate: null,
+  ageYears: null,
+  abilityLevel: 5,
+  color: "#047857",
+  lifecycleStatus: "active",
+  deactivatedAt: null,
+};
+
+const childMember: FamilyMember = {
+  ...parentMember,
+  id: "44444444-4444-4444-8444-444444444444",
+  profileId: "55555555-5555-4555-8555-555555555555",
+  displayName: "Child",
+  role: "child",
+};
 
 const originalFullAppFlag = process.env.ENABLE_FULL_APP;
 
@@ -31,12 +54,45 @@ describe("AppShell feature flag", () => {
     expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Chores" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Rewards" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Family" })).toBeNull();
+  });
+
+  it("adds Family to the limited rollout for parents only", () => {
+    delete process.env.ENABLE_FULL_APP;
+
+    const { rerender } = render(
+      <AppShell currentMember={parentMember}>Parent content</AppShell>,
+    );
+
+    expect(screen.getByRole("link", { name: "Family" })).toHaveAttribute(
+      "href",
+      "/settings/family",
+    );
+
+    rerender(<AppShell currentMember={childMember}>Child content</AppShell>);
+    expect(screen.queryByRole("link", { name: "Family" })).toBeNull();
+    expect(screen.getByText("Child account: Child")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Exit Kid Mode" })).toBeNull();
+  });
+
+  it("shows exit controls only for a verified Kid Mode session", () => {
+    delete process.env.ENABLE_FULL_APP;
+
+    render(
+      <AppShell currentMember={childMember} isKidMode>
+        Kid Mode content
+      </AppShell>,
+    );
+
+    expect(screen.getByText("Kid Mode: Child")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Exit Kid Mode" })).toBeVisible();
+    expect(screen.queryByText("Child account: Child")).toBeNull();
   });
 
   it("restores the existing navigation when the full app is enabled", () => {
     process.env.ENABLE_FULL_APP = "true";
 
-    render(<AppShell>Full app content</AppShell>);
+    render(<AppShell currentMember={parentMember}>Full app content</AppShell>);
 
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Schedule" })).toBeVisible();

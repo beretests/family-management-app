@@ -1,7 +1,81 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { createConfirmedParentUser } from "./supabase-local";
+import {
+  createConfirmedParentUser,
+  getLocalAuthEmailLink,
+} from "./supabase-local";
 
 test.describe("parent family setup smoke flow", () => {
+  test("connects and disconnects an existing child profile by email", async ({
+    page,
+  }) => {
+    test.slow();
+    const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const parentEmail = `invite-parent-${runId}@example.com`;
+    const childEmail = `invited-child-${runId}@example.com`;
+    const parentPassword = "FamilyTest123!";
+    const childPassword = "ChildFamily123!";
+    const familyName = `Invite Family ${runId}`;
+    const childName = `Connected Kid ${runId}`;
+
+    await createConfirmedParentUser({
+      email: parentEmail,
+      password: parentPassword,
+    });
+    await signInWithLocalSession(page, parentEmail, parentPassword);
+    await page.goto("/family/setup");
+    await page.getByLabel("Family name").fill(familyName);
+    await page.getByLabel("Your display name").fill(`Parent ${runId}`);
+    await page.getByRole("button", { name: "Create family" }).click();
+
+    const childForm = page.locator("form").filter({
+      has: page.getByRole("button", { name: "Add child" }),
+    });
+    await childForm.getByLabel("Name").fill(childName);
+    await childForm.getByLabel("Birth month and year").fill("2014-03");
+    await childForm.getByLabel("Ability level").selectOption("4");
+    await childForm.getByRole("button", { name: "Add child" }).click();
+
+    let childCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: childName }),
+    });
+    await expect(childCard.getByText("No email account")).toBeVisible();
+    await childCard.getByRole("button", { name: "Connect email" }).click();
+    await childCard.getByLabel("Child email").fill(childEmail);
+    await childCard.getByLabel(/I am the parent or guardian/).check();
+    await childCard.getByRole("button", { name: "Send child invite" }).click();
+    await expect(childCard.getByText("Email invite pending")).toBeVisible();
+
+    const invitationLink = await getLocalAuthEmailLink({
+      email: childEmail,
+      pathIncludes: "/family/child-invite/accept",
+    });
+    await page.goto(invitationLink);
+    await expect(page).toHaveURL(/\/family\/child-invite\/accept/);
+    await page.getByLabel("Create password").fill(childPassword);
+    await page.getByLabel("Confirm password").fill(childPassword);
+    await page.getByRole("button", { name: "Connect to family" }).click();
+
+    await expect(page).toHaveURL(/\/schedule/);
+    await expect(
+      page.getByRole("link", { name: "Family", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByText(`Child account: ${childName}`)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Exit Kid Mode" }),
+    ).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await signInWithLocalSession(page, parentEmail, parentPassword);
+    await expect(page).toHaveURL(/\/settings\/family/);
+    childCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: childName }),
+    });
+    await expect(childCard.getByText("Email connected")).toBeVisible();
+    await childCard.getByRole("button", { name: "Disconnect email" }).click();
+    await expect(childCard.getByText("No email account")).toBeVisible();
+    await expect(page.getByRole("heading", { name: childName })).toBeVisible();
+  });
+
   test("creates family, schedule, chore templates, assignments, and my today tasks", async ({
     page,
   }) => {

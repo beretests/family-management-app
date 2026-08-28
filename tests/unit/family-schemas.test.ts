@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   adultInviteSchema,
+  acceptChildEmailInvitationSchema,
+  childEmailInviteSchema,
   childPinSchema,
   childMemberSchema,
   familySetupSchema,
@@ -84,6 +86,46 @@ describe("adultInviteSchema", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("childEmailInviteSchema", () => {
+  it("normalizes email and requires parent consent", () => {
+    const parsed = childEmailInviteSchema.parse({
+      familyId,
+      memberId,
+      email: " KID@Example.COM ",
+      consent: "on",
+    });
+
+    expect(parsed.email).toBe("kid@example.com");
+    expect(
+      childEmailInviteSchema.safeParse({
+        familyId,
+        memberId,
+        email: "kid@example.com",
+        consent: "",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("acceptChildEmailInvitationSchema", () => {
+  it("requires matching passwords of at least eight characters", () => {
+    expect(
+      acceptChildEmailInvitationSchema.safeParse({
+        invitationId: "66666666-6666-4666-8666-666666666666",
+        password: "family-pass",
+        confirmPassword: "family-pass",
+      }).success,
+    ).toBe(true);
+    expect(
+      acceptChildEmailInvitationSchema.safeParse({
+        invitationId: "66666666-6666-4666-8666-666666666666",
+        password: "family-pass",
+        confirmPassword: "different-pass",
+      }).success,
+    ).toBe(false);
   });
 });
 

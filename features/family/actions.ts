@@ -3,12 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  acceptChildEmailInvitationSchema,
   acceptFamilyInvitationSchema,
   adultInviteSchema,
+  childEmailInvitationMutationSchema,
+  childEmailInviteSchema,
   childPinSchema,
   childMemberSchema,
   deactivateAdultMemberSchema,
   deactivateChildMemberSchema,
+  disconnectChildEmailAccountSchema,
   familySetupSchema,
   memberStatusSchema,
   revokeFamilyInvitationSchema,
@@ -47,6 +51,10 @@ function invitationAcceptPath(invitationId: string) {
   return `/family/invite/accept?invite=${encodeURIComponent(invitationId)}`;
 }
 
+function childInvitationAcceptPath(invitationId: string) {
+  return `/family/child-invite/accept?invite=${encodeURIComponent(invitationId)}`;
+}
+
 async function insertAuditEvent({
   action,
   actorMemberId,
@@ -60,12 +68,16 @@ async function insertAuditEvent({
 }) {
   const supabase = await createClient();
 
-  await supabase.from("audit_events").insert({
-    action,
+  const { error } = await supabase.from("audit_events").insert({
     actor_member_id: actorMemberId,
+    event_type: action,
     family_id: familyId,
     metadata: target,
   });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 export async function createFamily(
@@ -107,15 +119,17 @@ export async function createFamily(
       return { error: familyError.message };
     }
 
-    const { error: memberError } = await supabase.from("family_members").insert({
-      id: parentMemberId,
-      family_id: familyId,
-      profile_id: profileId,
-      display_name: parsed.data.parentDisplayName,
-      role: "parent",
-      ability_level: 5,
-      color: "#047857",
-    });
+    const { error: memberError } = await supabase
+      .from("family_members")
+      .insert({
+        id: parentMemberId,
+        family_id: familyId,
+        profile_id: profileId,
+        display_name: parsed.data.parentDisplayName,
+        role: "parent",
+        ability_level: 5,
+        color: "#047857",
+      });
 
     if (memberError) {
       return { error: memberError.message };
@@ -156,19 +170,21 @@ export async function createChildMember(
   try {
     const parent = await requireParentContext(supabase, parsed.data.familyId);
     const memberId = crypto.randomUUID();
-    const { error: memberError } = await supabase.from("family_members").insert({
-      id: memberId,
-      family_id: parent.familyId,
-      display_name: parsed.data.displayName,
-      role: "child",
-      birthdate: birthMonthToDate({
-        month: Number(parsed.data.birthMonth.slice(5, 7)),
-        year: Number(parsed.data.birthMonth.slice(0, 4)),
-      }),
-      age_years: null,
-      ability_level: parsed.data.abilityLevel,
-      color: parsed.data.color,
-    });
+    const { error: memberError } = await supabase
+      .from("family_members")
+      .insert({
+        id: memberId,
+        family_id: parent.familyId,
+        display_name: parsed.data.displayName,
+        role: "child",
+        birthdate: birthMonthToDate({
+          month: Number(parsed.data.birthMonth.slice(5, 7)),
+          year: Number(parsed.data.birthMonth.slice(0, 4)),
+        }),
+        age_years: null,
+        ability_level: parsed.data.abilityLevel,
+        color: parsed.data.color,
+      });
 
     if (memberError) {
       return { error: memberError.message };
@@ -337,15 +353,17 @@ export async function inviteAdultMember(
       return { error: "This email already has a pending family invite." };
     }
 
-    const { error: memberError } = await supabase.from("family_members").insert({
-      id: memberId,
-      family_id: parent.familyId,
-      display_name: parsed.data.displayName,
-      role: parsed.data.role,
-      ability_level: 5,
-      color: parsed.data.role === "parent" ? "#047857" : "#2563eb",
-      lifecycle_status: "inactive",
-    });
+    const { error: memberError } = await supabase
+      .from("family_members")
+      .insert({
+        id: memberId,
+        family_id: parent.familyId,
+        display_name: parsed.data.displayName,
+        role: parsed.data.role,
+        ability_level: 5,
+        color: parsed.data.role === "parent" ? "#047857" : "#2563eb",
+        lifecycle_status: "inactive",
+      });
 
     if (memberError) {
       return { error: memberError.message };
@@ -450,7 +468,9 @@ export async function acceptFamilyInvitation(
     const userEmail = normalizeEmail(user.email ?? "");
 
     if (!userEmail) {
-      return { error: "Your signed-in account does not have an email address." };
+      return {
+        error: "Your signed-in account does not have an email address.",
+      };
     }
 
     const admin = createAdminClient();
@@ -548,8 +568,8 @@ export async function acceptFamilyInvitation(
     }
 
     await admin.from("audit_events").insert({
-      action: "family_invitation.accepted",
       actor_member_id: invitation.member_id as string,
+      event_type: "family_invitation.accepted",
       family_id: invitation.family_id as string,
       metadata: {
         invitationId: parsed.data.invitationId,
@@ -627,6 +647,339 @@ export async function revokeFamilyInvitation(
 
   revalidatePath("/settings/family");
   return { success: "Invite revoked." };
+}
+
+export async function inviteChildByEmail(
+  _previousState: FamilyActionState,
+  formData: FormData,
+): Promise<FamilyActionState> {
+  const parsed = childEmailInviteSchema.safeParse({
+    familyId: getString(formData, "familyId"),
+    memberId: getString(formData, "memberId"),
+    email: getString(formData, "email"),
+    consent: getString(formData, "consent"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const supabase = await createClient();
+  const invitationId = crypto.randomUUID();
+  const email = normalizeEmail(parsed.data.email);
+
+  try {
+    const parent = await requireParentContext(supabase, parsed.data.familyId);
+    const admin = createAdminClient();
+    const { data: child, error: childError } = await supabase
+      .from("family_members")
+      .select("id,display_name,profile_id,lifecycle_status")
+      .eq("family_id", parent.familyId)
+      .eq("id", parsed.data.memberId)
+      .eq("role", "child")
+      .maybeSingle();
+
+    if (childError) {
+      return { error: childError.message };
+    }
+
+    if (!child || child.lifecycle_status !== "active") {
+      return { error: "Choose an active child profile." };
+    }
+
+    if (child.profile_id) {
+      return { error: "This child already has a connected email account." };
+    }
+
+    const { data: pendingRows, error: pendingError } = await admin
+      .from("family_child_invitations")
+      .select("id,member_id,email_normalized,expires_at")
+      .eq("family_id", parent.familyId)
+      .eq("status", "pending")
+      .or(`member_id.eq.${parsed.data.memberId},email_normalized.eq.${email}`);
+
+    if (pendingError) {
+      return { error: pendingError.message };
+    }
+
+    const now = Date.now();
+    const activePending = (pendingRows ?? []).find(
+      (row) => new Date(row.expires_at as string).getTime() >= now,
+    );
+    const expiredIds = (pendingRows ?? [])
+      .filter((row) => new Date(row.expires_at as string).getTime() < now)
+      .map((row) => row.id as string);
+
+    if (expiredIds.length > 0) {
+      const { error: expireError } = await admin
+        .from("family_child_invitations")
+        .update({ status: "expired", email_normalized: null })
+        .in("id", expiredIds);
+
+      if (expireError) {
+        return { error: expireError.message };
+      }
+    }
+
+    if (activePending) {
+      return {
+        error:
+          activePending.member_id === parsed.data.memberId
+            ? "This child already has a pending email invitation."
+            : "This email already has a pending child invitation for this family.",
+      };
+    }
+
+    const { error: invitationError } = await supabase
+      .from("family_child_invitations")
+      .insert({
+        id: invitationId,
+        family_id: parent.familyId,
+        member_id: parsed.data.memberId,
+        email_normalized: email,
+        invited_by_member_id: parent.memberId,
+      });
+
+    if (invitationError) {
+      return { error: invitationError.message };
+    }
+
+    const acceptPath = childInvitationAcceptPath(invitationId);
+    const redirectTo = getAuthCallbackUrl(
+      `/callback?next=${encodeURIComponent(acceptPath)}`,
+    );
+    const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+      email,
+      {
+        data: { display_name: child.display_name },
+        redirectTo,
+      },
+    );
+
+    if (inviteError) {
+      await admin
+        .from("family_child_invitations")
+        .update({
+          status: "revoked",
+          email_normalized: null,
+          revoked_at: new Date().toISOString(),
+        })
+        .eq("id", invitationId);
+
+      const existingAccount =
+        inviteError.code === "email_exists" ||
+        /already|registered|exist/i.test(inviteError.message);
+
+      return {
+        error: existingAccount
+          ? "This email already has an app account. Automatic child invites currently require an email that has not registered before."
+          : `Invite email could not be sent: ${inviteError.message}`,
+      };
+    }
+
+    await insertAuditEvent({
+      action: "family_child_email.invited",
+      actorMemberId: parent.memberId,
+      familyId: parent.familyId,
+      target: { invitationId, memberId: parsed.data.memberId },
+    });
+
+    revalidatePath("/settings/family");
+    return { success: `Invite sent to ${email}.` };
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+}
+
+export async function revokeChildEmailInvitation(
+  _previousState: FamilyActionState,
+  formData: FormData,
+): Promise<FamilyActionState> {
+  const parsed = childEmailInvitationMutationSchema.safeParse({
+    familyId: getString(formData, "familyId"),
+    invitationId: getString(formData, "invitationId"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    const parent = await requireParentContext(supabase, parsed.data.familyId);
+    const revokedAt = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("family_child_invitations")
+      .update({
+        status: "revoked",
+        email_normalized: null,
+        revoked_at: revokedAt,
+      })
+      .eq("family_id", parent.familyId)
+      .eq("id", parsed.data.invitationId)
+      .eq("status", "pending")
+      .select("member_id")
+      .maybeSingle();
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    if (!data) {
+      return { error: "Pending child invitation not found." };
+    }
+
+    await insertAuditEvent({
+      action: "family_child_email.invite_revoked",
+      actorMemberId: parent.memberId,
+      familyId: parent.familyId,
+      target: {
+        invitationId: parsed.data.invitationId,
+        memberId: data.member_id,
+      },
+    });
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+
+  revalidatePath("/settings/family");
+  return { success: "Child email invitation revoked." };
+}
+
+export async function acceptChildEmailInvitation(
+  _previousState: FamilyActionState,
+  formData: FormData,
+): Promise<FamilyActionState> {
+  const parsed = acceptChildEmailInvitationSchema.safeParse({
+    invitationId: getString(formData, "invitationId"),
+    password: getString(formData, "password"),
+    confirmPassword: getString(formData, "confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) {
+      return { error: "Open the email invitation link before accepting." };
+    }
+
+    const user = userData.user;
+    const userEmail = normalizeEmail(user.email ?? "");
+    const admin = createAdminClient();
+    const { data: invitation, error: invitationError } = await admin
+      .from("family_child_invitations")
+      .select("id,email_normalized,status,expires_at")
+      .eq("id", parsed.data.invitationId)
+      .maybeSingle();
+
+    if (invitationError) {
+      return { error: invitationError.message };
+    }
+
+    if (!invitation) {
+      return { error: "Child invitation not found." };
+    }
+
+    if (invitation.status !== "pending") {
+      return { error: "This child invitation is no longer pending." };
+    }
+
+    if (new Date(invitation.expires_at as string).getTime() < Date.now()) {
+      await admin
+        .from("family_child_invitations")
+        .update({ status: "expired", email_normalized: null })
+        .eq("id", parsed.data.invitationId);
+      return { error: "This child invitation has expired." };
+    }
+
+    if (!userEmail || invitation.email_normalized !== userEmail) {
+      return { error: "This invitation belongs to a different email address." };
+    }
+
+    const { error: passwordError } = await supabase.auth.updateUser({
+      password: parsed.data.password,
+    });
+
+    if (passwordError) {
+      return { error: passwordError.message };
+    }
+
+    const displayName =
+      typeof user.user_metadata?.display_name === "string"
+        ? user.user_metadata.display_name
+        : userEmail.split("@")[0] || "Child";
+    const { error: profileError } = await admin
+      .from("profiles")
+      .upsert(
+        { id: user.id, display_name: displayName },
+        { onConflict: "id", ignoreDuplicates: true },
+      );
+
+    if (profileError) {
+      return { error: profileError.message };
+    }
+
+    const { error: acceptError } = await admin.rpc(
+      "accept_child_email_invitation",
+      {
+        p_invitation_id: parsed.data.invitationId,
+        p_profile_id: user.id,
+      },
+    );
+
+    if (acceptError) {
+      return { error: acceptError.message };
+    }
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+
+  revalidatePath("/schedule");
+  revalidatePath("/settings/family");
+  redirect("/schedule");
+}
+
+export async function disconnectChildEmailAccount(
+  _previousState: FamilyActionState,
+  formData: FormData,
+): Promise<FamilyActionState> {
+  const parsed = disconnectChildEmailAccountSchema.safeParse({
+    familyId: getString(formData, "familyId"),
+    memberId: getString(formData, "memberId"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    await requireParentContext(supabase, parsed.data.familyId);
+    const { error } = await supabase.rpc("disconnect_child_email_account", {
+      p_family_id: parsed.data.familyId,
+      p_member_id: parsed.data.memberId,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+
+  revalidatePath("/settings/family");
+  revalidatePath("/schedule");
+  return {
+    success: "Child email account disconnected. The child profile remains.",
+  };
 }
 
 export async function deactivateAdultMember(
@@ -871,6 +1224,18 @@ export async function deactivateChildMember(
 
   try {
     const parent = await requireParentContext(supabase, parsed.data.familyId);
+    const { error: disconnectError } = await supabase.rpc(
+      "disconnect_child_email_account",
+      {
+        p_family_id: parent.familyId,
+        p_member_id: parsed.data.memberId,
+      },
+    );
+
+    if (disconnectError) {
+      return { error: disconnectError.message };
+    }
+
     const { error } = await supabase
       .from("family_members")
       .update({
@@ -935,14 +1300,16 @@ export async function setMemberStatus(
       return { error: "Child profile not found." };
     }
 
-    const { error: statusError } = await supabase.from("family_member_statuses").insert({
-      family_id: parent.familyId,
-      member_id: parsed.data.memberId,
-      status: parsed.data.status,
-      note: parsed.data.note ?? null,
-      requested_by_member_id: parent.memberId,
-      approved_by_member_id: parent.memberId,
-    });
+    const { error: statusError } = await supabase
+      .from("family_member_statuses")
+      .insert({
+        family_id: parent.familyId,
+        member_id: parsed.data.memberId,
+        status: parsed.data.status,
+        note: parsed.data.note ?? null,
+        requested_by_member_id: parent.memberId,
+        approved_by_member_id: parent.memberId,
+      });
 
     if (statusError) {
       return { error: statusError.message };
