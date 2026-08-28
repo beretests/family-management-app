@@ -16,6 +16,7 @@ import {
 } from "@/features/schedule/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { getRecurrenceOccurrenceNumber } from "@/features/schedule/recurrence";
+import { normalizeAllDayFormRange } from "@/features/schedule/all-day";
 
 export type ScheduleActionState = {
   error?: string;
@@ -58,18 +59,26 @@ async function insertAuditEvent({
 }
 
 function readScheduleEventForm(formData: FormData) {
+  const eventType = getString(formData, "eventType");
+  const allDay = eventType === "no_school" || getBoolean(formData, "allDay");
+  const rawStartsAt = getString(formData, "startsAt");
+  const rawEndsAt = getString(formData, "endsAt");
+  const range = allDay
+    ? normalizeAllDayFormRange(rawStartsAt, rawEndsAt)
+    : { startsAt: rawStartsAt, endsAt: rawEndsAt };
+
   return {
     familyId: getString(formData, "familyId"),
     memberIds: formData
       .getAll("memberIds")
       .filter((value): value is string => typeof value === "string"),
     wholeFamily: getBoolean(formData, "wholeFamily"),
-    eventType: getString(formData, "eventType"),
+    eventType,
     title: getString(formData, "title"),
     description: getString(formData, "description"),
-    startsAt: getString(formData, "startsAt"),
-    endsAt: getString(formData, "endsAt"),
-    allDay: getBoolean(formData, "allDay"),
+    startsAt: range.startsAt,
+    endsAt: range.endsAt,
+    allDay,
     location: getString(formData, "location"),
     color: getString(formData, "color"),
     repeatType: getString(formData, "repeatType") || "none",
@@ -251,14 +260,7 @@ export async function createScheduleEvent(
       family_id: actor.familyId,
       member_id: memberIds[0] ?? null,
       created_by_member_id: actor.memberId,
-      event_type: parsed.data.eventType,
-      title: parsed.data.title,
-      description: parsed.data.description ?? null,
-      starts_at: dateTimeLocalToIso(parsed.data.startsAt, parsed.data.timeZone),
-      ends_at: dateTimeLocalToIso(parsed.data.endsAt, parsed.data.timeZone),
-      all_day: parsed.data.allDay,
-      location: parsed.data.location ?? null,
-      color: parsed.data.color ?? null,
+      ...eventPayload(parsed.data),
     });
 
     if (error) {

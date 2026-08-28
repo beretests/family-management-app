@@ -40,7 +40,9 @@ describe("schedule event controls", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByText("Event details")).not.toBeInTheDocument();
 
-    const eventButton = screen.getByRole("button", { name: /Practice/ });
+    const eventButton = within(
+      screen.getByTestId("schedule-mobile-agenda"),
+    ).getByRole("button", { name: /Practice/ });
     eventButton.focus();
     fireEvent.click(eventButton);
 

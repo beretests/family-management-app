@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { eventsOverlap, findScheduleConflicts } from "@/features/schedule/conflicts";
+import {
+  eventsOverlap,
+  findScheduleConflicts,
+} from "@/features/schedule/conflicts";
 import type { ScheduleEvent } from "@/features/schedule/types";
 
 function event(
@@ -7,6 +10,7 @@ function event(
   memberIds: string[],
   startsAt: string,
   endsAt: string,
+  eventType: ScheduleEvent["eventType"] = "extracurricular",
 ) {
   return {
     id,
@@ -14,9 +18,10 @@ function event(
     memberIds,
     startsAt,
     endsAt,
+    eventType,
   } as Pick<
     ScheduleEvent,
-    "id" | "memberId" | "memberIds" | "startsAt" | "endsAt"
+    "id" | "memberId" | "memberIds" | "startsAt" | "endsAt" | "eventType"
   >;
 }
 
@@ -85,5 +90,25 @@ describe("findScheduleConflicts", () => {
     expect(conflicts.get("event-b")).toEqual(["event-a"]);
     expect(conflicts.has("event-c")).toBe(false);
     expect(conflicts.has("event-d")).toBe(false);
+  });
+
+  it("does not treat No School as an unavailable conflict", () => {
+    const conflicts = findScheduleConflicts([
+      event(
+        "no-school",
+        ["member-a"],
+        "2026-07-12T06:00:00.000Z",
+        "2026-07-13T06:00:00.000Z",
+        "no_school",
+      ),
+      event(
+        "practice",
+        ["member-a"],
+        "2026-07-12T15:30:00.000Z",
+        "2026-07-12T17:00:00.000Z",
+      ),
+    ]);
+
+    expect(conflicts.size).toBe(0);
   });
 });

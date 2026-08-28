@@ -61,7 +61,18 @@ export function ScheduleTimeGrid({
 
   return (
     <section aria-label={isWeek ? "Weekly calendar" : "Daily calendar"}>
-      <div className="overflow-x-auto rounded-xl border border-[var(--line)] bg-white shadow-sm">
+      <div className="md:hidden">
+        <ScheduleMobileAgenda
+          conflicts={conflicts}
+          days={days}
+          events={events}
+          members={members}
+          onSelect={setSelectedEventId}
+          timeZone={timeZone}
+        />
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-xl border border-[var(--line)] bg-white shadow-sm md:block">
         <div
           className={isWeek ? "min-w-[58rem]" : "min-w-0"}
           data-testid="schedule-time-grid"
@@ -143,6 +154,7 @@ export function ScheduleTimeGrid({
             </div>
 
             {days.map((day) => {
+              const dayAllDayEvents = eventsForDay(allDayEvents, day, timeZone);
               const layouts = layoutCalendarEventsForDay({
                 day,
                 endHour,
@@ -164,6 +176,17 @@ export function ScheduleTimeGrid({
                     height: gridHeight,
                   }}
                 >
+                  {dayAllDayEvents.length > 0 ? (
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 z-0"
+                      data-testid={`all-day-coverage-${toDateParam(day)}`}
+                      style={{
+                        backgroundColor: `color-mix(in srgb, ${getEventColor(dayAllDayEvents[0], members)} 9%, transparent)`,
+                        boxShadow: `inset 5px 0 0 color-mix(in srgb, ${getEventColor(dayAllDayEvents[0], members)} 42%, transparent)`,
+                      }}
+                    />
+                  ) : null}
                   {layouts.map((layout) => (
                     <TimedEventCard
                       conflict={conflicts.has(layout.event.id)}
@@ -203,6 +226,107 @@ export function ScheduleTimeGrid({
         />
       ) : null}
     </section>
+  );
+}
+
+function ScheduleMobileAgenda({
+  conflicts,
+  days,
+  events,
+  members,
+  onSelect,
+  timeZone,
+}: {
+  conflicts: Map<string, string[]>;
+  days: Date[];
+  events: ScheduleEvent[];
+  members: FamilyMemberWithDetails[];
+  onSelect: (eventId: string) => void;
+  timeZone: string;
+}) {
+  return (
+    <div className="grid gap-3" data-testid="schedule-mobile-agenda">
+      {days.map((day) => {
+        const dayEvents = eventsForDay(events, day, timeZone).sort(
+          (left, right) =>
+            Number(right.allDay) - Number(left.allDay) ||
+            new Date(left.startsAt).getTime() -
+              new Date(right.startsAt).getTime(),
+        );
+
+        return (
+          <section
+            className="min-w-0 overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-sm"
+            key={day.toISOString()}
+          >
+            <header
+              className={`border-b border-[var(--line)] px-4 py-3 ${
+                isWeekend(day) ? "bg-[#f0eef9]" : "bg-[#eaf1f8]"
+              }`}
+            >
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--foreground)]">
+                {formatWeekday(day)}
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-[var(--accent-strong)]">
+                {formatShortDate(day)}
+              </p>
+            </header>
+            <div className="grid gap-2 p-3">
+              {dayEvents.length === 0 ? (
+                <p className="rounded-md border border-dashed border-[var(--line)] p-3 text-sm text-[var(--muted)]">
+                  Nothing scheduled.
+                </p>
+              ) : null}
+              {dayEvents.map((event) => {
+                const color = getEventColor(event, members);
+                const attendeeLabel = getAttendeeLabel(event, members);
+                const conflict = conflicts.has(event.id);
+
+                return (
+                  <button
+                    aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, event.allDay, timeZone)}, ${attendeeLabel}`}
+                    className="min-w-0 rounded-lg border px-3 py-3 text-left shadow-sm transition hover:shadow-md"
+                    key={event.id}
+                    onClick={() => onSelect(event.id)}
+                    style={{
+                      backgroundColor: `color-mix(in srgb, ${color} ${event.allDay ? 14 : 8}%, white)`,
+                      borderColor: `color-mix(in srgb, ${color} 45%, white)`,
+                      boxShadow: `inset 5px 0 0 ${color}`,
+                    }}
+                    type="button"
+                  >
+                    <span className="flex min-w-0 items-start justify-between gap-2 pl-1">
+                      <span className="min-w-0">
+                        <span className="block break-words text-sm font-bold text-[var(--foreground)]">
+                          {event.title}
+                        </span>
+                        <span className="mt-1 block text-xs font-semibold text-[var(--accent-strong)]">
+                          {formatTimeRange(
+                            event.startsAt,
+                            event.endsAt,
+                            event.allDay,
+                            timeZone,
+                          )}
+                        </span>
+                        <span className="mt-1 block break-words text-xs text-[var(--muted)]">
+                          {attendeeLabel} ·{" "}
+                          {scheduleEventTypeLabels[event.eventType]}
+                        </span>
+                      </span>
+                      {conflict ? (
+                        <span className="shrink-0 rounded bg-[var(--warning-soft)] px-2 py-1 text-[0.65rem] font-bold uppercase text-[var(--warning)]">
+                          Conflict
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 

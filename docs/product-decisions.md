@@ -98,10 +98,22 @@ and ICS previews use that same zone. Timestamps remain stored as UTC instants.
 
 Calendar event cards are compact launch controls rather than a second details
 surface. Selecting a timed or all-day event opens one accessible modal with its
-full details and, when permitted, the existing edit/delete controls. Day view
-fits the phone viewport without page-level horizontal scrolling; Week view
-keeps its seven-column canvas and contains horizontal scrolling inside the
-calendar so the app shell remains responsive.
+full details and, when permitted, the existing edit/delete controls. Add-event
+and calendar-import actions are buttons beside the calendar controls and open
+their forms in accessible modals instead of expanding panels below the grid.
+
+On phones, Day and Week use a date-grouped agenda so every event remains
+readable without page-level or calendar-level horizontal scrolling. At the
+desktop breakpoint, the existing time grid remains available for visual time
+placement.
+
+`No School` is a dedicated informational schedule type. It is always stored as
+an all-day event, cannot be changed to a timed event, and does not count as a
+schedule conflict or block chore assignment availability. All-day entries use
+inclusive local calendar dates in the form and exclusive local-midnight UTC
+boundaries in storage. In the desktop time grid, each all-day event shades its
+day through all visible working-hour rows while retaining its labelled launch
+control.
 
 ## ICS Import
 

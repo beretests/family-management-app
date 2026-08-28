@@ -1,5 +1,6 @@
 export type ScheduleEventType =
   | "school"
+  | "no_school"
   | "extracurricular"
   | "appointment"
   | "family_event"

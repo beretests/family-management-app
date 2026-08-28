@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CreateScheduleEventForm } from "@/components/schedule/schedule-event-form";
-import { IcsImportForm } from "@/components/schedule/ics-import-form";
 import { CalendarTimeZoneSync } from "@/components/schedule/calendar-time-zone-sync";
+import { ScheduleActionToolbar } from "@/components/schedule/schedule-action-toolbar";
 import { ScheduleBoard } from "@/components/schedule/schedule-board";
 import { ScheduleWeekView } from "@/components/schedule/schedule-week-view";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -135,6 +134,15 @@ export default async function SchedulePage({
               view={view}
               timeZone={timeZone}
             />
+            <ScheduleActionToolbar
+              actorMemberId={context.currentMember.id}
+              canManageAll={canManageAll}
+              defaultEndsAt={defaultEndsAt}
+              defaultStartsAt={defaultStartsAt}
+              familyId={context.family.id}
+              members={context.members}
+              timeZone={timeZone}
+            />
           </div>
         </div>
       </div>
@@ -170,23 +178,6 @@ export default async function SchedulePage({
           timeZone={timeZone}
         />
       )}
-
-      <CreateScheduleEventForm
-        actorMemberId={context.currentMember.id}
-        canManageAll={canManageAll}
-        defaultEndsAt={defaultEndsAt}
-        defaultStartsAt={defaultStartsAt}
-        familyId={context.family.id}
-        members={context.members}
-        timeZone={timeZone}
-      />
-
-      <IcsImportForm
-        actorMemberId={context.currentMember.id}
-        canManageAll={canManageAll}
-        familyId={context.family.id}
-        members={context.members}
-      />
     </section>
   );
 }

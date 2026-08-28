@@ -185,6 +185,31 @@ describe("generateAssignmentPreview", () => {
     ).toContain("1 schedule conflict");
   });
 
+  it("does not treat No School as unavailable time", () => {
+    const [preview] = generateAssignmentPreview({
+      assignmentWindowEnd: windowEnd,
+      assignmentWindowStart: windowStart,
+      members: [child(childAId, "Ari"), child(childBId, "Bea")],
+      recentTasks: [],
+      scheduleEvents: [
+        event({
+          allDay: true,
+          eventType: "no_school",
+          memberId: childAId,
+          memberIds: [childAId],
+          startsAt: "2026-07-13T06:00:00.000Z",
+          endsAt: "2026-07-14T06:00:00.000Z",
+        }),
+      ],
+      templates: [template()],
+    });
+
+    expect(
+      preview.candidates.find((candidate) => candidate.memberId === childAId)
+        ?.reasons,
+    ).toContain("no schedule conflict");
+  });
+
   it("prefers the child with lighter recent workload and undesirable rotation", () => {
     const [preview] = generateAssignmentPreview({
       assignmentWindowEnd: windowEnd,

@@ -17,6 +17,7 @@ import {
   type AppSupabaseClient,
 } from "@/features/schedule/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeImportedNoSchoolRange } from "@/features/schedule/all-day";
 
 const acceptedCalendarTypes = new Set([
   "",
@@ -152,6 +153,15 @@ export async function importIcsEvents(
       }
 
       const eventId = crypto.randomUUID();
+      const isNoSchool = parsed.data.eventType === "no_school";
+      const noSchoolRange = isNoSchool
+        ? normalizeImportedNoSchoolRange({
+            allDay: event.allDay,
+            endsAt: event.endsAt,
+            startsAt: event.startsAt,
+            timeZone: event.recurrence?.timeZone ?? parsed.data.browserTimeZone,
+          })
+        : null;
       const { error } = await actor.writeClient.rpc("import_schedule_event", {
         p_event_id: eventId,
         p_family_id: actor.familyId,
@@ -160,9 +170,9 @@ export async function importIcsEvents(
         p_event_type: parsed.data.eventType,
         p_title: event.title,
         p_description: event.description,
-        p_starts_at: event.startsAt,
-        p_ends_at: event.endsAt,
-        p_all_day: event.allDay,
+        p_starts_at: noSchoolRange?.startsAt ?? event.startsAt,
+        p_ends_at: noSchoolRange?.endsAt ?? event.endsAt,
+        p_all_day: isNoSchool || event.allDay,
         p_location: event.location,
         p_color: null,
         p_import_uid: event.uid,

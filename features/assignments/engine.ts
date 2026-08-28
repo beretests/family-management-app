@@ -291,6 +291,10 @@ function countScheduleConflicts({
   scheduleEvents: ScheduleEvent[];
 }) {
   return scheduleEvents.filter((event) => {
+    if (event.eventType === "no_school") {
+      return false;
+    }
+
     if (!event.memberIds.includes(memberId)) {
       return false;
     }
