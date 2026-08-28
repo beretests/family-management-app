@@ -1,7 +1,7 @@
 # Architecture
 
-This document reflects the MVP implementation through Phase 12 deployment
-polish. It should be updated whenever a later phase changes app-facing storage,
+This document reflects the implementation through the Phase 24 grocery-list
+work. It should be updated whenever a later phase changes app-facing storage,
 cron, auth, database, or deployment behavior.
 
 ## Current Shape
@@ -15,6 +15,7 @@ app/
     dashboard/
     family/
       setup/
+    groceries/
     leaderboard/
     my-today/
     reminders/
@@ -39,6 +40,7 @@ components/
   auth/
   chores/
   family/
+  groceries/
   leaderboard/
   layout/
   reminders/
@@ -52,6 +54,7 @@ features/
   auth/
   chores/
   family/
+  groceries/
   leaderboard/
   points/
   reminders/
@@ -63,6 +66,7 @@ lib/
   auth/
   cron/
   dates/
+  groceries/
   permissions/
   storage/
   supabase/
@@ -79,8 +83,9 @@ docs/
 
 The app renders a public landing page, Supabase Auth entry points, protected
 family app pages, family setup, parent-managed child profiles, schedule
-day/week views, chore templates, assignments, kid task submission, parent
-review, rewards, leaderboard, reminders, and daily maintenance.
+day/week views, a shared grocery list and reusable item catalog, chore
+templates, assignments, kid task submission, parent review, rewards,
+leaderboard, reminders, and daily maintenance.
 
 ## Request Flow
 
@@ -184,8 +189,23 @@ Rewards and reminders flow:
 1. `/rewards` lets parents manage non-monetary rewards and review redemptions.
 2. `/leaderboard` computes a constructive family-private progress board.
 3. `/reminders` shows in-app reminders.
-4. `/api/cron/daily-maintenance` generates reminders and cleans old reviewed
-   evidence when called with `CRON_SECRET`.
+4. `/api/cron/daily-maintenance` generates reminders, cleans old reviewed
+   evidence, and deletes completed or archived grocery lists after 90 days when
+   called with `CRON_SECRET`.
+
+Grocery flow:
+
+1. `/groceries` loads the current open list, reusable family item catalog, and
+   recent completed or archived lists.
+2. Any active linked or Kid Mode family member can start a list when none is
+   open, add catalog or new items, check or uncheck items, and remove items.
+3. Parents can complete, archive, reopen, or manually delete lists and hide or
+   restore saved catalog items.
+4. Server Actions resolve the family and actor rather than trusting submitted
+   identifiers; operation-specific RLS policies enforce the same permissions.
+5. Completed and archived lists receive a 90-day deletion date. Daily cleanup
+   rechecks eligibility, deletes the list and its list items, records a
+   retention audit event, and retains reusable catalog items.
 
 Client provided `family_id`, `member_id`, and role values must be treated as
 untrusted. Server-side code should resolve permissions from the authenticated
@@ -232,9 +252,13 @@ Auth security decisions:
 - keeps chore generation deterministic and free of paid AI/API calls
 - guards the test-only session route behind `E2E_TEST_AUTH_ENABLED=true`
 - guards cron maintenance behind `CRON_SECRET`
-- keeps the complete non-calendar product surface behind the server-side
+- keeps the remaining full product surface behind the server-side
   `ENABLE_FULL_APP` rollout flag while preserving all underlying routes and
   actions for reversible enablement
+- keeps the shared `/groceries` route available beside Calendar, with
+  family-member contribution checks in Server Actions and RLS
+- reuses the secured daily maintenance route for bounded 90-day grocery-list
+  cleanup while preserving the reusable family catalog
 
 The project reserves these environment variables:
 
@@ -264,8 +288,9 @@ evidence photos and is controlled by size limits and retention cleanup.
 
 Unit coverage includes auth schemas, family schemas, schedule validation,
 conflicts, chore generation, assignment scoring, task submission schemas,
-points, rewards, leaderboard scoring, reminders, and evidence cleanup
-selection. The Playwright smoke test covers local parent session setup, family
-setup, child creation, schedule event creation, chore generation, assignments,
-and My Today rendering. SQL verification notes cover RLS, family-owned table
-shape, seed data, and the initial parent bootstrap policy.
+points, rewards, leaderboard scoring, reminders, grocery validation, and
+evidence/grocery cleanup selection. The Playwright smoke test covers local
+parent session setup, family setup, child creation, grocery list
+reuse/lifecycle, schedule event creation, chore generation, assignments, and My
+Today rendering. SQL verification notes cover RLS, family-owned table shape,
+seed data, grocery permissions, and the initial parent bootstrap policy.

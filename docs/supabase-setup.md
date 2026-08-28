@@ -132,6 +132,12 @@ requires no Supabase dashboard setting, Storage bucket, secret, or paid
 feature. Apply it before exposing the No School option in event or import
 forms.
 
+Phase 24 requires `20260828190000_grocery_shopping_lists.sql`. It adds the
+family-scoped catalog, lists, and list items; one-open-list and normalized-name
+indexes; explicit grants; and operation-specific RLS. Apply it before exposing
+`/groceries`. It requires no dashboard setting, Storage bucket, new secret, or
+paid Supabase feature.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.
@@ -170,12 +176,17 @@ After migrations, verify:
   truncation remain parent-only.
 - ICS imports use the existing schedule-event, attendee, and recurrence RLS;
   the atomic import function does not broaden those policies.
+- Active family members can read the family grocery catalog/lists, create the
+  single open list, and contribute items. Only parents can close/delete lists
+  or hide/restore catalog items. Column grants prevent contributor updates to
+  relationship, attribution, and snapshot columns.
 - Children cannot approve submissions or manage parent settings/templates.
 - Global starter chore templates are read-only reference data.
 
 The SQL helpers in `tests/sql`, including
 `schedule-occurrence-overrides-verification.sql` and
-`no-school-verification.sql`, provide lightweight local verification.
+`no-school-verification.sql`, and `grocery-lists-verification.sql` provide
+lightweight local verification.
 
 ## Maintenance
 
@@ -184,6 +195,8 @@ The daily Vercel cron route uses `SUPABASE_SECRET_KEY` to:
 - generate reminders
 - delete expired private evidence objects from Storage
 - delete matching `task_evidence_files` metadata
+- delete completed or archived grocery lists after their 90-day retention date
+  while preserving reusable catalog items
 
 Required values:
 

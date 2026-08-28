@@ -11,6 +11,7 @@ import {
   ListChecks,
   LogOut,
   Medal,
+  ShoppingBasket,
   Settings,
   Sparkles,
   TimerReset,
@@ -25,6 +26,7 @@ const fullAppNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/my-today", label: "My Today", icon: ListChecks },
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
+  { href: "/groceries", label: "Groceries", icon: ShoppingBasket },
   { href: "/chores", label: "Chores", icon: ClipboardList },
   { href: "/assignments", label: "Assignments", icon: ClipboardCheck },
   { href: "/approvals", label: "Approvals", icon: BadgeCheck },
@@ -51,7 +53,10 @@ export function AppShell({
   const fullAppEnabled = isFullAppEnabled();
   const navItems = fullAppEnabled
     ? fullAppNavItems
-    : [{ href: "/schedule", label: "Calendar", icon: CalendarDays }];
+    : [
+        { href: "/schedule", label: "Calendar", icon: CalendarDays },
+        { href: "/groceries", label: "Groceries", icon: ShoppingBasket },
+      ];
 
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip">
@@ -64,7 +69,7 @@ export function AppShell({
                   <Sparkles aria-hidden="true" className="size-5" />
                 </span>
                 <p className="text-sm font-extrabold uppercase text-[var(--accent-strong)]">
-                  {fullAppEnabled ? "Family Chore Hub" : "Family Calendar"}
+                  {fullAppEnabled ? "Family Chore Hub" : "Family Planner"}
                 </p>
               </div>
               <p className="mt-1 break-words text-sm text-[var(--muted)]">

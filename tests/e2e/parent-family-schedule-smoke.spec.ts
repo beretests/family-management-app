@@ -19,6 +19,9 @@ test.describe("parent family setup smoke flow", () => {
     const eventTitle = `Soccer practice ${runId}`;
     const noSchoolTitle = `No School ${runId}`;
     const importedEventTitle = `Imported dance ${runId}`;
+    const groceryItemTitle = `Milk ${runId}`;
+    const removableGroceryItemTitle = `Bread ${runId}`;
+    const groceryListName = `Weekly groceries ${runId}`;
     const calendarFile = {
       name: `family-${runId}.ics`,
       mimeType: "text/calendar",
@@ -75,6 +78,68 @@ test.describe("parent family setup smoke flow", () => {
     await expect(
       childCard.getByText("Dislikes cleaning bathrooms.").first(),
     ).toBeVisible();
+
+    await page.goto("/groceries");
+    await expect(
+      page.getByRole("heading", { name: "Groceries" }),
+    ).toBeVisible();
+    await expectNoPageOverflow(page);
+    const startListForm = page.locator("form").filter({
+      has: page.getByRole("button", { name: "Start list" }),
+    });
+    await startListForm.getByLabel(/List name/).fill(groceryListName);
+    await startListForm.getByRole("button", { name: "Start list" }).click();
+    await expect(
+      page.getByRole("heading", { name: groceryListName }),
+    ).toBeVisible();
+
+    const quickAddForm = page.locator("form").filter({
+      has: page.getByRole("button", { name: /Add item/ }),
+    });
+    await quickAddForm.getByLabel("Item").fill(groceryItemTitle);
+    await quickAddForm.getByLabel("Quantity").fill("2");
+    await quickAddForm.getByLabel("Unit").selectOption("L");
+    await quickAddForm.getByLabel("Category").selectOption("Dairy");
+    await quickAddForm.getByLabel(/Note/).fill("Unsweetened");
+    await quickAddForm.getByRole("button", { name: /Add item/ }).click();
+    const groceryItemCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: groceryItemTitle }),
+    });
+    await expect(groceryItemCard).toContainText("2 L");
+    await expect(groceryItemCard).toContainText("Unsweetened");
+    await quickAddForm.getByLabel("Item").fill(removableGroceryItemTitle);
+    await quickAddForm.getByRole("button", { name: /Add item/ }).click();
+    const removableGroceryItemCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: removableGroceryItemTitle }),
+    });
+    await expect(removableGroceryItemCard).toBeVisible();
+    await removableGroceryItemCard
+      .getByRole("button", { name: "Remove" })
+      .click();
+    await expect(removableGroceryItemCard).toHaveCount(0);
+    await groceryItemCard.getByRole("button", { name: "Bought" }).click();
+    await expect(page.getByRole("button", { name: "Put back" })).toBeVisible();
+    await page.getByRole("button", { name: "Put back" }).click();
+    await expect(page.getByRole("button", { name: "Bought" })).toBeVisible();
+    await page.getByRole("button", { name: "Complete" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Start a grocery list" }),
+    ).toBeVisible();
+    const completedListCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: groceryListName }),
+    });
+    await expect(completedListCard).toContainText("completed");
+    await expect(completedListCard).toContainText("Scheduled for deletion");
+
+    const nextListForm = page.locator("form").filter({
+      has: page.getByRole("button", { name: "Start list" }),
+    });
+    await nextListForm.getByLabel(new RegExp(`^${groceryItemTitle}`)).check();
+    await nextListForm.getByRole("button", { name: "Start list" }).click();
+    await expect(
+      page.getByRole("heading", { name: groceryItemTitle }),
+    ).toBeVisible();
+    await expectNoPageOverflow(page);
 
     await page.goto("/schedule?date=2026-07-12&view=day");
     await expect(
