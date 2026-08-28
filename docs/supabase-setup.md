@@ -53,6 +53,9 @@ https://your-custom-domain.example/callback
    - Password recovery uses the existing `/callback` URL and Supabase's
      recovery email template. Keep the generated confirmation link intact if
      the template is customized.
+   - Existing child-account connections use the Magic Link template. Keep
+     `{{ .ConfirmationURL }}` in that template so the app-provided callback and
+     invitation ID are preserved.
    - The built-in email sender is for testing, restricts recipients, and is
      currently limited to two project-wide auth emails per hour. Use a reviewed
      SMTP provider for real-user delivery and configure rate limits appropriate
@@ -149,6 +152,14 @@ invitation records, active-link uniqueness, exact-email atomic acceptance, and
 parent-only atomic disconnect. Apply them before enabling child email invites.
 They require no Storage bucket or dashboard schema edits.
 
+Phase 28 requires `20260828230000_existing_child_account_linking.sql`. It adds
+the child-invitation `account_mode`, a service-role-only exact-email Auth
+lookup, and acceptance checks that reject any account with active family
+access. It also explicitly removes `anon` and `authenticated` execute access
+from both server-only functions. Apply it before allowing registered addresses
+in the Connect email form. It needs no new secret, Storage bucket, or schema
+edit in the dashboard.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.
@@ -175,6 +186,11 @@ After migrations, verify:
   only after signing in with the invited email and accepting the invite.
 - Only parents can read/create/revoke `family_child_invitations`; acceptance is
   server-only, exact-email matched, and connects an existing active child.
+- Auth-user lookup and invitation acceptance RPCs are executable only with the
+  server-side secret role. Browser callers cannot select `existing_account`
+  mode, inspect whether an email is registered, or directly accept a link.
+- Existing accounts with any active direct membership or unrevoked member
+  link are rejected, including membership in another family.
 - Disconnecting a child account revokes its active auth link without deleting
   the child profile, history, Kid Mode credential, or Auth user.
 - Parents can select and manage `family_member_pin_credentials`; child accounts
@@ -203,7 +219,9 @@ The SQL helpers in `tests/sql`, including
 `no-school-verification.sql`, and `grocery-lists-verification.sql` provide
 lightweight local verification.
 `child-email-invitations-verification.sql` covers Phase 26 linking and
-disconnection boundaries.
+disconnection boundaries. `existing-child-account-link-verification.sql`
+covers Phase 28 RPC grants, safe invitation defaults, existing-account
+acceptance, and occupied-account rejection.
 
 ## Maintenance
 

@@ -170,6 +170,19 @@ export const disconnectChildEmailAccountSchema = z.object({
 export const acceptChildEmailInvitationSchema = z
   .object({
     invitationId: z.string().uuid("Missing child invitation."),
+    password: z.string().max(72, "Use 72 characters or fewer.").default(""),
+    confirmPassword: z
+      .string()
+      .max(72, "Use 72 characters or fewer.")
+      .default(""),
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  });
+
+export const newChildAccountPasswordSchema = z
+  .object({
     password: z
       .string()
       .min(8, "Use at least 8 characters for the password.")

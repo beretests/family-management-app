@@ -7,6 +7,7 @@ import {
   childMemberSchema,
   familySetupSchema,
   memberStatusSchema,
+  newChildAccountPasswordSchema,
 } from "@/features/family/schemas";
 
 const familyId = "22222222-2222-4222-8222-222222222222";
@@ -111,7 +112,14 @@ describe("childEmailInviteSchema", () => {
 });
 
 describe("acceptChildEmailInvitationSchema", () => {
-  it("requires matching passwords of at least eight characters", () => {
+  it("allows passwordless existing-account acceptance but rejects mismatches", () => {
+    expect(
+      acceptChildEmailInvitationSchema.safeParse({
+        invitationId: "66666666-6666-4666-8666-666666666666",
+        password: "",
+        confirmPassword: "",
+      }).success,
+    ).toBe(true);
     expect(
       acceptChildEmailInvitationSchema.safeParse({
         invitationId: "66666666-6666-4666-8666-666666666666",
@@ -124,6 +132,21 @@ describe("acceptChildEmailInvitationSchema", () => {
         invitationId: "66666666-6666-4666-8666-666666666666",
         password: "family-pass",
         confirmPassword: "different-pass",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires a strong matching password for new child accounts", () => {
+    expect(
+      newChildAccountPasswordSchema.safeParse({
+        password: "family-pass",
+        confirmPassword: "family-pass",
+      }).success,
+    ).toBe(true);
+    expect(
+      newChildAccountPasswordSchema.safeParse({
+        password: "short",
+        confirmPassword: "short",
       }).success,
     ).toBe(false);
   });

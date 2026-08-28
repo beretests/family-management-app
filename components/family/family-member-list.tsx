@@ -498,8 +498,9 @@ function InviteChildByEmailForm({
       <input name="familyId" type="hidden" value={familyId} />
       <input name="memberId" type="hidden" value={memberId} />
       <p className="text-sm leading-6 text-[var(--muted)]">
-        Send {childName} a one-time email link. Accepting it connects a new
-        sign-in to this existing profile; Kid Mode and its PIN still work.
+        Send {childName} a secure email link. A new address can create a child
+        sign-in, while an existing app account keeps its current password. Kid
+        Mode and its PIN still work.
       </p>
       <ActionMessage error={state.error} />
       <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
@@ -526,12 +527,12 @@ function InviteChildByEmailForm({
         </span>
       </label>
       <p className="text-xs leading-5 text-[var(--muted)]">
-        For this MVP, the email must not already have an account in this app.
-        Invitations expire after 14 days.
+        Existing accounts can connect only when they do not already have active
+        family access. Invitations expire after 14 days.
       </p>
       <div>
         <SubmitButton pendingLabel="Sending invitation...">
-          Send child invite
+          Send connection email
         </SubmitButton>
       </div>
     </form>

@@ -1,15 +1,11 @@
 export type FamilyRole = "parent" | "caregiver" | "child";
 export type FamilyMemberLifecycleStatus = "active" | "inactive";
 export type FamilyInvitationStatus =
-  | "pending"
-  | "accepted"
-  | "revoked"
-  | "expired";
+  "pending" | "accepted" | "revoked" | "expired";
+export type ChildEmailInvitationAccountMode =
+  "new_account" | "existing_account";
 export type FamilyMemberStatusState =
-  | "normal"
-  | "under_the_weather"
-  | "sick"
-  | "rest_day";
+  "normal" | "under_the_weather" | "sick" | "rest_day";
 
 export type Family = {
   id: string;
@@ -75,6 +71,7 @@ export type ChildEmailInvitation = {
   familyId: string;
   memberId: string;
   emailNormalized: string | null;
+  accountMode: ChildEmailInvitationAccountMode;
   status: FamilyInvitationStatus;
   invitedByMemberId: string | null;
   acceptedByProfileId: string | null;

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   Family,
   ChildEmailInvitation,
+  ChildEmailInvitationAccountMode,
   FamilyContext,
   FamilyInvitation,
   FamilyMember,
@@ -13,6 +14,7 @@ import {
   getVerifiedChildSessionContext,
 } from "@/lib/permissions/family";
 import { resolveMemberAgeYears } from "@/lib/dates/age";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type FamilyRow = {
   id: string;
@@ -78,6 +80,7 @@ type FamilyInvitationRow = {
 
 type ChildEmailInvitationRow = Omit<FamilyInvitationRow, "role"> & {
   email_normalized: string | null;
+  account_mode: ChildEmailInvitationAccountMode;
 };
 
 function mapFamily(row: FamilyRow): Family {
@@ -133,6 +136,7 @@ function mapChildEmailInvitation(
     familyId: row.family_id,
     memberId: row.member_id,
     emailNormalized: row.email_normalized,
+    accountMode: row.account_mode,
     status: row.status,
     invitedByMemberId: row.invited_by_member_id,
     acceptedByProfileId: row.accepted_by_profile_id,
@@ -370,7 +374,7 @@ export async function getChildEmailInvitations(
   const { data, error } = await supabase
     .from("family_child_invitations")
     .select(
-      "id,family_id,member_id,email_normalized,status,invited_by_member_id,accepted_by_profile_id,created_at,expires_at,accepted_at,revoked_at",
+      "id,family_id,member_id,email_normalized,account_mode,status,invited_by_member_id,accepted_by_profile_id,created_at,expires_at,accepted_at,revoked_at",
     )
     .eq("family_id", familyId)
     .order("created_at", { ascending: false });
@@ -382,4 +386,63 @@ export async function getChildEmailInvitations(
   return ((data ?? []) as ChildEmailInvitationRow[]).map(
     mapChildEmailInvitation,
   );
+}
+
+export type ChildEmailInvitationAcceptanceView = {
+  isAuthenticated: boolean;
+  accountMode?: ChildEmailInvitationAccountMode;
+  error?: string;
+};
+
+export async function getChildEmailInvitationAcceptanceView(
+  invitationId: string,
+): Promise<ChildEmailInvitationAcceptanceView> {
+  const supabase = await createClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData.user) {
+    return { isAuthenticated: false };
+  }
+
+  const admin = createAdminClient();
+  const { data: invitation, error: invitationError } = await admin
+    .from("family_child_invitations")
+    .select("email_normalized,account_mode,status,expires_at")
+    .eq("id", invitationId)
+    .maybeSingle();
+
+  if (invitationError || !invitation) {
+    return {
+      isAuthenticated: true,
+      error: "This child invitation could not be found.",
+    };
+  }
+
+  if (invitation.status !== "pending") {
+    return {
+      isAuthenticated: true,
+      error: "This child invitation is no longer pending.",
+    };
+  }
+
+  if (new Date(invitation.expires_at as string).getTime() < Date.now()) {
+    return {
+      isAuthenticated: true,
+      error: "This child invitation has expired.",
+    };
+  }
+
+  const userEmail = userData.user.email?.trim().toLowerCase();
+
+  if (!userEmail || invitation.email_normalized !== userEmail) {
+    return {
+      isAuthenticated: true,
+      error: "This invitation belongs to a different email address.",
+    };
+  }
+
+  return {
+    isAuthenticated: true,
+    accountMode: invitation.account_mode as ChildEmailInvitationAccountMode,
+  };
 }

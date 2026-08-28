@@ -78,10 +78,16 @@ layout; the full app retains its existing Day default.
 
 Phase 26 lets a parent invite an older child by email only by selecting that
 child's existing profile and confirming guardian authority. Acceptance links
-the new sign-in to that profile; it never creates a duplicate child. Kid Mode
+the sign-in to that profile; it never creates a duplicate child. Kid Mode
 remains available in parallel. Pending invite revocation and connected-account
-disconnection preserve the child and history. Automatic invitation of an email
-that already has an app account is deferred beyond this MVP.
+disconnection preserve the child and history.
+
+Phase 28 supports both new and confirmed existing app accounts. New addresses
+receive an Auth invitation and create a password; existing accounts receive a
+non-creating magic link and retain their current password and sign-in methods.
+The current one-family MVP does not merge memberships: an account with any
+active family access cannot be attached to another child. Parent-facing send
+responses do not disclose whether an address is registered.
 
 ## Grocery Shopping Lists
 

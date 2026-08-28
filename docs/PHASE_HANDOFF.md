@@ -2,53 +2,73 @@
 
 ## Current Phase
 
-Phase 27: Mobile Menu and Family Action Modals
+Phase 28: Existing Child Account Linking
 
 ## Branch and Worktree
 
-- Branch: `phase/27-mobile-menu-family-modals`
-- Worktree: `../family-app-phase-27-mobile-menu-family-modals`
-- Base branch: `main` at `f84a994`
+- Branch: `phase/28-existing-child-account-link`
+- Worktree: `../family-app-phase-28-existing-child-account-link`
+- Base branch: `main` at `b18bc5d`
 
 ## Implemented Features
 
-- Added a mobile-only Menu control while keeping the Family Planner/Family
-  Chore Hub identity visible.
-- Collapsed primary routes, Sign out, and Exit Kid Mode into the mobile menu;
-  desktop navigation retains its full layout.
-- Added stacked, full-width mobile navigation controls with 44-pixel minimum
-  touch targets.
-- Added Escape-to-close behavior, restored focus to the Menu button, and
-  closed the menu when a route is selected.
-- Added a compact Family actions panel near the top of Family settings.
-- Moved Add child and Invite parent/caregiver forms into accessible modals.
-- Moved parent and child profile editors into accessible modals.
-- Moved Connect child email into an accessible modal.
-- Kept validation errors inside their active modal; successful actions close
-  the modal and announce the result in the surrounding page.
-- Left Kid PIN, status, invitation revocation, account disconnection, and
-  deactivation controls unchanged.
-- Added component and browser regression coverage for the responsive menu and
-  family modal workflows.
+- Extended Connect email so a parent can connect either a new address or a
+  confirmed existing app account to an active child profile.
+- Kept the parent response neutral: both successful delivery modes use the
+  same message, and occupied/delivery failures do not confirm registration.
+- Continued to use Supabase admin invitations for new addresses; those child
+  accounts create a password during acceptance.
+- Added passwordless magic-link delivery for existing accounts with
+  `shouldCreateUser: false`, so an unknown address is never created by the
+  existing-account fallback.
+- Existing-account acceptance does not call the password-update API and
+  preserves the account's current password and sign-in methods.
+- Added mode-aware acceptance UI: new accounts see password fields, while
+  existing accounts see a password-preservation explanation and no password
+  inputs.
+- Kept exact-email matching, invitation expiry/revocation behavior, child
+  profile reuse, email scrubbing, and parent disconnect behavior.
+- Added browser coverage for new accounts, existing accounts with password
+  preservation, occupied-account rejection, and the broader family workflow.
 
 ## Database and Security Changes
 
-- No database migrations were added.
-- No RLS policies, permissions, authentication behavior, or session
-  architecture changed.
+- Added `20260828230000_existing_child_account_linking.sql`.
+- Added `family_child_invitations.account_mode` with constrained values
+  `new_account` and `existing_account`; parent RLS inserts can use only the
+  safe `new_account` default.
+- Added a server-only exact-email Auth lookup that reports confirmation and
+  active-family-access state without exposing it to browser roles.
+- Hardened atomic invitation acceptance to reject any Auth account with an
+  active direct family membership or unrevoked member link, including another
+  family.
+- Explicitly revoked both lookup and acceptance RPC execution from `public`,
+  `anon`, and `authenticated`, then granted execution only to `service_role`.
+- Added SQL verification for function grants, unknown-email lookup, safe mode
+  defaults, existing-account acceptance, exact-email matching, expired/revoked
+  links, and occupied-account rejection.
 
 ## Manual Setup Still Required
 
-- No new Supabase or Vercel dashboard setup is required.
-- No new environment variables are required.
+- Apply `20260828230000_existing_child_account_linking.sql` to the target
+  Supabase project after reviewing the migration.
+- In Supabase Auth email templates, ensure the Magic Link template retains
+  `{{ .ConfirmationURL }}`.
+- Keep each production `/callback` URL in the Supabase redirect allow-list.
+- Configure and review a production SMTP provider before relying on delivery
+  to arbitrary child email addresses; Supabase's built-in sender is intended
+  for testing and is tightly rate-limited.
+- No new Vercel setting or environment variable is required.
 - Production deployment was not performed.
 
 ## Known Issues and Limitations
 
-- Connecting a child email still requires an address that has not already
-  registered in the app. Linking an existing authenticated account remains
-  the separately planned Phase 28 auth/security change.
-- Kid PIN and status forms intentionally remain inline in this phase.
+- The MVP allows one active family context per Auth account. It rejects rather
+  than merges an account that already has active family access.
+- An account created only through some OAuth configurations may not accept a
+  passwordless email link. A separate OAuth account-claim flow is outside this
+  phase.
+- Supabase Auth invite and magic-link cooldown/rate limits still apply.
 - The repository requires Node 20.9 or newer; verification used Node 22.14.0
   because the host shell defaults to unsupported Node 18.
 - The locked dependency tree still reports six high-severity npm audit
@@ -56,23 +76,25 @@ Phase 27: Mobile Menu and Family Action Modals
 
 ## Next Recommended Phase
 
-- Review Phase 27 at mobile and desktop widths and merge it after approval.
-- After Phase 27 is merged, implement the separately planned existing-account
-  child linking flow as Phase 28, including its migration, auth verification,
-  and RLS/security tests.
+- Review Phase 28, apply the migration in a non-production Supabase project,
+  and manually verify both email templates before approving merge.
+- After merge, verify the production SMTP and redirect configuration in a
+  preview deployment before production rollout.
 
 ## Checks
 
 - TypeScript checking passed under Node 22.14.0.
 - Repository-wide lint passed under Node 22.14.0.
-- Full unit/component suite passed: 41 files, 182 tests.
-- The Playwright family suite passed: the mobile workflow verified the
-  collapsed menu, Escape/focus behavior, and modal child creation; the child
-  email workflow verified modal invitation, acceptance, reconnection, and
-  disconnection. Two tests passed.
+- Full unit/component suite passed: 42 files, 185 tests.
+- The Playwright parent/family suite passed: 4 tests, including new-account
+  invitation, existing-account linking with the old password still valid,
+  occupied-account rejection, and the full family/calendar/grocery workflow.
+- Phase 28 SQL verification passed against local Supabase.
+- Phase 26 child invitation/disconnection SQL regression verification passed.
+- Local Supabase database lint passed with no schema errors.
 - Production build passed with Next.js 16.2.10.
 - `git diff --check` passed.
 
 ## Recommended Commit
 
-`feat(ui): add mobile menu and family action modals`
+`feat(auth): link existing accounts to child profiles`

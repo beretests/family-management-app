@@ -5,7 +5,7 @@ import {
 } from "./supabase-local";
 
 test.describe("parent family setup smoke flow", () => {
-  test("connects and disconnects an existing child profile by email", async ({
+  test("connects a new child account and disconnects it from the profile", async ({
     page,
   }) => {
     test.slow();
@@ -50,7 +50,7 @@ test.describe("parent family setup smoke flow", () => {
       .fill(childEmail);
     await emailDialog.getByLabel(/I am the parent or guardian/).check();
     await emailDialog
-      .getByRole("button", { name: "Send child invite" })
+      .getByRole("button", { name: "Send connection email" })
       .click();
     await expect(emailDialog).toHaveCount(0);
     await expect(childCard.getByText("Email invite pending")).toBeVisible();
@@ -84,6 +84,141 @@ test.describe("parent family setup smoke flow", () => {
     await childCard.getByRole("button", { name: "Disconnect email" }).click();
     await expect(childCard.getByText("No email account")).toBeVisible();
     await expect(page.getByRole("heading", { name: childName })).toBeVisible();
+  });
+
+  test("connects an existing app account without changing its password", async ({
+    page,
+  }) => {
+    test.slow();
+    const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const parentEmail = `existing-link-parent-${runId}@example.com`;
+    const childEmail = `existing-link-child-${runId}@example.com`;
+    const parentPassword = "FamilyTest123!";
+    const existingChildPassword = "ExistingChild123!";
+    const familyName = `Existing Link Family ${runId}`;
+    const childName = `Existing Account Kid ${runId}`;
+
+    await createConfirmedParentUser({
+      email: parentEmail,
+      password: parentPassword,
+    });
+    await createConfirmedParentUser({
+      email: childEmail,
+      password: existingChildPassword,
+    });
+    await signInWithLocalSession(page, parentEmail, parentPassword);
+    await page.goto("/family/setup");
+    await page.getByLabel("Family name").fill(familyName);
+    await page.getByLabel("Your display name").fill(`Parent ${runId}`);
+    await page.getByRole("button", { name: "Create family" }).click();
+
+    await page.getByRole("button", { name: "Add child" }).click();
+    const childDialog = page.getByRole("dialog", { name: "Add a child" });
+    await childDialog.getByLabel("Name").fill(childName);
+    await childDialog.getByLabel("Birth month and year").fill("2012-06");
+    await childDialog
+      .getByRole("button", { name: "Add child", exact: true })
+      .click();
+    await expect(childDialog).toHaveCount(0);
+
+    const childCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: childName }),
+    });
+    await childCard.getByRole("button", { name: "Connect email" }).click();
+    const emailDialog = page.getByRole("dialog", {
+      name: `Connect email for ${childName}`,
+    });
+    await emailDialog
+      .getByRole("textbox", { name: "Child email", exact: true })
+      .fill(childEmail);
+    await emailDialog.getByLabel(/I am the parent or guardian/).check();
+    await emailDialog
+      .getByRole("button", { name: "Send connection email" })
+      .click();
+    await expect(emailDialog).toHaveCount(0);
+    await expect(childCard.getByText("Email invite pending")).toBeVisible();
+
+    const magicLink = await getLocalAuthEmailLink({
+      email: childEmail,
+      pathIncludes: "/family/child-invite/accept",
+    });
+    await page.goto(magicLink);
+    await expect(page).toHaveURL(/\/family\/child-invite\/accept/);
+    await expect(page.getByLabel("Create password")).toHaveCount(0);
+    await expect(page.getByLabel("Confirm password")).toHaveCount(0);
+    await expect(
+      page.getByText(/current password and sign-in methods will not change/i),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Connect existing account" })
+      .click();
+
+    await expect(page).toHaveURL(/\/schedule/);
+    await expect(page.getByText(`Child account: ${childName}`)).toBeVisible();
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    const passwordResponse = await page.request.post("/api/test/session", {
+      data: { email: childEmail, password: existingChildPassword },
+    });
+    expect(passwordResponse.ok()).toBe(true);
+    await page.goto("/schedule");
+    await expect(page.getByText(`Child account: ${childName}`)).toBeVisible();
+  });
+
+  test("rejects an existing account that already has active family access", async ({
+    page,
+  }) => {
+    test.slow();
+    const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const occupiedEmail = `occupied-child-${runId}@example.com`;
+    const targetParentEmail = `target-parent-${runId}@example.com`;
+    const password = "FamilyTest123!";
+    const childName = `Target Kid ${runId}`;
+
+    await createConfirmedParentUser({ email: occupiedEmail, password });
+    await signInWithLocalSession(page, occupiedEmail, password);
+    await page.goto("/family/setup");
+    await page.getByLabel("Family name").fill(`Occupied Family ${runId}`);
+    await page.getByLabel("Your display name").fill(`Occupied ${runId}`);
+    await page.getByRole("button", { name: "Create family" }).click();
+    await page.getByRole("button", { name: "Sign out" }).click();
+
+    await createConfirmedParentUser({ email: targetParentEmail, password });
+    await signInWithLocalSession(page, targetParentEmail, password);
+    await page.goto("/family/setup");
+    await page.getByLabel("Family name").fill(`Target Family ${runId}`);
+    await page.getByLabel("Your display name").fill(`Target Parent ${runId}`);
+    await page.getByRole("button", { name: "Create family" }).click();
+    await page.getByRole("button", { name: "Add child" }).click();
+    const childDialog = page.getByRole("dialog", { name: "Add a child" });
+    await childDialog.getByLabel("Name").fill(childName);
+    await childDialog.getByLabel("Birth month and year").fill("2013-02");
+    await childDialog
+      .getByRole("button", { name: "Add child", exact: true })
+      .click();
+
+    const childCard = page.locator("article").filter({
+      has: page.getByRole("heading", { name: childName }),
+    });
+    await childCard.getByRole("button", { name: "Connect email" }).click();
+    const emailDialog = page.getByRole("dialog", {
+      name: `Connect email for ${childName}`,
+    });
+    await emailDialog
+      .getByRole("textbox", { name: "Child email", exact: true })
+      .fill(occupiedEmail);
+    await emailDialog.getByLabel(/I am the parent or guardian/).check();
+    await emailDialog
+      .getByRole("button", { name: "Send connection email" })
+      .click();
+
+    await expect(
+      emailDialog.getByRole("alert").filter({
+        hasText:
+          "The connection email could not be sent. Check the address and try again later.",
+      }),
+    ).toBeVisible();
+    await expect(childCard.getByText("No email account")).toBeVisible();
   });
 
   test("creates family, schedule, chore templates, assignments, and my today tasks", async ({

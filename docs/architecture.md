@@ -1,8 +1,8 @@
 # Architecture
 
-This document reflects the implementation through the Phase 26 child-email
-account work. It should be updated whenever a later phase changes app-facing storage,
-cron, auth, database, or deployment behavior.
+This document reflects the implementation through the Phase 28 existing child
+account-linking work. It should be updated whenever a later phase changes
+app-facing storage, cron, auth, database, or deployment behavior.
 
 ## Current Shape
 
@@ -136,9 +136,12 @@ Family profile flow:
    validates the signed-in email before linking the Supabase Auth user to the
    pending adult `family_members` row.
 6. Child invitations are tracked separately in `family_child_invitations` and
-   target an existing active child. Exact-email acceptance atomically attaches
-   the Auth profile/link; parent disconnect atomically revokes access while
-   preserving the child and Kid Mode.
+   target an existing active child. New addresses receive an admin invitation
+   and create a password; confirmed existing accounts receive a non-creating
+   magic link and retain their password. Exact-email acceptance atomically
+   attaches the Auth profile/link only when the account has no active family
+   access. Parent disconnect atomically revokes access while preserving the
+   child and Kid Mode.
 7. Invite links that use Supabase's token-fragment response pass through the
    invitation-only `/invite-callback` client bridge. It stores the auth session
    in cookies and removes the fragment before opening the accept page; ordinary
@@ -269,6 +272,9 @@ Auth security decisions:
   Calendar/Groceries rollout while hiding it from child and caregiver accounts
 - sends adult and child invitations only from server actions using the secret
   Supabase client; child acceptance and disconnect use atomic database functions
+- keeps Auth-user email lookup and child-invitation acceptance functions
+  service-role-only, uses neutral parent-facing delivery messages, and sends
+  existing-account links with `shouldCreateUser: false`
 - reuses the secured daily maintenance route for bounded 90-day grocery-list
   cleanup while preserving the reusable family catalog
 
@@ -302,7 +308,9 @@ Unit coverage includes auth schemas, family schemas, schedule validation,
 conflicts, chore generation, assignment scoring, task submission schemas,
 points, rewards, leaderboard scoring, reminders, grocery validation, and
 evidence/grocery cleanup selection. The Playwright smoke test covers local
-parent session setup, family setup, child creation, grocery list
-reuse/lifecycle, schedule event creation, chore generation, assignments, and My
-Today rendering. SQL verification notes cover RLS, family-owned table shape,
-seed data, grocery permissions, and the initial parent bootstrap policy.
+parent session setup, family setup, child creation, new and existing
+child-account linking, password preservation, occupied-account rejection,
+grocery list reuse/lifecycle, schedule event creation, chore generation,
+assignments, and My Today rendering. SQL verification covers RLS, service-only
+Auth lookup/acceptance, family-owned table shape, seed data, grocery
+permissions, and the initial parent bootstrap policy.
