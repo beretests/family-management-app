@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ScheduleTimeGrid } from "@/components/schedule/schedule-time-grid";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
@@ -38,8 +38,11 @@ describe("ScheduleTimeGrid", () => {
     expect(
       screen.getByRole("region", { name: "Daily calendar" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Dance practice/)).toBeInTheDocument();
-    expect(screen.getByText("Studio A")).toBeVisible();
+    const desktopGrid = screen.getByTestId("schedule-time-grid");
+    expect(
+      within(desktopGrid).getByLabelText(/Dance practice/),
+    ).toBeInTheDocument();
+    expect(within(desktopGrid).getByText("Studio A")).toBeVisible();
     expect(screen.getByText("6-8 AM")).toBeVisible();
     expect(screen.getByTestId("schedule-time-grid")).toHaveClass("min-w-0");
   });
@@ -60,8 +63,12 @@ describe("ScheduleTimeGrid", () => {
       />,
     );
 
-    expect(screen.getByText("All day")).toBeVisible();
-    expect(screen.getByText("Rest day · Conflict")).toBeVisible();
+    const desktopGrid = screen.getByTestId("schedule-time-grid");
+    expect(within(desktopGrid).getByText("All day")).toBeVisible();
+    expect(within(desktopGrid).getByText("Rest day · Conflict")).toBeVisible();
+    expect(screen.getByTestId("all-day-coverage-2026-07-12")).toHaveClass(
+      "inset-0",
+    );
   });
 
   it("contains week overflow inside a scrollable calendar canvas", () => {
@@ -80,9 +87,12 @@ describe("ScheduleTimeGrid", () => {
     expect(screen.getByTestId("schedule-time-grid")).toHaveClass(
       "min-w-[58rem]",
     );
-    expect(
-      screen.getByRole("region", { name: "Weekly calendar" }).firstChild,
-    ).toHaveClass("overflow-x-auto");
+    expect(screen.getByTestId("schedule-mobile-agenda").children).toHaveLength(
+      7,
+    );
+    expect(screen.getByTestId("schedule-time-grid").parentElement).toHaveClass(
+      "overflow-x-auto",
+    );
   });
 });
 

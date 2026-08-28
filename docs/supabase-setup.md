@@ -125,6 +125,13 @@ splitting, and series truncation. Apply it before exposing the new recurring
 event scope controls. No Supabase dashboard setting, Storage bucket, secret, or
 paid feature is required.
 
+Phase 23 requires `20260828170000_add_no_school_event_type.sql`. It adds the
+`no_school` enum value and check constraints that require No School base events
+and modified occurrence overrides to be all day. It changes no RLS policy and
+requires no Supabase dashboard setting, Storage bucket, secret, or paid
+feature. Apply it before exposing the No School option in event or import
+forms.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.
@@ -167,8 +174,8 @@ After migrations, verify:
 - Global starter chore templates are read-only reference data.
 
 The SQL helpers in `tests/sql`, including
-`schedule-occurrence-overrides-verification.sql`, provide lightweight local
-verification.
+`schedule-occurrence-overrides-verification.sql` and
+`no-school-verification.sql`, provide lightweight local verification.
 
 ## Maintenance
 

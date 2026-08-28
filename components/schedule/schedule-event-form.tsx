@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
 import {
   createScheduleEvent,
@@ -14,6 +14,7 @@ import type { FamilyMemberWithDetails } from "@/features/family/types";
 import type { ScheduleEvent } from "@/features/schedule/types";
 import type { ScheduleEventEditScope } from "@/features/schedule/types";
 import { getRecurrenceOccurrenceNumber } from "@/features/schedule/recurrence";
+import { addDaysToDateKey } from "@/features/schedule/all-day";
 import { toDateTimeLocalValue } from "@/lib/dates/schedule";
 
 const initialState: ScheduleActionState = {};
@@ -45,6 +46,7 @@ export function CreateScheduleEventForm({
   members,
   actorMemberId,
   canManageAll,
+  onSuccess,
   timeZone,
 }: {
   defaultEndsAt: string;
@@ -53,31 +55,31 @@ export function CreateScheduleEventForm({
   members: FamilyMemberWithDetails[];
   actorMemberId: string;
   canManageAll: boolean;
+  onSuccess?: (message: string) => void;
   timeZone: string;
 }) {
   const [state, formAction] = useActionState(createScheduleEvent, initialState);
 
+  useEffect(() => {
+    if (state.submissionId && state.success && !state.error) {
+      onSuccess?.(state.success);
+    }
+  }, [onSuccess, state.error, state.submissionId, state.success]);
+
   return (
-    <section className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
-      <details>
-        <summary className="cursor-pointer text-xl font-semibold text-[var(--foreground)]">
-          Add schedule item
-        </summary>
-        <ScheduleEventFields
-          key={state.submissionId ?? "new-event"}
-          action={formAction}
-          defaultEndsAt={defaultEndsAt}
-          defaultStartsAt={defaultStartsAt}
-          familyId={familyId}
-          members={members}
-          actorMemberId={actorMemberId}
-          canManageAll={canManageAll}
-          state={state}
-          submitLabel="Add event"
-          timeZone={timeZone}
-        />
-      </details>
-    </section>
+    <ScheduleEventFields
+      key={state.submissionId ?? "new-event"}
+      action={formAction}
+      defaultEndsAt={defaultEndsAt}
+      defaultStartsAt={defaultStartsAt}
+      familyId={familyId}
+      members={members}
+      actorMemberId={actorMemberId}
+      canManageAll={canManageAll}
+      state={state}
+      submitLabel="Add event"
+      timeZone={timeZone}
+    />
   );
 }
 
@@ -203,6 +205,20 @@ function ScheduleEventFields({
       ? initialEndsAt
       : addOneHour(initialStartsAt),
   );
+  const [eventType, setEventType] = useState(
+    event?.eventType ?? "extracurricular",
+  );
+  const [allDay, setAllDay] = useState(
+    event?.eventType === "no_school" || (event?.allDay ?? false),
+  );
+  const [allDayStartsOn, setAllDayStartsOn] = useState(
+    initialStartsAt.slice(0, 10),
+  );
+  const [allDayEndsOn, setAllDayEndsOn] = useState(
+    event?.allDay
+      ? addDaysToDateKey(initialEndsAt.slice(0, 10), -1)
+      : initialStartsAt.slice(0, 10),
+  );
   const [wholeFamily, setWholeFamily] = useState(
     canManageAll && (event?.memberIds.length ?? 0) === 0,
   );
@@ -280,6 +296,12 @@ function ScheduleEventFields({
     );
     setStartsAt(nextStartsAt);
     setEndsAt(nextEndsAt);
+    setAllDayStartsOn(nextStartsAt.slice(0, 10));
+    setAllDayEndsOn(
+      event.allDay
+        ? addDaysToDateKey(nextEndsAt.slice(0, 10), -1)
+        : nextStartsAt.slice(0, 10),
+    );
   }
 
   return (
@@ -308,6 +330,7 @@ function ScheduleEventFields({
         type="hidden"
         value={formTimeZone}
       />
+      <input name="allDay" type="hidden" value={allDay ? "on" : ""} />
 
       <p className="text-xs text-[var(--muted)]">Times use {formTimeZone}.</p>
 
@@ -351,8 +374,17 @@ function ScheduleEventFields({
           Type
           <select
             className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            defaultValue={event?.eventType ?? "extracurricular"}
             name="eventType"
+            onChange={(changeEvent) => {
+              const nextType = changeEvent.target
+                .value as ScheduleEvent["eventType"];
+              setEventType(nextType);
+
+              if (nextType === "no_school") {
+                setAllDay(true);
+              }
+            }}
+            value={eventType}
           >
             {scheduleEventTypes.map((type) => (
               <option key={type} value={type}>
@@ -363,32 +395,77 @@ function ScheduleEventFields({
         </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Starts
+      {allDay ? (
+        <div className="grid gap-4 sm:grid-cols-2">
           <input
-            className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
             name="startsAt"
-            onChange={(event) => handleStartsAtChange(event.target.value)}
-            required
-            type="datetime-local"
-            value={startsAt}
+            type="hidden"
+            value={`${allDayStartsOn}T00:00`}
           />
-        </label>
-
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Ends
           <input
-            className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            min={startsAt}
             name="endsAt"
-            onChange={(event) => handleEndsAtChange(event.target.value)}
-            required
-            type="datetime-local"
-            value={endsAt}
+            type="hidden"
+            value={`${addDaysToDateKey(allDayEndsOn, 1)}T00:00`}
           />
-        </label>
-      </div>
+          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+            First day
+            <input
+              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+              onChange={(changeEvent) => {
+                const nextDate = changeEvent.target.value;
+                setAllDayStartsOn(nextDate);
+
+                if (allDayEndsOn < nextDate) {
+                  setAllDayEndsOn(nextDate);
+                }
+              }}
+              required
+              type="date"
+              value={allDayStartsOn}
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+            Last day
+            <input
+              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+              min={allDayStartsOn}
+              onChange={(changeEvent) =>
+                setAllDayEndsOn(changeEvent.target.value)
+              }
+              required
+              type="date"
+              value={allDayEndsOn}
+            />
+          </label>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+            Starts
+            <input
+              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+              name="startsAt"
+              onChange={(event) => handleStartsAtChange(event.target.value)}
+              required
+              type="datetime-local"
+              value={startsAt}
+            />
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+            Ends
+            <input
+              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+              min={startsAt}
+              name="endsAt"
+              onChange={(event) => handleEndsAtChange(event.target.value)}
+              required
+              type="datetime-local"
+              value={endsAt}
+            />
+          </label>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
         <fieldset className="grid gap-3">
@@ -607,14 +684,29 @@ function ScheduleEventFields({
 
         <label className="flex min-h-11 items-end gap-2 pb-2 text-sm font-medium text-[var(--foreground)]">
           <input
+            checked={allDay}
             className="size-4"
-            defaultChecked={event?.allDay ?? false}
-            name="allDay"
+            disabled={eventType === "no_school"}
+            onChange={(changeEvent) => {
+              setAllDay(changeEvent.target.checked);
+
+              if (changeEvent.target.checked) {
+                const startsOn = startsAt.slice(0, 10);
+                setAllDayStartsOn(startsOn);
+                setAllDayEndsOn(startsOn);
+              }
+            }}
             type="checkbox"
           />
           All day
         </label>
       </div>
+
+      {eventType === "no_school" ? (
+        <p className="rounded-md bg-[var(--info-soft)] p-3 text-sm text-[var(--info)]">
+          No School entries are always saved as all-day events.
+        </p>
+      ) : null}
 
       <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
         Notes

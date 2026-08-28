@@ -17,6 +17,7 @@ test.describe("parent family setup smoke flow", () => {
     const parentName = `Parent ${runId}`;
     const childName = `Ari ${runId}`;
     const eventTitle = `Soccer practice ${runId}`;
+    const noSchoolTitle = `No School ${runId}`;
     const importedEventTitle = `Imported dance ${runId}`;
     const calendarFile = {
       name: `family-${runId}.ics`,
@@ -83,10 +84,15 @@ test.describe("parent family setup smoke flow", () => {
       page.getByText("Sunday, July 12", { exact: false }),
     ).toBeVisible();
 
-    await page.getByText("Add schedule item", { exact: true }).click();
-    const scheduleForm = page.locator("form").filter({
-      has: page.getByRole("button", { name: "Add event" }),
-    });
+    const addEventButton = page.getByRole("button", { name: "Add event" });
+    const calendarRegion = page.getByRole("region", { name: "Daily calendar" });
+    await expect(addEventButton).toBeVisible();
+    await expectButtonBeforeRegion(addEventButton, calendarRegion);
+    await addEventButton.click();
+    const addDialog = page.getByRole("dialog", { name: "Add schedule item" });
+    await expect(addDialog).toBeVisible();
+    await expectDialogFitsViewport(page, addDialog);
+    const scheduleForm = addDialog.locator("form");
     await scheduleForm.getByLabel("Title").fill(eventTitle);
     await scheduleForm.getByLabel("Type").selectOption("extracurricular");
     await scheduleForm.getByLabel("Starts").fill("2026-07-12T16:00");
@@ -99,6 +105,8 @@ test.describe("parent family setup smoke flow", () => {
     await scheduleForm.getByLabel("Series ends").selectOption("after");
     await scheduleForm.getByLabel("Number of occurrences").fill("10");
     await scheduleForm.getByRole("button", { name: "Add event" }).click();
+    await expect(addDialog).toHaveCount(0);
+    await expect(page.getByText("Schedule event added.")).toBeVisible();
 
     await expect(eventButton(page, eventTitle)).toBeVisible();
     await expectNoPageOverflow(page);
@@ -119,11 +127,52 @@ test.describe("parent family setup smoke flow", () => {
     await expect(eventDialog).toHaveCount(0);
     await expect(page.getByRole("link", { name: childName })).toBeVisible();
 
+    await addEventButton.click();
+    const noSchoolDialog = page.getByRole("dialog", {
+      name: "Add schedule item",
+    });
+    const noSchoolForm = noSchoolDialog.locator("form");
+    await noSchoolForm.getByLabel("Title").fill(noSchoolTitle);
+    await noSchoolForm.getByLabel("Type").selectOption("no_school");
+    await expect(noSchoolForm.getByLabel("All day")).toBeChecked();
+    await expect(noSchoolForm.getByLabel("All day")).toBeDisabled();
+    await noSchoolForm.getByLabel("First day").fill("2026-07-13");
+    await noSchoolForm.getByLabel("Last day").fill("2026-07-13");
+    await noSchoolForm.getByLabel("Whole family").uncheck();
+    await noSchoolForm.getByLabel(childName).check();
+    await noSchoolForm.getByRole("button", { name: "Add event" }).click();
+    await expect(noSchoolDialog).toHaveCount(0);
+
+    await page.goto("/schedule?date=2026-07-13&view=day");
+    await expect(eventButton(page, noSchoolTitle)).toBeVisible();
+    await eventButton(page, noSchoolTitle).click();
+    const noSchoolDetails = page.getByRole("dialog", { name: noSchoolTitle });
+    await expect(noSchoolDetails.getByText("No School").first()).toBeVisible();
+    await expect(
+      noSchoolDetails.getByRole("paragraph").filter({ hasText: /^All day$/ }),
+    ).toBeVisible();
+    await expect(noSchoolDetails.getByText("Conflict")).toHaveCount(0);
+    await noSchoolDetails
+      .getByRole("button", { name: "Close event details" })
+      .click();
+
     await page.goto("/schedule?date=2026-07-12&view=week");
     await expect(
       page.getByRole("region", { name: "Weekly calendar" }),
     ).toBeVisible();
+    await expect(
+      page.getByTestId("schedule-mobile-agenda").locator(":scope > section"),
+    ).toHaveCount(7);
     await expectNoPageOverflow(page);
+
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.goto("/schedule?date=2026-07-13&view=day");
+    const allDayCoverage = page.getByTestId("all-day-coverage-2026-07-13");
+    await expect(allDayCoverage).toBeVisible();
+    await expect
+      .poll(async () => (await allDayCoverage.boundingBox())?.height ?? 0)
+      .toBeGreaterThan(600);
+    await page.setViewportSize({ width: 390, height: 844 });
 
     await page.goto("/schedule?date=2026-07-19&view=day");
     await expect(eventButton(page, eventTitle)).toBeVisible();
@@ -136,10 +185,11 @@ test.describe("parent family setup smoke flow", () => {
     await page.goto("/schedule?date=2026-07-25&view=day");
     await expect(eventButton(page, eventTitle)).toHaveCount(0);
 
-    await page.getByText("Import calendar file", { exact: true }).click();
-    const importForm = page.locator("form").filter({
-      has: page.getByRole("button", { name: "Preview events" }),
+    await page.getByRole("button", { name: "Import calendar" }).click();
+    const importDialog = page.getByRole("dialog", {
+      name: "Import calendar file",
     });
+    const importForm = importDialog.locator("form");
     await importForm.getByLabel("iCalendar file").setInputFiles(calendarFile);
     await importForm.getByRole("button", { name: "Preview events" }).click();
     await expect(importForm.getByText("1 ready")).toBeVisible();
@@ -147,7 +197,8 @@ test.describe("parent family setup smoke flow", () => {
     await importForm.getByLabel(parentName).uncheck();
     await importForm.getByLabel(childName).check();
     await importForm.getByRole("button", { name: "Import 1 event" }).click();
-    await expect(importForm.getByText("1 imported.")).toBeVisible();
+    await expect(importDialog).toHaveCount(0);
+    await expect(page.getByText("1 imported.")).toBeVisible();
 
     await page.goto("/schedule?date=2026-07-20&view=day");
     await expect(eventButton(page, importedEventTitle)).toBeVisible();
@@ -162,10 +213,10 @@ test.describe("parent family setup smoke flow", () => {
     await page.goto("/schedule?date=2026-07-22&view=day");
     await expect(eventButton(page, importedEventTitle)).toBeVisible();
 
-    await page.getByText("Import calendar file", { exact: true }).click();
-    const duplicateImportForm = page.locator("form").filter({
-      has: page.getByRole("button", { name: "Preview events" }),
-    });
+    await page.getByRole("button", { name: "Import calendar" }).click();
+    const duplicateImportForm = page
+      .getByRole("dialog", { name: "Import calendar file" })
+      .locator("form");
     await duplicateImportForm
       .getByLabel("iCalendar file")
       .setInputFiles(calendarFile);
@@ -268,6 +319,18 @@ async function expectNoPageOverflow(page: Page) {
       ),
     )
     .toBe(true);
+}
+
+async function expectButtonBeforeRegion(
+  button: ReturnType<Page["getByRole"]>,
+  region: ReturnType<Page["getByRole"]>,
+) {
+  const buttonBox = await button.boundingBox();
+  const regionBox = await region.boundingBox();
+
+  expect(buttonBox).not.toBeNull();
+  expect(regionBox).not.toBeNull();
+  expect(buttonBox!.y + buttonBox!.height).toBeLessThan(regionBox!.y);
 }
 
 async function expectDialogFitsViewport(

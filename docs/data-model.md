@@ -181,6 +181,15 @@ imports without affecting manually created events. The security-invoker
 attendee rows, and its optional recurrence row; existing table RLS remains the
 authorization boundary.
 
+Phase 23 adds `no_school` to `schedule_event_type`. Database check constraints
+on `schedule_events` and modified `schedule_event_occurrence_overrides` require
+that type to have `all_day = true`; server actions enforce the same invariant
+before writes. No School and other all-day ranges are stored as UTC instants at
+exclusive local-midnight boundaries, so one selected local date ends at the
+following local midnight and remains correct through daylight-saving changes.
+No School is informational and is excluded from conflict and chore-availability
+calculations.
+
 ## Swaps, Rewards, Points, Reminders
 
 - `swap_requests`: sibling swap request and parent approval workflow.

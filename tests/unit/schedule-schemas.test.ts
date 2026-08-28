@@ -51,6 +51,24 @@ describe("createScheduleEventSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("accepts No School only as an all-day event", () => {
+    const input = {
+      familyId,
+      memberIds: [memberId],
+      wholeFamily: false,
+      eventType: "no_school",
+      title: "Teacher development day",
+      startsAt: "2026-09-01T00:00",
+      endsAt: "2026-09-02T00:00",
+      allDay: true,
+    };
+
+    expect(createScheduleEventSchema.safeParse(input).success).toBe(true);
+    expect(
+      createScheduleEventSchema.safeParse({ ...input, allDay: false }).success,
+    ).toBe(false);
+  });
+
   it("rejects unsupported event types and colors", () => {
     const parsed = createScheduleEventSchema.safeParse({
       familyId,

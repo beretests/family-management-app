@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const scheduleEventTypes = [
   "school",
+  "no_school",
   "extracurricular",
   "appointment",
   "family_event",
@@ -99,6 +100,10 @@ const scheduleEventBaseSchema = z
       path: ["endsAt"],
     },
   )
+  .refine((value) => value.eventType !== "no_school" || value.allDay, {
+    message: "No School entries must be all-day events.",
+    path: ["allDay"],
+  })
   .refine((value) => value.wholeFamily || value.memberIds.length > 0, {
     message: "Choose whole family or at least one family member.",
     path: ["memberIds"],

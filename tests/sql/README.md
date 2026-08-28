@@ -15,6 +15,7 @@ Then open the local SQL editor or connect with `psql` and run:
 \i tests/sql/schedule-permissions-verification.sql
 \i tests/sql/ics-import-verification.sql
 \i tests/sql/schedule-occurrence-overrides-verification.sql
+\i tests/sql/no-school-verification.sql
 ```
 
 Expected result:
@@ -27,6 +28,8 @@ Expected result:
   assignment, and parent whole-family imports, then rolls back.
 - schedule occurrence verification checks single-event overrides, parent-only
   deletion, atomic series splitting, override reassignment, and truncation.
+- No School verification checks that the additive schedule enum value and
+  all-day database constraints are available after migrations run.
 
 These checks do not replace RLS integration tests with authenticated JWTs. They
 are a low-cost Phase 3 sanity check until app-level data access exists.
