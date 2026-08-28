@@ -196,14 +196,14 @@ function CalendarMemberSelector({
   timeZone: string;
 }) {
   const linkClass =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--foreground)] shadow-sm transition hover:border-[var(--accent)]";
+    "inline-flex min-h-11 w-full min-w-0 items-center justify-start gap-2 rounded-md border border-[var(--line)] bg-white px-4 text-left text-sm font-semibold text-[var(--foreground)] shadow-sm transition hover:border-[var(--accent)] sm:min-h-10 sm:w-auto sm:justify-center sm:rounded-full";
   const activeLinkClass =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-semibold text-white shadow-sm";
+    "inline-flex min-h-11 w-full min-w-0 items-center justify-start gap-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 text-left text-sm font-semibold text-white shadow-sm sm:min-h-10 sm:w-auto sm:justify-center sm:rounded-full";
 
   return (
     <nav
       aria-label="Calendar view"
-      className="flex max-w-full gap-2 overflow-x-auto pb-1"
+      className="grid w-full gap-2 pb-1 sm:flex sm:max-w-full sm:overflow-x-auto"
     >
       <Link
         className={selectedMemberId === null ? activeLinkClass : linkClass}
@@ -224,7 +224,7 @@ function CalendarMemberSelector({
             className="size-2.5 rounded-full border border-current"
             style={{ backgroundColor: member.color ?? "#047857" }}
           />
-          {member.displayName}
+          <span className="min-w-0 break-words">{member.displayName}</span>
         </Link>
       ))}
     </nav>

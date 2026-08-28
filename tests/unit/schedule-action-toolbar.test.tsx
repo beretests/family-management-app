@@ -36,6 +36,22 @@ describe("ScheduleActionToolbar", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const addButton = screen.getByRole("button", { name: "Add event" });
+    const actionButtons = screen.getByTestId("schedule-action-buttons");
+    expect(actionButtons).toHaveClass(
+      "grid-cols-1",
+      "sm:flex",
+      "sm:flex-nowrap",
+    );
+    expect(addButton).toHaveClass(
+      "w-full",
+      "sm:w-auto",
+      "sm:whitespace-nowrap",
+    );
+    expect(screen.getByRole("button", { name: "Import calendar" })).toHaveClass(
+      "w-full",
+      "sm:w-auto",
+      "sm:whitespace-nowrap",
+    );
     addButton.focus();
     fireEvent.click(addButton);
 
