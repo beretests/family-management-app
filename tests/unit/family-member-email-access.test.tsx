@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FamilyMemberList } from "@/components/family/family-member-list";
 import type {
@@ -31,6 +37,23 @@ function child(
   };
 }
 
+const parent: FamilyMemberWithDetails = {
+  id: "11111111-1111-4111-8111-111111111111",
+  familyId,
+  profileId: "99999999-9999-4999-8999-999999999999",
+  displayName: "Parent",
+  role: "parent",
+  birthdate: null,
+  ageYears: null,
+  abilityLevel: 5,
+  color: "#2563eb",
+  lifecycleStatus: "active",
+  deactivatedAt: null,
+  preferences: null,
+  currentStatus: null,
+  hasKidModePin: false,
+};
+
 afterEach(cleanup);
 
 describe("FamilyMemberList child email access", () => {
@@ -56,6 +79,7 @@ describe("FamilyMemberList child email access", () => {
         familyId={familyId}
         invitations={[]}
         members={[
+          parent,
           child(
             "33333333-3333-4333-8333-333333333333",
             "Connected child",
@@ -77,5 +101,45 @@ describe("FamilyMemberList child email access", () => {
       screen.getByRole("button", { name: "Revoke email invite" }),
     ).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect email" })).toBeVisible();
+
+    const childCard = screen
+      .getByRole("heading", { name: "PIN only child" })
+      .closest("article");
+
+    expect(childCard).not.toBeNull();
+    fireEvent.click(
+      within(childCard as HTMLElement).getByRole("button", {
+        name: "Connect email",
+      }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Connect email for PIN only child" }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close child email connection" }),
+    );
+
+    fireEvent.click(
+      within(childCard as HTMLElement).getByRole("button", {
+        name: "Edit profile",
+      }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Edit PIN only child" }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close child profile editor" }),
+    );
+
+    const parentArticle = screen
+      .getByRole("heading", { name: "Parent" })
+      .closest("article");
+    expect(parentArticle).not.toBeNull();
+    fireEvent.click(
+      within(parentArticle as HTMLElement).getByRole("button", {
+        name: "Edit profile",
+      }),
+    );
+    expect(screen.getByRole("dialog", { name: "Edit Parent" })).toBeVisible();
   });
 });

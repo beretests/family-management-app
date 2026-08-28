@@ -1,13 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   deactivateAdultMember,
   deactivateChildMember,
   disconnectChildEmailAccount,
   type FamilyActionState,
   inviteChildByEmail,
-  inviteAdultMember,
   revokeChildEmailInvitation,
   revokeFamilyInvitation,
   updateParentProfile,
@@ -21,6 +20,7 @@ import { ActionMessage, SubmitButton } from "@/components/family/form-status";
 import { EditChildMemberForm } from "@/components/family/family-member-form";
 import { KidModePinForm } from "@/components/family/kid-mode-pin-form";
 import { MemberStatusForm } from "@/components/family/member-status-form";
+import { Modal } from "@/components/ui/modal";
 import { StatusPill } from "@/components/ui/status-pill";
 
 const initialState: FamilyActionState = {};
@@ -89,7 +89,6 @@ export function FamilyMemberList({
             />
           ))}
         </div>
-        <InviteAdultForm familyId={familyId} />
       </div>
 
       <div className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
@@ -140,6 +139,7 @@ function AdultCard({
   member: FamilyMemberWithDetails;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [status, setStatus] = useState<string>();
   const isInactive = member.lifecycleStatus === "inactive";
   const isPending = invitation?.status === "pending";
 
@@ -171,10 +171,13 @@ function AdultCard({
           {canEdit ? (
             <button
               className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-              onClick={() => setIsEditing((current) => !current)}
+              onClick={() => {
+                setStatus(undefined);
+                setIsEditing(true);
+              }}
               type="button"
             >
-              {isEditing ? "Cancel edit" : "Edit profile"}
+              Edit profile
             </button>
           ) : null}
           {isPending && invitation ? (
@@ -189,80 +192,45 @@ function AdultCard({
         </div>
       </div>
 
+      <ActionMessage success={status} />
+
       {canEdit && isEditing ? (
-        <div className="mt-4 border-t border-[var(--line)] pt-4">
-          <ParentProfileForm familyId={familyId} member={member} />
-        </div>
+        <Modal
+          closeLabel="Close profile editor"
+          eyebrow="Family profile"
+          onClose={() => setIsEditing(false)}
+          title={`Edit ${member.displayName}`}
+        >
+          <ParentProfileForm
+            familyId={familyId}
+            member={member}
+            onSuccess={(message) => {
+              setStatus(message);
+              setIsEditing(false);
+            }}
+          />
+        </Modal>
       ) : null}
     </article>
-  );
-}
-
-function InviteAdultForm({ familyId }: { familyId: string }) {
-  const [state, formAction] = useActionState(inviteAdultMember, initialState);
-
-  return (
-    <form
-      action={formAction}
-      className="mt-5 grid gap-4 border-t border-[var(--line)] pt-5"
-    >
-      <input name="familyId" type="hidden" value={familyId} />
-      <div>
-        <h3 className="text-base font-semibold text-[var(--foreground)]">
-          Invite an adult
-        </h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          They will receive a Supabase email invite and must sign in with that
-          email to join this family.
-        </p>
-      </div>
-      <ActionMessage error={state.error} success={state.success} />
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr_180px_auto] lg:items-end">
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Display name
-          <input
-            className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            maxLength={120}
-            name="displayName"
-            required
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Email
-          <input
-            className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            maxLength={254}
-            name="email"
-            required
-            type="email"
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Role
-          <select
-            className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-            name="role"
-          >
-            <option value="parent">Parent</option>
-            <option value="caregiver">Caregiver</option>
-          </select>
-        </label>
-        <SubmitButton pendingLabel="Sending invite...">
-          Send invite
-        </SubmitButton>
-      </div>
-    </form>
   );
 }
 
 function ParentProfileForm({
   familyId,
   member,
+  onSuccess,
 }: {
   familyId: string;
   member: FamilyMemberWithDetails;
+  onSuccess: (message: string) => void;
 }) {
   const [state, formAction] = useActionState(updateParentProfile, initialState);
+
+  useEffect(() => {
+    if (state.success) {
+      onSuccess(state.success);
+    }
+  }, [onSuccess, state.success]);
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -301,6 +269,7 @@ function ChildCard({
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [isInvitingByEmail, setIsInvitingByEmail] = useState(false);
+  const [actionStatus, setActionStatus] = useState<string>();
   const isInactive = member.lifecycleStatus === "inactive";
   const hasConnectedAccount = Boolean(member.profileId);
   const statusNote = member.currentStatus?.note?.trim();
@@ -360,10 +329,13 @@ function ChildCard({
           <div className="flex flex-wrap items-start gap-2 sm:justify-end">
             <button
               className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-              onClick={() => setIsEditingProfile((current) => !current)}
+              onClick={() => {
+                setActionStatus(undefined);
+                setIsEditingProfile(true);
+              }}
               type="button"
             >
-              {isEditingProfile ? "Cancel edit" : "Edit profile"}
+              Edit profile
             </button>
             <button
               className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
@@ -382,10 +354,13 @@ function ChildCard({
             {!hasConnectedAccount && !invitation ? (
               <button
                 className="inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-                onClick={() => setIsInvitingByEmail((current) => !current)}
+                onClick={() => {
+                  setActionStatus(undefined);
+                  setIsInvitingByEmail(true);
+                }}
                 type="button"
               >
-                {isInvitingByEmail ? "Cancel invite" : "Connect email"}
+                Connect email
               </button>
             ) : null}
             {invitation ? (
@@ -405,20 +380,10 @@ function ChildCard({
         ) : null}
       </div>
 
-      {!isInactive &&
-      (isEditingProfile ||
-        isEditingStatus ||
-        isEditingPin ||
-        isInvitingByEmail) ? (
+      <ActionMessage success={actionStatus} />
+
+      {!isInactive && (isEditingStatus || isEditingPin) ? (
         <div className="mt-5 grid gap-5 border-t border-[var(--line)] pt-5">
-          {isEditingProfile ? (
-            <section className="rounded-md bg-[var(--background)] p-4">
-              <h4 className="text-sm font-semibold uppercase text-[var(--muted)]">
-                Edit profile
-              </h4>
-              <EditChildMemberForm familyId={familyId} member={member} />
-            </section>
-          ) : null}
           {isEditingStatus ? (
             <section className="rounded-md bg-[var(--background)] p-4">
               <h4 className="text-sm font-semibold uppercase text-[var(--muted)]">
@@ -439,19 +404,47 @@ function ChildCard({
               />
             </section>
           ) : null}
-          {isInvitingByEmail && !hasConnectedAccount && !invitation ? (
-            <section className="rounded-md bg-[var(--background)] p-4">
-              <h4 className="text-sm font-semibold uppercase text-[var(--muted)]">
-                Connect a child email
-              </h4>
-              <InviteChildByEmailForm
-                childName={member.displayName}
-                familyId={familyId}
-                memberId={member.id}
-              />
-            </section>
-          ) : null}
         </div>
+      ) : null}
+
+      {!isInactive && isEditingProfile ? (
+        <Modal
+          closeLabel="Close child profile editor"
+          eyebrow="Child profile"
+          onClose={() => setIsEditingProfile(false)}
+          title={`Edit ${member.displayName}`}
+        >
+          <EditChildMemberForm
+            familyId={familyId}
+            member={member}
+            onSuccess={(message) => {
+              setActionStatus(message);
+              setIsEditingProfile(false);
+            }}
+          />
+        </Modal>
+      ) : null}
+
+      {!isInactive &&
+      isInvitingByEmail &&
+      !hasConnectedAccount &&
+      !invitation ? (
+        <Modal
+          closeLabel="Close child email connection"
+          eyebrow="Child account"
+          onClose={() => setIsInvitingByEmail(false)}
+          title={`Connect email for ${member.displayName}`}
+        >
+          <InviteChildByEmailForm
+            childName={member.displayName}
+            familyId={familyId}
+            memberId={member.id}
+            onSuccess={(message) => {
+              setActionStatus(message);
+              setIsInvitingByEmail(false);
+            }}
+          />
+        </Modal>
       ) : null}
     </article>
   );
@@ -485,22 +478,30 @@ function InviteChildByEmailForm({
   childName,
   familyId,
   memberId,
+  onSuccess,
 }: {
   childName: string;
   familyId: string;
   memberId: string;
+  onSuccess: (message: string) => void;
 }) {
   const [state, formAction] = useActionState(inviteChildByEmail, initialState);
 
+  useEffect(() => {
+    if (state.success) {
+      onSuccess(state.success);
+    }
+  }, [onSuccess, state.success]);
+
   return (
-    <form action={formAction} className="mt-3 grid gap-4">
+    <form action={formAction} className="grid gap-4">
       <input name="familyId" type="hidden" value={familyId} />
       <input name="memberId" type="hidden" value={memberId} />
       <p className="text-sm leading-6 text-[var(--muted)]">
         Send {childName} a one-time email link. Accepting it connects a new
         sign-in to this existing profile; Kid Mode and its PIN still work.
       </p>
-      <ActionMessage error={state.error} success={state.success} />
+      <ActionMessage error={state.error} />
       <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
         Child email
         <input

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import {
   createChildMember,
   type FamilyActionState,
@@ -14,15 +14,24 @@ const initialState: FamilyActionState = {};
 
 const colorOptions = ["#047857", "#2563eb", "#b45309", "#7c3aed", "#be123c"];
 
-export function AddChildMemberForm({ familyId }: { familyId: string }) {
+export function AddChildMemberForm({
+  familyId,
+  onSuccess,
+}: {
+  familyId: string;
+  onSuccess?: (message: string) => void;
+}) {
   const [state, formAction] = useActionState(createChildMember, initialState);
 
+  useEffect(() => {
+    if (state.success) {
+      onSuccess?.(state.success);
+    }
+  }, [onSuccess, state.success]);
+
   return (
-    <section className="rounded-lg border border-[var(--line)] bg-[var(--panel)] p-5 shadow-sm">
-      <h2 className="text-xl font-semibold text-[var(--foreground)]">
-        Add a child
-      </h2>
-      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+    <div>
+      <p className="text-sm leading-6 text-[var(--muted)]">
         Add birth month, ability, and notes parents should consider when
         assigning work.
       </p>
@@ -32,18 +41,26 @@ export function AddChildMemberForm({ familyId }: { familyId: string }) {
         state={state}
         submitLabel="Add child"
       />
-    </section>
+    </div>
   );
 }
 
 export function EditChildMemberForm({
   familyId,
   member,
+  onSuccess,
 }: {
   familyId: string;
   member: FamilyMemberWithDetails;
+  onSuccess?: (message: string) => void;
 }) {
   const [state, formAction] = useActionState(updateChildMember, initialState);
+
+  useEffect(() => {
+    if (state.success) {
+      onSuccess?.(state.success);
+    }
+  }, [onSuccess, state.success]);
 
   return (
     <ChildFields
@@ -72,7 +89,9 @@ function ChildFields({
   return (
     <form action={action} className="mt-4 grid gap-4">
       <input name="familyId" type="hidden" value={familyId} />
-      {member ? <input name="memberId" type="hidden" value={member.id} /> : null}
+      {member ? (
+        <input name="memberId" type="hidden" value={member.id} />
+      ) : null}
 
       <ActionMessage error={state.error} success={state.success} />
 

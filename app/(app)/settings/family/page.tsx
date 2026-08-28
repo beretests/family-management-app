@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AddChildMemberForm } from "@/components/family/family-member-form";
+import { FamilyActionToolbar } from "@/components/family/family-action-toolbar";
 import { FamilyMemberList } from "@/components/family/family-member-list";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
@@ -62,6 +62,7 @@ export default async function FamilySettingsPage() {
         </div>
       </div>
 
+      <FamilyActionToolbar familyId={context.family.id} />
       <FamilyMemberList
         childInvitations={childInvitations}
         currentMemberId={context.currentMember.id}
@@ -69,7 +70,6 @@ export default async function FamilySettingsPage() {
         invitations={invitations}
         members={context.members}
       />
-      <AddChildMemberForm familyId={context.family.id} />
     </section>
   );
 }
