@@ -27,22 +27,32 @@ test.describe("parent family setup smoke flow", () => {
     await page.getByLabel("Your display name").fill(`Parent ${runId}`);
     await page.getByRole("button", { name: "Create family" }).click();
 
-    const childForm = page.locator("form").filter({
-      has: page.getByRole("button", { name: "Add child" }),
-    });
-    await childForm.getByLabel("Name").fill(childName);
-    await childForm.getByLabel("Birth month and year").fill("2014-03");
-    await childForm.getByLabel("Ability level").selectOption("4");
-    await childForm.getByRole("button", { name: "Add child" }).click();
+    await page.getByRole("button", { name: "Add child" }).click();
+    const childDialog = page.getByRole("dialog", { name: "Add a child" });
+    await childDialog.getByLabel("Name").fill(childName);
+    await childDialog.getByLabel("Birth month and year").fill("2014-03");
+    await childDialog.getByLabel("Ability level").selectOption("4");
+    await childDialog
+      .getByRole("button", { name: "Add child", exact: true })
+      .click();
+    await expect(childDialog).toHaveCount(0);
 
     let childCard = page.locator("article").filter({
       has: page.getByRole("heading", { name: childName }),
     });
     await expect(childCard.getByText("No email account")).toBeVisible();
     await childCard.getByRole("button", { name: "Connect email" }).click();
-    await childCard.getByLabel("Child email").fill(childEmail);
-    await childCard.getByLabel(/I am the parent or guardian/).check();
-    await childCard.getByRole("button", { name: "Send child invite" }).click();
+    const emailDialog = page.getByRole("dialog", {
+      name: `Connect email for ${childName}`,
+    });
+    await emailDialog
+      .getByRole("textbox", { name: "Child email", exact: true })
+      .fill(childEmail);
+    await emailDialog.getByLabel(/I am the parent or guardian/).check();
+    await emailDialog
+      .getByRole("button", { name: "Send child invite" })
+      .click();
+    await expect(emailDialog).toHaveCount(0);
     await expect(childCard.getByText("Email invite pending")).toBeVisible();
 
     const invitationLink = await getLocalAuthEmailLink({
@@ -134,16 +144,32 @@ test.describe("parent family setup smoke flow", () => {
     await expect(page.getByRole("heading", { name: familyName })).toBeVisible();
     await expectNoPageOverflow(page);
 
-    const childForm = page.locator("form").filter({
-      has: page.getByRole("button", { name: "Add child" }),
-    });
-    await childForm.getByLabel("Name").fill(childName);
-    await childForm.getByLabel("Birth month and year").fill("2018-07");
-    await childForm.getByLabel("Ability level").selectOption("3");
-    await childForm
+    const mobileMenuButton = page.getByRole("button", { name: "Menu" });
+    await expect(mobileMenuButton).toBeVisible();
+    await expect(mobileMenuButton).toHaveAttribute("aria-expanded", "false");
+    await expect(
+      page.getByRole("link", { name: "Schedule", exact: true }),
+    ).not.toBeVisible();
+    await mobileMenuButton.click();
+    await expect(
+      page.getByRole("link", { name: "Schedule", exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(mobileMenuButton).toHaveAttribute("aria-expanded", "false");
+    await expect(mobileMenuButton).toBeFocused();
+
+    await page.getByRole("button", { name: "Add child" }).click();
+    const childDialog = page.getByRole("dialog", { name: "Add a child" });
+    await childDialog.getByLabel("Name").fill(childName);
+    await childDialog.getByLabel("Birth month and year").fill("2018-07");
+    await childDialog.getByLabel("Ability level").selectOption("3");
+    await childDialog
       .getByLabel("Preferences, dislikes, and safety notes")
       .fill("Dislikes cleaning bathrooms.");
-    await childForm.getByRole("button", { name: "Add child" }).click();
+    await childDialog
+      .getByRole("button", { name: "Add child", exact: true })
+      .click();
+    await expect(childDialog).toHaveCount(0);
 
     const childCard = page.locator("article").filter({
       has: page.getByRole("heading", { name: childName }),

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AppShell } from "@/components/layout/app-shell";
 import type { FamilyMember } from "@/features/family/types";
@@ -38,6 +38,49 @@ afterEach(() => {
 });
 
 describe("AppShell feature flag", () => {
+  it("collapses the mobile menu and restores focus when Escape closes it", () => {
+    delete process.env.ENABLE_FULL_APP;
+
+    render(<AppShell currentMember={parentMember}>Calendar content</AppShell>);
+
+    const menuButton = screen.getByRole("button", { name: "Menu" });
+    const menu = document.getElementById("primary-navigation-menu");
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(menu).toHaveClass("hidden", "sm:contents");
+
+    fireEvent.click(menuButton);
+    expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(menu).toHaveClass("grid");
+    expect(menu).not.toHaveClass("hidden");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(menuButton).toHaveFocus();
+  });
+
+  it("closes the mobile menu when a route is selected", () => {
+    delete process.env.ENABLE_FULL_APP;
+
+    render(<AppShell currentMember={parentMember}>Calendar content</AppShell>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    const calendarLink = screen.getByRole("link", { name: "Calendar" });
+    calendarLink.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(calendarLink);
+
+    expect(screen.getByRole("button", { name: "Menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
   it("shows Calendar and Groceries navigation by default", () => {
     delete process.env.ENABLE_FULL_APP;
 
@@ -85,6 +128,7 @@ describe("AppShell feature flag", () => {
     );
 
     expect(screen.getByText("Kid Mode: Child")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
     expect(screen.getByRole("button", { name: "Exit Kid Mode" })).toBeVisible();
     expect(screen.queryByText("Child account: Child")).toBeNull();
   });
