@@ -15,6 +15,7 @@ import {
   disconnectChildEmailAccountSchema,
   familySetupSchema,
   memberStatusSchema,
+  newChildAccountPasswordSchema,
   revokeFamilyInvitationSchema,
   updateParentProfileSchema,
   updateChildMemberSchema,
@@ -27,6 +28,7 @@ import {
   requireParentContext,
 } from "@/lib/permissions/family";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createAuthEmailClient } from "@/lib/supabase/auth-email";
 import { createClient } from "@/lib/supabase/server";
 
 export type FamilyActionState = {
@@ -53,6 +55,79 @@ function invitationAcceptPath(invitationId: string) {
 
 function childInvitationAcceptPath(invitationId: string) {
   return `/family/child-invite/accept?invite=${encodeURIComponent(invitationId)}`;
+}
+
+type ChildLinkAccountStatus = {
+  profile_id: string;
+  email_confirmed: boolean;
+  has_active_family_access: boolean;
+};
+
+const childConnectionEmailSuccess =
+  "If this email can be connected, a secure link has been sent.";
+const childConnectionEmailError =
+  "The connection email could not be sent. Check the address and try again later.";
+
+async function getChildLinkAccountStatus(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string,
+) {
+  const { data, error } = await admin.rpc("get_child_link_account_status", {
+    p_email_normalized: email,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data?.[0] as ChildLinkAccountStatus | undefined) ?? null;
+}
+
+async function revokeUnsentChildInvitation(
+  admin: ReturnType<typeof createAdminClient>,
+  invitationId: string,
+) {
+  await admin
+    .from("family_child_invitations")
+    .update({
+      status: "revoked",
+      email_normalized: null,
+      revoked_at: new Date().toISOString(),
+    })
+    .eq("id", invitationId);
+}
+
+async function sendExistingChildAccountLink({
+  admin,
+  email,
+  invitationId,
+  redirectTo,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  email: string;
+  invitationId: string;
+  redirectTo: string;
+}) {
+  const { error: modeError } = await admin
+    .from("family_child_invitations")
+    .update({ account_mode: "existing_account" })
+    .eq("id", invitationId)
+    .eq("status", "pending");
+
+  if (modeError) {
+    return modeError;
+  }
+
+  const authEmail = createAuthEmailClient();
+  const { error } = await authEmail.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: false,
+    },
+  });
+
+  return error;
 }
 
 async function insertAuditEvent({
@@ -691,6 +766,15 @@ export async function inviteChildByEmail(
       return { error: "This child already has a connected email account." };
     }
 
+    const initialAccountStatus = await getChildLinkAccountStatus(admin, email);
+
+    if (
+      initialAccountStatus?.email_confirmed &&
+      initialAccountStatus.has_active_family_access
+    ) {
+      return { error: childConnectionEmailError };
+    }
+
     const { data: pendingRows, error: pendingError } = await admin
       .from("family_child_invitations")
       .select("id,member_id,email_normalized,expires_at")
@@ -748,44 +832,70 @@ export async function inviteChildByEmail(
     const redirectTo = getAuthCallbackUrl(
       `/callback?next=${encodeURIComponent(acceptPath)}`,
     );
-    const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-      email,
-      {
-        data: { display_name: child.display_name },
+    let accountMode: "new_account" | "existing_account" = "new_account";
+    let emailError: { message: string } | null = null;
+
+    if (initialAccountStatus?.email_confirmed) {
+      accountMode = "existing_account";
+      emailError = await sendExistingChildAccountLink({
+        admin,
+        email,
+        invitationId,
         redirectTo,
-      },
-    );
+      });
+    } else {
+      const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+        email,
+        {
+          data: { display_name: child.display_name },
+          redirectTo,
+        },
+      );
 
-    if (inviteError) {
-      await admin
-        .from("family_child_invitations")
-        .update({
-          status: "revoked",
-          email_normalized: null,
-          revoked_at: new Date().toISOString(),
-        })
-        .eq("id", invitationId);
+      emailError = inviteError;
 
-      const existingAccount =
-        inviteError.code === "email_exists" ||
-        /already|registered|exist/i.test(inviteError.message);
+      // A confirmed account can appear between the preflight lookup and the
+      // admin invite. Recheck after any invite error, then use a non-creating
+      // magic link only when the exact account now exists and has no family.
+      if (inviteError) {
+        const racedAccountStatus = await getChildLinkAccountStatus(
+          admin,
+          email,
+        );
 
-      return {
-        error: existingAccount
-          ? "This email already has an app account. Automatic child invites currently require an email that has not registered before."
-          : `Invite email could not be sent: ${inviteError.message}`,
-      };
+        if (
+          racedAccountStatus?.email_confirmed &&
+          !racedAccountStatus.has_active_family_access
+        ) {
+          accountMode = "existing_account";
+          emailError = await sendExistingChildAccountLink({
+            admin,
+            email,
+            invitationId,
+            redirectTo,
+          });
+        }
+      }
+    }
+
+    if (emailError) {
+      await revokeUnsentChildInvitation(admin, invitationId);
+      return { error: childConnectionEmailError };
     }
 
     await insertAuditEvent({
       action: "family_child_email.invited",
       actorMemberId: parent.memberId,
       familyId: parent.familyId,
-      target: { invitationId, memberId: parsed.data.memberId },
+      target: {
+        accountMode,
+        invitationId,
+        memberId: parsed.data.memberId,
+      },
     });
 
     revalidatePath("/settings/family");
-    return { success: `Invite sent to ${email}.` };
+    return { success: childConnectionEmailSuccess };
   } catch (error) {
     return { error: errorMessage(error) };
   }
@@ -875,7 +985,7 @@ export async function acceptChildEmailInvitation(
     const admin = createAdminClient();
     const { data: invitation, error: invitationError } = await admin
       .from("family_child_invitations")
-      .select("id,email_normalized,status,expires_at")
+      .select("id,email_normalized,account_mode,status,expires_at")
       .eq("id", parsed.data.invitationId)
       .maybeSingle();
 
@@ -903,12 +1013,25 @@ export async function acceptChildEmailInvitation(
       return { error: "This invitation belongs to a different email address." };
     }
 
-    const { error: passwordError } = await supabase.auth.updateUser({
-      password: parsed.data.password,
-    });
+    if (invitation.account_mode === "new_account") {
+      const password = newChildAccountPasswordSchema.safeParse({
+        password: parsed.data.password,
+        confirmPassword: parsed.data.confirmPassword,
+      });
 
-    if (passwordError) {
-      return { error: passwordError.message };
+      if (!password.success) {
+        return {
+          error: password.error.issues[0]?.message ?? "Check the password.",
+        };
+      }
+
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: password.data.password,
+      });
+
+      if (passwordError) {
+        return { error: passwordError.message };
+      }
     }
 
     const displayName =

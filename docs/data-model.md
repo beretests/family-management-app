@@ -12,7 +12,9 @@ leaderboard into the app UI. Phase 11 wires in-app reminders and evidence
 retention cleanup into the existing reminder and evidence tables. Phase 14 adds
 multi-member schedule attendance and parent profile editing. Phase 16 adds
 adult family invitations and birthdate-based child age calculation. Phase 26
-adds parent-managed child email invitations and atomic account linking.
+adds parent-managed child email invitations and atomic account linking. Phase
+28 lets those invitations safely target either a new Auth user or a confirmed
+existing app account.
 
 ## Identity And Families
 
@@ -56,6 +58,10 @@ Child profile management:
 - Phase 26 creates those links only after a 14-day invitation is accepted by
   the exact invited email. Partial unique indexes allow only one active auth
   link per child and one active member link per auth profile within a family.
+- Phase 28 adds `family_child_invitations.account_mode` with `new_account` as
+  the browser-safe default and `existing_account` as a server-selected mode.
+  Existing-account acceptance preserves the Auth user's current password and
+  rejects any active membership or link across families.
 - Child invitation emails are nullable and scrubbed on acceptance, revocation,
   or expiry. Revocation does not deactivate the child. Disconnecting clears
   `family_members.profile_id` and revokes the auth link without deleting the

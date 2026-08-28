@@ -15,8 +15,8 @@ Implemented auth paths:
 - parent-managed Kid Mode/PIN profile switching
 - optional linked child auth profiles for older kids
 - parent-created invitations for other parents or caregivers
-- parent-created email invitations that connect older kids to existing child
-  profiles
+- parent-created email invitations that connect new or existing app accounts
+  to older kids' existing child profiles
 - guarded local-only E2E session helper
 
 Not implemented by default:
@@ -79,6 +79,9 @@ https://your-custom-domain.example/callback
    provider.
    - Verify the password recovery email template still uses Supabase's
      generated confirmation link so the app-provided redirect is preserved.
+   - Verify the **Magic Link** template uses `{{ .ConfirmationURL }}`. Phase 28
+     uses that template to authenticate an existing account without changing
+     its password or creating another Auth user.
    - For production delivery, configure an approved SMTP provider and review
      the Auth email rate limits. The built-in sender is intended for testing,
      restricts recipients, and is currently limited to two auth emails per
@@ -134,10 +137,15 @@ With Supabase env vars configured:
     invited adult must sign in with the invited email address and accept from
     `/family/invite/accept?invite=<id>`.
 14. Select **Connect email** on an active child, confirm guardian authority,
-    and send an invite to an email that has not previously registered in this
-    app. Open the local message in Mailpit, create the child password, and
-    confirm the existing child profile opens Calendar without parent-only
-    Family navigation.
+    and send an invite to a new email. Open the local message in Mailpit,
+    create the child password, and confirm the existing child profile opens
+    Calendar without parent-only Family navigation.
+15. Repeat with a confirmed app account that has no active family access. Open
+    the magic link, confirm the acceptance form does not ask for a password,
+    connect the account, and verify its previous password still signs in.
+16. Try an account that already has active family access. Confirm the app uses
+    a neutral send error, creates no usable invitation, and changes neither
+    family.
 
 ## Password Recovery Flow
 
@@ -197,25 +205,37 @@ Parents can connect a separate Supabase Auth account to an existing active
 child profile from Family settings. The flow never creates a second child row.
 
 - Pending rows live in `family_child_invitations` and expire after 14 days.
-- The invitation uses `auth.admin.inviteUserByEmail`, returns through
-  `/callback`, and opens `/family/child-invite/accept`.
+- New emails use `auth.admin.inviteUserByEmail`, return through `/callback`,
+  and open `/family/child-invite/accept`. The child creates a password during
+  acceptance.
+- Confirmed existing accounts use `signInWithOtp` with
+  `shouldCreateUser: false`. This sends a passwordless magic link without
+  creating an unknown user; acceptance never updates the existing password.
 - Supabase invite links may return session tokens in a URL fragment rather than
   a PKCE code. `/callback` sends only adult/child invitation destinations to
   `/invite-callback`, which establishes the cookie-backed session in the
   browser and removes the fragment before opening the acceptance form.
-- Acceptance requires the exact invited email and a new matching password.
+- Acceptance always requires the exact verified email. Only new-account
+  invitations require a new matching password.
 - The server-only atomic function attaches `family_members.profile_id` and
   `family_member_auth_links`; linked children retain existing child RLS rights.
+- The current one-family MVP rejects an account with any active direct family
+  membership or unrevoked child/adult family link. This is checked before
+  email delivery and again atomically during acceptance.
 - Revoking a pending invitation leaves the child active. Disconnecting an
   accepted account revokes its family link and clears `profile_id`, but does
   not delete the child, its history, its Kid Mode PIN, or the Auth user.
 - Invite emails are scrubbed from invitation rows after acceptance, revocation,
   or expiry. Audit metadata stores IDs, not the email address.
-- Automatic invites currently require an email not already registered in this
-  app because Supabase rejects admin invitations for confirmed users.
+- `account_mode` records `new_account` or `existing_account`; browser-scoped
+  inserts can create only the safe `new_account` default. The Auth-user email
+  lookup and mode change are service-role-only.
+- Existing accounts created only through some OAuth providers may not accept a
+  passwordless email link, depending on the project's Supabase identity
+  configuration. The MVP does not add a separate OAuth account-claim flow.
 - Built-in Supabase email delivery is testing-only and rate-limited. Configure
   a reviewed SMTP provider before relying on delivery to arbitrary production
-  recipients; no provider or paid email service is added by Phase 26.
+  recipients; no provider or paid email service is added by Phase 28.
 
 Without Supabase env vars configured:
 
