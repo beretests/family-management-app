@@ -1,8 +1,8 @@
 # Architecture
 
-This document reflects the implementation through the Phase 28 existing child
-account-linking work. It should be updated whenever a later phase changes
-app-facing storage, cron, auth, database, or deployment behavior.
+This document reflects the implementation through the Phase 29 dependency
+security update. It should be updated whenever a later phase changes app-facing
+storage, cron, auth, database, or deployment behavior.
 
 ## Current Shape
 
@@ -86,6 +86,19 @@ family app pages, family setup, parent-managed child profiles, schedule
 day/week views, a shared grocery list and reusable item catalog, chore
 templates, assignments, kid task submission, parent review, rewards,
 leaderboard, reminders, and daily maintenance.
+
+## Runtime And Dependency Posture
+
+- Next.js and its matching ESLint configuration are on 16.3.3, the August 2026
+  Active LTS security release.
+- The supported Node.js runtime remains 20.9 or newer; local verification uses
+  Node 22.
+- The lockfile resolves patched PostCSS, Sharp, brace-expansion, js-yaml, and
+  nanoid versions without package overrides.
+- `next dev` maintains the version-matched agent guidance block in `AGENTS.md`
+  and the generated root-parameter type reference in `next-env.d.ts`.
+- Dependency updates must pass both full-tree and production-only npm audits,
+  clean install verification, application checks, and browser smoke tests.
 
 ## Request Flow
 
