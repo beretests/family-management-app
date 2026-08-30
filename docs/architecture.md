@@ -155,7 +155,13 @@ Family profile flow:
    attaches the Auth profile/link only when the account has no active family
    access. Parent disconnect atomically revokes access while preserving the
    child and Kid Mode.
-7. Invite links that use Supabase's token-fragment response pass through the
+7. Parents may request the same connection as a directly copyable link. A
+   parent-authorized Server Action rechecks the target account, updates the
+   pending invitation mode, and calls `auth.admin.generateLink()` with `invite`
+   for missing/unconfirmed users or `magiclink` for confirmed users. The raw
+   bearer URL exists only in the action response; audit records contain IDs,
+   mode, delivery source, and no token or email.
+8. Invite links that use Supabase's token-fragment response pass through the
    invitation-only `/invite-callback` client bridge. It stores the auth session
    in cookies and removes the fragment before opening the accept page; ordinary
    PKCE callbacks remain server-exchanged.

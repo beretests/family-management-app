@@ -155,6 +155,7 @@ export const childEmailInviteSchema = z.object({
   consent: z.literal("on", {
     error: "Confirm that you are authorized to use this child's email.",
   }),
+  deliveryMethod: z.enum(["email", "copy_link"]).default("email"),
 });
 
 export const childEmailInvitationMutationSchema = z.object({

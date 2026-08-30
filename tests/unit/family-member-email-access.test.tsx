@@ -101,6 +101,9 @@ describe("FamilyMemberList child email access", () => {
     expect(
       screen.getByRole("button", { name: "Revoke email invite" }),
     ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate fresh link" }),
+    ).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect email" })).toBeVisible();
 
     const childCard = screen
@@ -115,6 +118,12 @@ describe("FamilyMemberList child email access", () => {
     );
     expect(
       screen.getByRole("dialog", { name: "Connect email for PIN only child" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Send connection email" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate secure link" }),
     ).toBeVisible();
     fireEvent.click(
       screen.getByRole("button", { name: "Close child email connection" }),

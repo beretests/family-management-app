@@ -100,12 +100,31 @@ describe("childEmailInviteSchema", () => {
     });
 
     expect(parsed.email).toBe("kid@example.com");
+    expect(parsed.deliveryMethod).toBe("email");
+    expect(
+      childEmailInviteSchema.parse({
+        familyId,
+        memberId,
+        email: "kid@example.com",
+        consent: "on",
+        deliveryMethod: "copy_link",
+      }).deliveryMethod,
+    ).toBe("copy_link");
     expect(
       childEmailInviteSchema.safeParse({
         familyId,
         memberId,
         email: "kid@example.com",
         consent: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      childEmailInviteSchema.safeParse({
+        familyId,
+        memberId,
+        email: "kid@example.com",
+        consent: "on",
+        deliveryMethod: "public_link",
       }).success,
     ).toBe(false);
   });

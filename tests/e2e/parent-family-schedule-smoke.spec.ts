@@ -1,8 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import {
-  createConfirmedParentUser,
-  getLocalAuthEmailLink,
-} from "./supabase-local";
+import { createConfirmedParentUser } from "./supabase-local";
 
 test.describe("parent family setup smoke flow", () => {
   test("connects a new child account and disconnects it from the profile", async ({
@@ -55,12 +52,24 @@ test.describe("parent family setup smoke flow", () => {
     await expect(emailDialog).toHaveCount(0);
     await expect(childCard.getByText("Email invite pending")).toBeVisible();
 
-    const invitationLink = await getLocalAuthEmailLink({
-      email: childEmail,
-      pathIncludes: "/family/child-invite/accept",
+    await childCard
+      .getByRole("button", { name: "Generate fresh link" })
+      .click();
+    const secureLinkDialog = page.getByRole("dialog", {
+      name: `Secure link for ${childName}`,
     });
+    const invitationLink = await secureLinkDialog
+      .getByRole("textbox", {
+        name: "Secure invitation link",
+        exact: true,
+      })
+      .inputValue();
+    expect(invitationLink).toContain("/auth/v1/verify");
+    expect(invitationLink).toContain("type=invite");
     await page.goto(invitationLink);
-    await expect(page).toHaveURL(/\/family\/child-invite\/accept/);
+    await expect(page).toHaveURL(/\/family\/child-invite\/accept/, {
+      timeout: 15_000,
+    });
     await page.getByLabel("Create password").fill(childPassword);
     await page.getByLabel("Confirm password").fill(childPassword);
     await page.getByRole("button", { name: "Connect to family" }).click();
@@ -133,17 +142,21 @@ test.describe("parent family setup smoke flow", () => {
       .fill(childEmail);
     await emailDialog.getByLabel(/I am the parent or guardian/).check();
     await emailDialog
-      .getByRole("button", { name: "Send connection email" })
+      .getByRole("button", { name: "Generate secure link" })
       .click();
-    await expect(emailDialog).toHaveCount(0);
+    const magicLink = await emailDialog
+      .getByRole("textbox", {
+        name: "Secure invitation link",
+        exact: true,
+      })
+      .inputValue();
+    expect(magicLink).toContain("/auth/v1/verify");
+    expect(magicLink).toContain("type=magiclink");
     await expect(childCard.getByText("Email invite pending")).toBeVisible();
-
-    const magicLink = await getLocalAuthEmailLink({
-      email: childEmail,
-      pathIncludes: "/family/child-invite/accept",
-    });
     await page.goto(magicLink);
-    await expect(page).toHaveURL(/\/family\/child-invite\/accept/);
+    await expect(page).toHaveURL(/\/family\/child-invite\/accept/, {
+      timeout: 15_000,
+    });
     await expect(page.getByLabel("Create password")).toHaveCount(0);
     await expect(page.getByLabel("Confirm password")).toHaveCount(0);
     await expect(
