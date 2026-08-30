@@ -140,10 +140,14 @@ With Supabase env vars configured:
     and send an invite to a new email. Open the local message in Mailpit,
     create the child password, and confirm the existing child profile opens
     Calendar without parent-only Family navigation.
-15. Repeat with a confirmed app account that has no active family access. Open
-    the magic link, confirm the acceptance form does not ask for a password,
-    connect the account, and verify its previous password still signs in.
-16. Try an account that already has active family access. Confirm the app uses
+15. Create another pending child invitation, select **Generate fresh link**,
+    copy the returned private link, and confirm it completes the same
+    new-account acceptance flow without reading an email.
+16. Repeat with a confirmed app account that has no active family access.
+    Select **Generate secure link**, confirm the acceptance form does not ask
+    for a password, connect the account, and verify its previous password still
+    signs in.
+17. Try an account that already has active family access. Confirm the app uses
     a neutral send error, creates no usable invitation, and changes neither
     family.
 
@@ -211,6 +215,15 @@ child profile from Family settings. The flow never creates a second child row.
 - Confirmed existing accounts use `signInWithOtp` with
   `shouldCreateUser: false`. This sends a passwordless magic link without
   creating an unknown user; acceptance never updates the existing password.
+- Instead of relying on email delivery, a parent can select **Generate secure
+  link** while connecting a child or **Generate fresh link** on a pending
+  invitation. The server calls `auth.admin.generateLink()` and returns the
+  generated action URL only to that authorized parent action response.
+- Confirmed accounts receive a `magiclink`; missing or unconfirmed accounts
+  receive an `invite`. Invite acceptance asks for a new password, while magic
+  link acceptance preserves the existing account password.
+- Generating a fresh link rechecks the current Auth confirmation state and can
+  safely reclassify the pending invitation before issuing the link.
 - Supabase invite links may return session tokens in a URL fragment rather than
   a PKCE code. `/callback` sends only adult/child invitation destinations to
   `/invite-callback`, which establishes the cookie-backed session in the
@@ -227,6 +240,11 @@ child profile from Family settings. The flow never creates a second child row.
   not delete the child, its history, its Kid Mode PIN, or the Auth user.
 - Invite emails are scrubbed from invitation rows after acceptance, revocation,
   or expiry. Audit metadata stores IDs, not the email address.
+- Generated URLs are bearer credentials. They are not saved to the database or
+  audit metadata and must not be logged. Copy them only to the intended child
+  or guardian over a trusted channel. Revoke the pending invitation if a link
+  may have been exposed; use **Generate fresh link** when a replacement is
+  needed.
 - `account_mode` records `new_account` or `existing_account`; browser-scoped
   inserts can create only the safe `new_account` default. The Auth-user email
   lookup and mode change are service-role-only.
@@ -235,7 +253,9 @@ child profile from Family settings. The flow never creates a second child row.
   configuration. The MVP does not add a separate OAuth account-claim flow.
 - Built-in Supabase email delivery is testing-only and rate-limited. Configure
   a reviewed SMTP provider before relying on delivery to arbitrary production
-  recipients; no provider or paid email service is added by Phase 28.
+  recipients. Direct link generation avoids SMTP delivery but does not send or
+  otherwise protect the link; no provider or paid email service is added by
+  Phase 30.
 
 Without Supabase env vars configured:
 

@@ -536,6 +536,30 @@ approved phase scope.
 - Recommended commit message:
   `feat(family): add child email invites and planner family access`
 
+## Phase 30: Copyable Child Invitation Links
+
+- Branch: `phase/30-copy-child-invite-links`
+- Worktree: `../family-app-phase-30-copy-child-invite-links`
+- Scope: let an authorized parent generate and copy a private child connection
+  link when Auth email delivery is unavailable, both during initial connection
+  and from an existing pending invitation.
+- Account behavior: confirmed existing users receive a password-preserving
+  magic link; missing or unconfirmed users receive an invite link and choose a
+  password during acceptance. Every fresh-link request rechecks Auth state.
+- Security: link generation remains server-only, exact-email and active-family
+  checks are preserved, raw bearer URLs are returned only in the action result,
+  and database/audit records store no token or URL.
+- Database/RLS/Supabase impact: no migration or policy change; reuse the Phase
+  26/28 schema, callback allow-list, and server-only Supabase secret.
+- Vercel/environment impact: no new variable or service. Keep
+  `SUPABASE_SECRET_KEY` server-only and `NEXT_PUBLIC_APP_URL` accurate.
+- Free-tier risk: direct generation avoids SMTP rate and recipient limits, but
+  the parent must share the sensitive link through a trusted channel.
+- Tests: schema and copy-control tests, confirmed/unconfirmed Playwright
+  acceptance flows, lint, typecheck, full tests, and production build.
+- Recommended commit message:
+  `feat(family): add copyable child invitation links`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

@@ -6,13 +6,17 @@ import { useFormStatus } from "react-dom";
 export function SubmitButton({
   children,
   disabled = false,
+  name,
   pendingLabel = "Working...",
   tone = "primary",
+  value,
 }: {
   children: React.ReactNode;
   disabled?: boolean;
+  name?: string;
   pendingLabel?: string;
   tone?: "primary" | "secondary" | "danger";
+  value?: string;
 }) {
   const { pending } = useFormStatus();
   const className =
@@ -23,7 +27,13 @@ export function SubmitButton({
         : "min-h-11 w-full rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto";
 
   return (
-    <button className={className} disabled={pending || disabled} type="submit">
+    <button
+      className={className}
+      disabled={pending || disabled}
+      name={name}
+      type="submit"
+      value={value}
+    >
       <span className="inline-flex items-center gap-2">
         {pending ? <Spinner /> : null}
         {pending ? pendingLabel : children}

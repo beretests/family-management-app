@@ -33,6 +33,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type FamilyActionState = {
   error?: string;
+  link?: string;
   success?: string;
 };
 
@@ -67,6 +68,15 @@ const childConnectionEmailSuccess =
   "If this email can be connected, a secure link has been sent.";
 const childConnectionEmailError =
   "The connection email could not be sent. Check the address and try again later.";
+const childConnectionLinkError =
+  "The secure connection link could not be generated. Check the address and try again later.";
+
+type ChildInvitationAccountMode = "new_account" | "existing_account";
+type ChildInvitationDeliveryMethod = "email" | "copy_link";
+type ChildInvitationIssueResult = {
+  error: { message: string } | null;
+  link?: string;
+};
 
 async function getChildLinkAccountStatus(
   admin: ReturnType<typeof createAdminClient>,
@@ -128,6 +138,111 @@ async function sendExistingChildAccountLink({
   });
 
   return error;
+}
+
+async function generateChildInvitationActionLink({
+  accountMode,
+  admin,
+  displayName,
+  email,
+  invitationId,
+  redirectTo,
+}: {
+  accountMode: ChildInvitationAccountMode;
+  admin: ReturnType<typeof createAdminClient>;
+  displayName: string;
+  email: string;
+  invitationId: string;
+  redirectTo: string;
+}): Promise<ChildInvitationIssueResult> {
+  const { error: modeError } = await admin
+    .from("family_child_invitations")
+    .update({ account_mode: accountMode })
+    .eq("id", invitationId)
+    .eq("status", "pending");
+
+  if (modeError) {
+    return { error: modeError };
+  }
+
+  const request =
+    accountMode === "existing_account"
+      ? {
+          type: "magiclink" as const,
+          email,
+          options: { redirectTo },
+        }
+      : {
+          type: "invite" as const,
+          email,
+          options: {
+            data: { display_name: displayName },
+            redirectTo,
+          },
+        };
+  const expectedType =
+    accountMode === "existing_account" ? "magiclink" : "invite";
+  const { data, error } = await admin.auth.admin.generateLink(request);
+
+  if (error) {
+    return { error };
+  }
+
+  if (
+    !data.properties?.action_link ||
+    data.properties.verification_type !== expectedType
+  ) {
+    return { error: new Error("Supabase returned an unexpected link type.") };
+  }
+
+  return { error: null, link: data.properties.action_link };
+}
+
+async function issueChildInvitation({
+  accountMode,
+  admin,
+  deliveryMethod,
+  displayName,
+  email,
+  invitationId,
+  redirectTo,
+}: {
+  accountMode: ChildInvitationAccountMode;
+  admin: ReturnType<typeof createAdminClient>;
+  deliveryMethod: ChildInvitationDeliveryMethod;
+  displayName: string;
+  email: string;
+  invitationId: string;
+  redirectTo: string;
+}): Promise<ChildInvitationIssueResult> {
+  if (deliveryMethod === "copy_link") {
+    return generateChildInvitationActionLink({
+      accountMode,
+      admin,
+      displayName,
+      email,
+      invitationId,
+      redirectTo,
+    });
+  }
+
+  if (accountMode === "existing_account") {
+    const error = await sendExistingChildAccountLink({
+      admin,
+      email,
+      invitationId,
+      redirectTo,
+    });
+
+    return { error };
+  }
+
+  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { display_name: displayName },
+    redirectTo,
+  });
+
+  return { error };
 }
 
 async function insertAuditEvent({
@@ -733,6 +848,7 @@ export async function inviteChildByEmail(
     memberId: getString(formData, "memberId"),
     email: getString(formData, "email"),
     consent: getString(formData, "consent"),
+    deliveryMethod: getString(formData, "deliveryMethod") || "email",
   });
 
   if (!parsed.success) {
@@ -768,11 +884,13 @@ export async function inviteChildByEmail(
 
     const initialAccountStatus = await getChildLinkAccountStatus(admin, email);
 
-    if (
-      initialAccountStatus?.email_confirmed &&
-      initialAccountStatus.has_active_family_access
-    ) {
-      return { error: childConnectionEmailError };
+    if (initialAccountStatus?.has_active_family_access) {
+      return {
+        error:
+          parsed.data.deliveryMethod === "copy_link"
+            ? childConnectionLinkError
+            : childConnectionEmailError,
+      };
     }
 
     const { data: pendingRows, error: pendingError } = await admin
@@ -832,55 +950,52 @@ export async function inviteChildByEmail(
     const redirectTo = getAuthCallbackUrl(
       `/callback?next=${encodeURIComponent(acceptPath)}`,
     );
-    let accountMode: "new_account" | "existing_account" = "new_account";
-    let emailError: { message: string } | null = null;
+    const deliveryMethod = parsed.data.deliveryMethod;
+    let accountMode: ChildInvitationAccountMode = initialAccountStatus
+      ?.email_confirmed
+      ? "existing_account"
+      : "new_account";
+    let issueResult = await issueChildInvitation({
+      accountMode,
+      admin,
+      deliveryMethod,
+      displayName: child.display_name as string,
+      email,
+      invitationId,
+      redirectTo,
+    });
 
-    if (initialAccountStatus?.email_confirmed) {
-      accountMode = "existing_account";
-      emailError = await sendExistingChildAccountLink({
-        admin,
-        email,
-        invitationId,
-        redirectTo,
-      });
-    } else {
-      const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-        email,
-        {
-          data: { display_name: child.display_name },
-          redirectTo,
-        },
-      );
+    // A confirmed account can appear between the preflight lookup and issuing
+    // an invite. Recheck after an error and switch to an existing-account
+    // magic link only when the exact account has no active family access.
+    if (issueResult.error && accountMode === "new_account") {
+      const racedAccountStatus = await getChildLinkAccountStatus(admin, email);
 
-      emailError = inviteError;
-
-      // A confirmed account can appear between the preflight lookup and the
-      // admin invite. Recheck after any invite error, then use a non-creating
-      // magic link only when the exact account now exists and has no family.
-      if (inviteError) {
-        const racedAccountStatus = await getChildLinkAccountStatus(
+      if (
+        racedAccountStatus?.email_confirmed &&
+        !racedAccountStatus.has_active_family_access
+      ) {
+        accountMode = "existing_account";
+        issueResult = await issueChildInvitation({
+          accountMode,
           admin,
+          deliveryMethod,
+          displayName: child.display_name as string,
           email,
-        );
-
-        if (
-          racedAccountStatus?.email_confirmed &&
-          !racedAccountStatus.has_active_family_access
-        ) {
-          accountMode = "existing_account";
-          emailError = await sendExistingChildAccountLink({
-            admin,
-            email,
-            invitationId,
-            redirectTo,
-          });
-        }
+          invitationId,
+          redirectTo,
+        });
       }
     }
 
-    if (emailError) {
+    if (issueResult.error) {
       await revokeUnsentChildInvitation(admin, invitationId);
-      return { error: childConnectionEmailError };
+      return {
+        error:
+          deliveryMethod === "copy_link"
+            ? childConnectionLinkError
+            : childConnectionEmailError,
+      };
     }
 
     await insertAuditEvent({
@@ -889,13 +1004,160 @@ export async function inviteChildByEmail(
       familyId: parent.familyId,
       target: {
         accountMode,
+        deliveryMethod,
         invitationId,
         memberId: parsed.data.memberId,
       },
     });
 
+    if (issueResult.link) {
+      await insertAuditEvent({
+        action: "family_child_email.link_generated",
+        actorMemberId: parent.memberId,
+        familyId: parent.familyId,
+        target: {
+          accountMode,
+          invitationId,
+          memberId: parsed.data.memberId,
+          source: "new_invitation",
+        },
+      });
+    }
+
     revalidatePath("/settings/family");
-    return { success: childConnectionEmailSuccess };
+    return issueResult.link
+      ? {
+          link: issueResult.link,
+          success: "Secure child invitation link generated.",
+        }
+      : { success: childConnectionEmailSuccess };
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+}
+
+export async function generatePendingChildInvitationLink(
+  _previousState: FamilyActionState,
+  formData: FormData,
+): Promise<FamilyActionState> {
+  const parsed = childEmailInvitationMutationSchema.safeParse({
+    familyId: getString(formData, "familyId"),
+    invitationId: getString(formData, "invitationId"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  const supabase = await createClient();
+
+  try {
+    const parent = await requireParentContext(supabase, parsed.data.familyId);
+    const { data: invitation, error: invitationError } = await supabase
+      .from("family_child_invitations")
+      .select("id,member_id,email_normalized,status,expires_at")
+      .eq("family_id", parent.familyId)
+      .eq("id", parsed.data.invitationId)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (invitationError) {
+      return { error: invitationError.message };
+    }
+
+    if (!invitation?.email_normalized) {
+      return { error: "Pending child invitation not found." };
+    }
+
+    if (new Date(invitation.expires_at as string).getTime() <= Date.now()) {
+      return { error: "This child invitation has expired." };
+    }
+
+    const { data: child, error: childError } = await supabase
+      .from("family_members")
+      .select("id,display_name,profile_id,lifecycle_status")
+      .eq("family_id", parent.familyId)
+      .eq("id", invitation.member_id as string)
+      .eq("role", "child")
+      .maybeSingle();
+
+    if (childError) {
+      return { error: childError.message };
+    }
+
+    if (
+      !child ||
+      child.lifecycle_status !== "active" ||
+      child.profile_id
+    ) {
+      return { error: "This child profile can no longer be connected." };
+    }
+
+    const admin = createAdminClient();
+    const email = normalizeEmail(invitation.email_normalized as string);
+    const initialAccountStatus = await getChildLinkAccountStatus(admin, email);
+
+    if (initialAccountStatus?.has_active_family_access) {
+      return { error: childConnectionLinkError };
+    }
+
+    const acceptPath = childInvitationAcceptPath(parsed.data.invitationId);
+    const redirectTo = getAuthCallbackUrl(
+      `/callback?next=${encodeURIComponent(acceptPath)}`,
+    );
+    let accountMode: ChildInvitationAccountMode = initialAccountStatus
+      ?.email_confirmed
+      ? "existing_account"
+      : "new_account";
+    let issueResult = await generateChildInvitationActionLink({
+      accountMode,
+      admin,
+      displayName: child.display_name as string,
+      email,
+      invitationId: parsed.data.invitationId,
+      redirectTo,
+    });
+
+    if (issueResult.error && accountMode === "new_account") {
+      const racedAccountStatus = await getChildLinkAccountStatus(admin, email);
+
+      if (
+        racedAccountStatus?.email_confirmed &&
+        !racedAccountStatus.has_active_family_access
+      ) {
+        accountMode = "existing_account";
+        issueResult = await generateChildInvitationActionLink({
+          accountMode,
+          admin,
+          displayName: child.display_name as string,
+          email,
+          invitationId: parsed.data.invitationId,
+          redirectTo,
+        });
+      }
+    }
+
+    if (issueResult.error || !issueResult.link) {
+      return { error: childConnectionLinkError };
+    }
+
+    await insertAuditEvent({
+      action: "family_child_email.link_generated",
+      actorMemberId: parent.memberId,
+      familyId: parent.familyId,
+      target: {
+        accountMode,
+        invitationId: parsed.data.invitationId,
+        memberId: invitation.member_id as string,
+        source: "pending_invitation",
+      },
+    });
+
+    revalidatePath("/settings/family");
+    return {
+      link: issueResult.link,
+      success: "Fresh secure invitation link generated.",
+    };
   } catch (error) {
     return { error: errorMessage(error) };
   }

@@ -78,6 +78,13 @@ secret. Their destination is
 `/callback?next=/family/child-invite/accept?...`; no additional redirect URL or
 environment variable is required.
 
+Phase 30 can return a child connection link directly to an authorized parent by
+using `auth.admin.generateLink()` server-side. Confirmed users receive a magic
+link; missing or unconfirmed users receive an invite link. These links bypass
+SMTP delivery, but they remain short-lived bearer credentials. The app returns
+them only in the Server Action response and does not persist or audit the raw
+URL. Keep `SUPABASE_SECRET_KEY` server-only and never log generated links.
+
 Password recovery also returns through the allow-listed callback, using
 `/callback?next=/reset-password`. No migration, extra redirect allow-list
 entry, secret key, or public environment variable is required.
@@ -159,6 +166,11 @@ access. It also explicitly removes `anon` and `authenticated` execute access
 from both server-only functions. Apply it before allowing registered addresses
 in the Connect email form. It needs no new secret, Storage bucket, or schema
 edit in the dashboard.
+
+Phase 30 adds no migration, RLS policy, Storage bucket, environment variable,
+or dashboard setting. It reuses the Phase 26/28 invitation schema, the existing
+`/callback` redirect allow-list, `NEXT_PUBLIC_APP_URL`, and the server-only
+`SUPABASE_SECRET_KEY`.
 
 ## Storage
 

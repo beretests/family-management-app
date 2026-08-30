@@ -2,83 +2,103 @@
 
 ## Current Phase
 
-Phase 29: Dependency Security Updates
+Phase 30: Copyable Child Invitation Links
 
 ## Branch and Worktree
 
-- Branch: `phase/29-dependency-security-updates`
-- Worktree: `../family-app-phase-29-dependency-security-updates`
-- Base branch: `main` at `bc96f1a`
+- Branch: `phase/30-copy-child-invite-links`
+- Worktree: `../family-app-phase-30-copy-child-invite-links`
+- Base branch: `main` at `0e3c347`
 
 ## Implemented Changes
 
-- Upgraded Next.js from 16.2.10 to the 16.3.3 Active LTS security release.
-- Upgraded `eslint-config-next` to the matching 16.3.3 release.
-- Refreshed the lockfile within existing compatible ranges to resolve patched
-  versions of PostCSS, Sharp, brace-expansion, js-yaml, and nanoid.
-- Avoided `npm audit fix --force`, package overrides, unrelated direct-package
-  upgrades, and application behavior changes.
-- Kept the Next.js 16.3-generated root-parameter type reference in
-  `next-env.d.ts`.
-- Kept the framework-managed version-matched documentation block that
-  `next dev` now adds to `AGENTS.md`.
+- Added **Generate secure link** beside the existing child connection-email
+  action.
+- Added **Generate fresh link** for pending child invitations so parents can
+  recover when an Auth email is delayed or not delivered.
+- Added a responsive secure-link modal with a read-only selectable URL, an
+  explicit Clipboard API action, and a manual-select fallback.
+- Preserved the existing email-delivery route as the default behavior.
+- Added schema, component, and browser coverage for both delivery methods.
+- Documented the copied-link workflow, account behavior, setup, and security
+  expectations in the auth, Supabase, architecture, and roadmap docs.
 
-## Database and Security Changes
+## Account and Security Behavior
 
-- No database migration, RLS policy, storage policy, auth/session behavior, or
-  application permission changed.
-- Full-tree and production-only npm audits both report zero vulnerabilities.
-- Verified resolved security-sensitive versions include:
-  - `next@16.3.3`
-  - `postcss@8.5.23`
-  - `sharp@0.35.4`
-  - `brace-expansion@1.1.18` and `brace-expansion@5.0.9`
-  - `js-yaml@4.3.2`
-  - `nanoid@3.3.18`
+- Link generation runs only in parent-authorized Server Actions and uses the
+  server-only Supabase admin client.
+- Confirmed existing accounts receive a `magiclink`, retain their current
+  password, and are never duplicated.
+- Missing or unconfirmed accounts receive an `invite` and create a password
+  during acceptance.
+- Fresh-link generation rechecks current Auth confirmation and active-family
+  status before issuing a link.
+- Exact invited-email matching, pending-invitation expiry, atomic acceptance,
+  and one-family account restrictions remain enforced.
+- Raw generated URLs are returned only to the authorized action response. They
+  are not written to invitation rows, audit metadata, or application logs.
+- Audit events record the invitation/member IDs, account mode, and generation
+  source without storing the email address or bearer credential.
+
+## Database and Platform Changes
+
+- No migration, RLS policy, database function, Storage bucket, dependency, or
+  auth/session architecture changed.
+- No new Supabase or Vercel dashboard setting is required.
+- No environment variable is new or changed. The feature reuses
+  `NEXT_PUBLIC_APP_URL`, the existing public Supabase settings, and the
+  server-only `SUPABASE_SECRET_KEY`.
+- The existing local and production `/callback` redirect allow-list entries
+  cover generated links.
+- No paid provider or service was added. Direct link generation avoids SMTP
+  delivery limits but requires the parent to share the bearer link privately.
 
 ## Manual Setup Still Required
 
-- No Supabase or Vercel dashboard setting is required.
-- No environment variable is new or changed.
-- After merge, create or review a Vercel preview deployment before production
-  rollout because the Next.js runtime bundle changed.
-- Production deployment was not performed.
+- Ensure the production `NEXT_PUBLIC_APP_URL` matches the deployed app origin.
+- Keep the production `/callback` URLs allow-listed in Supabase Auth.
+- Keep `SUPABASE_SECRET_KEY` server-only in Vercel and never expose it through a
+  public environment variable.
+- Test one generated link in a Vercel preview deployment before production
+  rollout. Production deployment was not performed.
 
 ## Known Issues and Limitations
 
-- The repository requires Node 20.9 or newer; verification used Node 22.14.0
-  because the host shell defaults to unsupported Node 18.
-- One Playwright navigation caused Next.js development logging to report
-  `The destination stream closed early` while all browser assertions passed.
-  This matches the upstream client-aborted RSC logging issue tracked in
-  [vercel/next.js#96704](https://github.com/vercel/next.js/issues/96704); it was
-  not an application exception or failed request assertion.
-- Audit results reflect the registry advisory database at verification time;
-  future advisories still require routine dependency review.
-
-## Next Recommended Phase
-
-- Review the dependency and generated-file diff, then merge Phase 29 after
-  approval.
-- Verify the main branch in a Vercel preview deployment before production
-  rollout.
+- Anyone who obtains an unused generated URL may be able to authenticate as the
+  invited account. Parents must use a trusted sharing channel and revoke the
+  pending invitation if exposure is suspected.
+- Direct link generation does not deliver a message or notify the child; it
+  only gives the parent a link to copy.
+- The copied URL is intentionally not recoverable after the modal closes. A
+  parent can generate a fresh link while the invitation remains pending.
+- Existing OAuth-only accounts may still depend on the Supabase project's
+  identity configuration for passwordless email-link acceptance.
+- Verification used Node 22.14.0 because the host shell defaults to unsupported
+  Node 18.
+- The full Playwright suite emitted the previously documented Next.js
+  development-only `The destination stream closed early` message during a
+  client-aborted RSC navigation; all four browser tests passed.
 
 ## Checks
 
-- A clean `npm ci` completed under Node 22.14.0 with zero vulnerabilities.
-- Full-tree `npm audit --audit-level=high` passed with zero vulnerabilities.
-- Production-only `npm audit --omit=dev --audit-level=high` passed with zero
+- Clean dependency installation completed under Node 22.14.0 with zero npm
   vulnerabilities.
-- Dependency-tree inspection confirmed every affected package resolves to a
-  patched version.
 - TypeScript checking passed.
 - Repository-wide lint passed.
-- Full unit/component suite passed: 42 files, 185 tests.
-- The Playwright parent/family suite passed: 4 tests covering new and existing
-  child accounts plus the full family/calendar/grocery workflow.
+- Full unit/component suite passed: 43 files, 187 tests.
+- The focused unconfirmed-account copied invite-link flow passed.
+- The full Playwright parent/family suite passed: 4 tests covering new,
+  confirmed-existing, and occupied accounts plus the existing family,
+  calendar, chores, assignments, and grocery workflow.
 - Production build passed with Next.js 16.3.3.
 - `git diff --check` passed.
 
+## Next Recommended Action
+
+- Review and commit Phase 30, then merge it after owner approval.
+- Validate a generated link in a Vercel preview using the production Supabase
+  project before production rollout.
+
 ## Recommended Commit
 
-`fix(deps): resolve high-severity audit findings`
+`feat(family): add copyable child invitation links`

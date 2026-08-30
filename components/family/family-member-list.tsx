@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   deactivateAdultMember,
   deactivateChildMember,
   disconnectChildEmailAccount,
   type FamilyActionState,
+  generatePendingChildInvitationLink,
   inviteChildByEmail,
   revokeChildEmailInvitation,
   revokeFamilyInvitation,
@@ -364,10 +365,17 @@ function ChildCard({
               </button>
             ) : null}
             {invitation ? (
-              <RevokeChildEmailInvitationForm
-                familyId={familyId}
-                invitationId={invitation.id}
-              />
+              <>
+                <GeneratePendingChildInvitationLinkForm
+                  childName={member.displayName}
+                  familyId={familyId}
+                  invitationId={invitation.id}
+                />
+                <RevokeChildEmailInvitationForm
+                  familyId={familyId}
+                  invitationId={invitation.id}
+                />
+              </>
             ) : null}
             {hasConnectedAccount ? (
               <DisconnectChildEmailAccountForm
@@ -427,8 +435,7 @@ function ChildCard({
 
       {!isInactive &&
       isInvitingByEmail &&
-      !hasConnectedAccount &&
-      !invitation ? (
+      !hasConnectedAccount ? (
         <Modal
           closeLabel="Close child email connection"
           eyebrow="Child account"
@@ -488,19 +495,24 @@ function InviteChildByEmailForm({
   const [state, formAction] = useActionState(inviteChildByEmail, initialState);
 
   useEffect(() => {
-    if (state.success) {
+    if (state.success && !state.link) {
       onSuccess(state.success);
     }
-  }, [onSuccess, state.success]);
+  }, [onSuccess, state.link, state.success]);
+
+  if (state.link) {
+    return <SecureInvitationLink link={state.link} />;
+  }
 
   return (
     <form action={formAction} className="grid gap-4">
       <input name="familyId" type="hidden" value={familyId} />
       <input name="memberId" type="hidden" value={memberId} />
       <p className="text-sm leading-6 text-[var(--muted)]">
-        Send {childName} a secure email link. A new address can create a child
-        sign-in, while an existing app account keeps its current password. Kid
-        Mode and its PIN still work.
+        Send {childName} a secure email or generate a private link to share
+        directly. A new or unconfirmed account creates a password during
+        acceptance, while a confirmed app account keeps its current password.
+        Kid Mode and its PIN still work.
       </p>
       <ActionMessage error={state.error} />
       <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
@@ -530,12 +542,129 @@ function InviteChildByEmailForm({
         Existing accounts can connect only when they do not already have active
         family access. Invitations expire after 14 days.
       </p>
-      <div>
-        <SubmitButton pendingLabel="Sending invitation...">
+      <div className="grid gap-3 sm:flex sm:flex-wrap">
+        <SubmitButton
+          name="deliveryMethod"
+          pendingLabel="Sending invitation..."
+          value="email"
+        >
           Send connection email
+        </SubmitButton>
+        <SubmitButton
+          name="deliveryMethod"
+          pendingLabel="Generating link..."
+          tone="secondary"
+          value="copy_link"
+        >
+          Generate secure link
         </SubmitButton>
       </div>
     </form>
+  );
+}
+
+export function SecureInvitationLink({ link }: { link: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [copyStatus, setCopyStatus] = useState("");
+
+  async function copyLink() {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API unavailable");
+      }
+
+      await navigator.clipboard.writeText(link);
+      setCopyStatus("Link copied.");
+    } catch {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+      setCopyStatus("Select and copy the highlighted link.");
+    }
+  }
+
+  return (
+    <section className="grid gap-4">
+      <div className="rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
+        <h3 className="font-semibold text-[var(--accent-strong)]">
+          Secure invitation link ready
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">
+          Share this link privately with the intended child. Anyone who has it
+          may be able to sign in as that account until the link expires or is
+          used.
+        </p>
+      </div>
+      <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+        Secure invitation link
+        <input
+          className="min-h-11 w-full rounded-md border border-[var(--line)] px-3 text-sm outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
+          onFocus={(event) => event.currentTarget.select()}
+          readOnly
+          ref={inputRef}
+          value={link}
+        />
+      </label>
+      <div className="grid gap-2 sm:flex sm:items-center">
+        <button
+          className="min-h-11 w-full rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] sm:w-auto"
+          onClick={copyLink}
+          type="button"
+        >
+          Copy link
+        </button>
+        <p
+          aria-live="polite"
+          className="text-sm text-[var(--muted)]"
+          role="status"
+        >
+          {copyStatus}
+        </p>
+      </div>
+      <p className="text-xs leading-5 text-[var(--muted)]">
+        The app does not save this URL. Close this window after copying it; you
+        can generate a fresh link while the invitation remains pending.
+      </p>
+    </section>
+  );
+}
+
+function GeneratePendingChildInvitationLinkForm({
+  childName,
+  familyId,
+  invitationId,
+}: {
+  childName: string;
+  familyId: string;
+  invitationId: string;
+}) {
+  const [state, formAction] = useActionState(
+    generatePendingChildInvitationLink,
+    initialState,
+  );
+  const [dismissedLink, setDismissedLink] = useState<string>();
+  const isLinkOpen = Boolean(state.link && dismissedLink !== state.link);
+
+  return (
+    <>
+      <form action={formAction} className="grid gap-2">
+        <input name="familyId" type="hidden" value={familyId} />
+        <input name="invitationId" type="hidden" value={invitationId} />
+        <SubmitButton pendingLabel="Generating link..." tone="secondary">
+          Generate fresh link
+        </SubmitButton>
+        <ActionMessage error={state.error} />
+      </form>
+      {state.link && isLinkOpen ? (
+        <Modal
+          closeLabel="Close secure invitation link"
+          eyebrow="Child account"
+          onClose={() => setDismissedLink(state.link)}
+          title={`Secure link for ${childName}`}
+        >
+          <SecureInvitationLink link={state.link} />
+        </Modal>
+      ) : null}
+    </>
   );
 }
 
