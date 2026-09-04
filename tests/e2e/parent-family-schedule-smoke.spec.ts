@@ -239,7 +239,12 @@ test.describe("parent family setup smoke flow", () => {
   }) => {
     test.slow();
     const browserErrors: string[] = [];
+    const browserDialogs: string[] = [];
     page.on("pageerror", (error) => browserErrors.push(error.message));
+    page.on("dialog", async (dialog) => {
+      browserDialogs.push(`${dialog.type()}: ${dialog.message()}`);
+      await dialog.dismiss();
+    });
     await page.setViewportSize({ width: 390, height: 844 });
 
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -378,6 +383,23 @@ test.describe("parent family setup smoke flow", () => {
     });
     await expect(completedListCard).toContainText("completed");
     await expect(completedListCard).toContainText("Scheduled for deletion");
+    await completedListCard.getByRole("button", { name: "Delete" }).click();
+    const groceryDeleteConfirmation = completedListCard.getByRole("group", {
+      name: "Permanently delete this list?",
+    });
+    await expect(groceryDeleteConfirmation).toBeVisible();
+    await groceryDeleteConfirmation
+      .getByRole("button", { name: "Keep list" })
+      .click();
+    await expect(groceryDeleteConfirmation).toHaveCount(0);
+    await expect(completedListCard).toBeVisible();
+    await completedListCard.getByRole("button", { name: "Delete" }).click();
+    await completedListCard
+      .getByRole("group", { name: "Permanently delete this list?" })
+      .getByRole("button", { name: "Delete permanently" })
+      .click();
+    await expect(completedListCard).toHaveCount(0);
+    expect(browserDialogs).toEqual([]);
 
     const nextListForm = page.locator("form").filter({
       has: page.getByRole("button", { name: "Start list" }),
@@ -536,12 +558,28 @@ test.describe("parent family setup smoke flow", () => {
       name: noSchoolTitle,
     });
     await noSchoolDeleteDialog.getByText("Edit event").click();
-    page.once("dialog", (dialog) => dialog.accept());
     await noSchoolDeleteDialog
       .getByRole("button", { name: "Delete event" })
       .click();
+    const eventDeleteConfirmation = noSchoolDeleteDialog.getByRole("group", {
+      name: "Delete this event?",
+    });
+    await expect(eventDeleteConfirmation).toBeVisible();
+    await eventDeleteConfirmation
+      .getByRole("button", { name: "Keep event" })
+      .click();
+    await expect(eventDeleteConfirmation).toHaveCount(0);
+    await expect(noSchoolDeleteDialog).toBeVisible();
+    await noSchoolDeleteDialog
+      .getByRole("button", { name: "Delete event" })
+      .click();
+    await noSchoolDeleteDialog
+      .getByRole("group", { name: "Delete this event?" })
+      .getByRole("button", { name: "Delete now" })
+      .click();
     await expect(noSchoolDeleteDialog).toHaveCount(0);
     await expect(eventButton(page, noSchoolTitle)).toHaveCount(0);
+    expect(browserDialogs).toEqual([]);
     await page.setViewportSize({ width: 390, height: 844 });
 
     await page.goto("/schedule?date=2026-07-19&view=day");

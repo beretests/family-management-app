@@ -66,7 +66,31 @@ describe("schedule event controls", () => {
       within(editScope).getByRole("option", { name: "Entire series" }),
     ).toBeInTheDocument();
     expect(within(deleteScope).getAllByRole("option")).toHaveLength(3);
-    expect(screen.getByRole("button", { name: "Delete event" })).toBeVisible();
+    const deleteButton = screen.getByRole("button", { name: "Delete event" });
+    expect(deleteButton).toBeVisible();
+
+    fireEvent.change(deleteScope, { target: { value: "following" } });
+    fireEvent.click(deleteButton);
+
+    const deleteConfirmation = screen.getByRole("group", {
+      name: "Delete this and all following events?",
+    });
+    expect(deleteConfirmation).toHaveTextContent(
+      "“Practice” will be removed from the calendar. This cannot be undone.",
+    );
+    const keepEventButton = within(deleteConfirmation).getByRole("button", {
+      name: "Keep event",
+    });
+    expect(keepEventButton).toHaveFocus();
+    expect(
+      within(deleteConfirmation).getByRole("button", { name: "Delete now" }),
+    ).toHaveAttribute("type", "submit");
+
+    fireEvent.click(keepEventButton);
+    expect(
+      screen.queryByRole("group", { name: /Delete/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete event" })).toHaveFocus();
 
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Close event details" }),

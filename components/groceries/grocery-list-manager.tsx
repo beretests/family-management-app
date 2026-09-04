@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   Archive,
   Check,
@@ -10,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
+import { DestructiveActionConfirmation } from "@/components/ui/destructive-action-confirmation";
 import {
   addGroceryItem,
   createGroceryList,
@@ -592,22 +594,7 @@ function ListLifecycleForm({
   const [state, formAction] = useActionState(manageGroceryList, initialState);
 
   return (
-    <form
-      action={formAction}
-      className="grid gap-2"
-      onSubmit={(event) => {
-        const submitter = (event.nativeEvent as SubmitEvent).submitter;
-        const intent =
-          submitter instanceof HTMLButtonElement ? submitter.value : "";
-
-        if (
-          intent === "delete" &&
-          !window.confirm("Permanently delete this grocery list?")
-        ) {
-          event.preventDefault();
-        }
-      }}
-    >
+    <form action={formAction} className="grid gap-2">
       <input name="familyId" type="hidden" value={familyId} />
       <input name="groceryListId" type="hidden" value={list.id} />
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -619,7 +606,16 @@ function ListLifecycleForm({
         ) : (
           <>
             <LifecycleButton intent="reopen" label="Reopen" />
-            <LifecycleButton danger intent="delete" label="Delete" />
+            <DestructiveActionConfirmation
+              cancelLabel="Keep list"
+              confirmLabel="Delete permanently"
+              description={`“${list.name}” and its items will be permanently deleted. This cannot be undone.`}
+              pendingLabel="Deleting list..."
+              submitName="intent"
+              submitValue="delete"
+              title="Permanently delete this list?"
+              triggerLabel="Delete"
+            />
           </>
         )}
       </div>
@@ -629,21 +625,18 @@ function ListLifecycleForm({
 }
 
 function LifecycleButton({
-  danger = false,
   intent,
   label,
 }: {
-  danger?: boolean;
-  intent: "complete" | "archive" | "reopen" | "delete";
+  intent: "complete" | "archive" | "reopen";
   label: string;
 }) {
+  const { pending } = useFormStatus();
+
   return (
     <button
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold ${
-        danger
-          ? "border-[var(--warning)] text-[var(--warning)]"
-          : "border-[var(--line)] bg-white text-[var(--foreground)]"
-      }`}
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-sm font-bold text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={pending}
       name="intent"
       type="submit"
       value={intent}
@@ -653,9 +646,6 @@ function LifecycleButton({
       ) : null}
       {intent === "reopen" ? (
         <RotateCcw aria-hidden="true" className="size-4" />
-      ) : null}
-      {intent === "delete" ? (
-        <Trash2 aria-hidden="true" className="size-4" />
       ) : null}
       {intent === "complete" ? (
         <Check aria-hidden="true" className="size-4" />

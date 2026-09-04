@@ -584,6 +584,26 @@ approved phase scope.
 - Recommended commit message:
   `fix(schedule): preserve civil dates and idempotent saves`
 
+## Phase 32: Automation-Safe Confirmations
+
+- Branch: `phase/32-automation-safe-confirmations`
+- Worktree: `../family-app-phase-32-automation-safe-confirmations`
+- Scope: replace browser-level schedule-event and grocery-list deletion
+  confirmations with accessible in-page controls, preserve destructive-action
+  pending/error behavior, and prevent future blocking browser APIs.
+- Acceptance criteria: deletion requires an explicit in-page confirmation;
+  cancel leaves the record intact and restores focus; confirm can submit only
+  once while pending; recurring schedule scope remains clear; application code
+  contains no `alert`, `confirm`, `prompt`, or `beforeunload` API.
+- Tests: component coverage for open/cancel/focus/scope/pending behavior, a
+  repository browser-dialog guard, and Playwright cancel/confirm coverage for
+  schedule and grocery deletion, followed by lint, typecheck, tests, and build.
+- Supabase impact: none; no migration, RLS policy, or dashboard change.
+- Vercel/environment impact: no new setting or variable.
+- Free-tier risk: none.
+- Recommended commit message:
+  `fix(ui): replace blocking delete confirmations`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:
