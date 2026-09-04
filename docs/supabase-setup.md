@@ -172,6 +172,14 @@ or dashboard setting. It reuses the Phase 26/28 invitation schema, the existing
 `/callback` redirect allow-list, `NEXT_PUBLIC_APP_URL`, and the server-only
 `SUPABASE_SECRET_KEY`.
 
+Phase 31 requires `20260904170000_schedule_event_idempotency.sql`. It adds a
+nullable UUID request identifier and a creator-scoped unique constraint to
+`schedule_events`. Apply the migration before deploying the matching app code.
+It changes no RLS policy, grant, Storage bucket, Auth setting, secret, or other
+dashboard configuration. Run
+`tests/sql/schedule-idempotency-verification.sql` after local migration reset to
+verify duplicate and creator-scoping behavior.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.

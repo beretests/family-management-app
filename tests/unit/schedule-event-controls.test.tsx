@@ -29,7 +29,7 @@ describe("schedule event controls", () => {
         actorMemberId={member.id}
         canManageAll
         conflicts={new Map()}
-        days={[new Date(2026, 7, 20)]}
+        days={["2026-08-20"]}
         events={[event]}
         familyId={member.familyId}
         members={[member]}

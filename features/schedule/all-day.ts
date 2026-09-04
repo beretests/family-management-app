@@ -1,4 +1,4 @@
-import { dateTimeLocalToIso } from "@/lib/dates/schedule";
+import { addCalendarDays, dateTimeLocalToIso } from "@/lib/dates/schedule";
 import { zonedDateKey } from "@/lib/dates/time-zone";
 
 const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -8,9 +8,7 @@ export function addDaysToDateKey(dateKey: string, days: number) {
     return dateKey;
   }
 
-  const date = new Date(`${dateKey}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+  return addCalendarDays(dateKey, days);
 }
 
 export function normalizeAllDayFormRange(startsAt: string, endsAt: string) {

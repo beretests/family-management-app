@@ -8,11 +8,13 @@ import {
 const familyId = "22222222-2222-4222-8222-222222222222";
 const memberId = "33333333-3333-4333-8333-333333333333";
 const eventId = "44444444-4444-4444-8444-444444444444";
+const idempotencyKey = "55555555-5555-4555-8555-555555555555";
 
 describe("createScheduleEventSchema", () => {
   it("trims text fields and normalizes optional values", () => {
     const parsed = createScheduleEventSchema.parse({
       familyId,
+      idempotencyKey,
       memberIds: [],
       wholeFamily: true,
       eventType: "extracurricular",
@@ -36,6 +38,7 @@ describe("createScheduleEventSchema", () => {
   it("requires the end time to be after the start time", () => {
     const parsed = createScheduleEventSchema.safeParse({
       familyId,
+      idempotencyKey,
       memberIds: [memberId],
       wholeFamily: false,
       eventType: "school",
@@ -51,9 +54,25 @@ describe("createScheduleEventSchema", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("requires a UUID idempotency key for every create request", () => {
+    const parsed = createScheduleEventSchema.safeParse({
+      familyId,
+      memberIds: [memberId],
+      wholeFamily: false,
+      eventType: "school",
+      title: "School",
+      startsAt: "2026-07-12T08:00",
+      endsAt: "2026-07-12T15:00",
+      allDay: false,
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
   it("accepts No School only as an all-day event", () => {
     const input = {
       familyId,
+      idempotencyKey,
       memberIds: [memberId],
       wholeFamily: false,
       eventType: "no_school",
@@ -72,6 +91,7 @@ describe("createScheduleEventSchema", () => {
   it("rejects unsupported event types and colors", () => {
     const parsed = createScheduleEventSchema.safeParse({
       familyId,
+      idempotencyKey,
       memberIds: [memberId],
       wholeFamily: false,
       eventType: "sports",
@@ -90,6 +110,7 @@ describe("createScheduleEventSchema", () => {
   it("accepts custom weekday recurrence and requires selected weekdays", () => {
     const input = {
       familyId,
+      idempotencyKey,
       memberIds: [memberId],
       wholeFamily: false,
       eventType: "school",

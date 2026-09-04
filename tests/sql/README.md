@@ -13,6 +13,7 @@ Then open the local SQL editor or connect with `psql` and run:
 ```sql
 \i tests/sql/rls-verification.sql
 \i tests/sql/schedule-permissions-verification.sql
+\i tests/sql/schedule-idempotency-verification.sql
 \i tests/sql/ics-import-verification.sql
 \i tests/sql/schedule-occurrence-overrides-verification.sql
 \i tests/sql/no-school-verification.sql
@@ -26,6 +27,8 @@ Expected result:
 - family-owned table checks return zero rows.
 - starter chore count returns `14`.
 - schedule permission verification completes without an exception and rolls back.
+- schedule idempotency verification rejects a repeated creator request while
+  allowing the same random key for a different family member, then rolls back.
 - ICS import verification checks atomic writes, duplicate UIDs, self-only child
   assignment, and parent whole-family imports, then rolls back.
 - schedule occurrence verification checks single-event overrides, parent-only

@@ -6,7 +6,7 @@ import {
 } from "@/features/schedule/calendar-layout";
 import type { ScheduleEvent } from "@/features/schedule/types";
 
-const day = new Date(2026, 6, 12);
+const day = "2026-07-12";
 
 describe("getCalendarHourRange", () => {
   it("uses family-friendly default hours for an ordinary daytime schedule", () => {
@@ -37,7 +37,10 @@ describe("getCalendarHourRange", () => {
   it("ignores all-day events when choosing visible hours", () => {
     expect(
       getCalendarHourRange([
-        { ...eventAt("all-day", day, new Date(2026, 6, 13)), allDay: true },
+        {
+          ...eventAt("all-day", new Date(2026, 6, 12), new Date(2026, 6, 13)),
+          allDay: true,
+        },
       ]),
     ).toEqual({ startHour: 6, endHour: 22 });
   });
@@ -144,7 +147,7 @@ describe("layoutCalendarEventsForDay", () => {
 
   it("positions UTC instants by the requested browser time zone", () => {
     const [layout] = layoutCalendarEventsForDay({
-      day: new Date(2026, 7, 20),
+      day: "2026-08-20",
       startHour: 6,
       endHour: 22,
       events: [
@@ -158,6 +161,25 @@ describe("layoutCalendarEventsForDay", () => {
     });
 
     expect(layout.top).toBe(10 * calendarHourHeight);
+    expect(layout.height).toBe(calendarHourHeight);
+  });
+
+  it("positions a September 12 Regina event on the selected civil date", () => {
+    const [layout] = layoutCalendarEventsForDay({
+      day: "2026-09-12",
+      startHour: 6,
+      endHour: 22,
+      events: [
+        eventAt(
+          "regina-afternoon",
+          new Date("2026-09-12T20:30:00.000Z"),
+          new Date("2026-09-12T21:30:00.000Z"),
+        ),
+      ],
+      timeZone: "America/Regina",
+    });
+
+    expect(layout.top).toBe(8.5 * calendarHourHeight);
     expect(layout.height).toBe(calendarHourHeight);
   });
 });

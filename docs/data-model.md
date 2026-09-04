@@ -135,7 +135,10 @@ supportive feedback in `rejection_reason`, and keeps the task resubmittable.
 ## Schedule
 
 - `schedule_events`: family schedule entries, extracurriculars, appointments,
-  sick/rest windows, parent blocked time, and chore/task schedule entries.
+  sick/rest windows, parent blocked time, and chore/task schedule entries. A
+  nullable `idempotency_key` supports retriable manual creates through a unique
+  `(family_id, created_by_member_id, idempotency_key)` constraint; imported and
+  historical rows may leave it null.
 - `schedule_event_members`: optional attendee rows for schedule events assigned
   to one or more specific family members.
 - `schedule_event_recurrences`: optional one-to-one recurrence settings for a

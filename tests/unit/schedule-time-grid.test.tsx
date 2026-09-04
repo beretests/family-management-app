@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { ScheduleTimeGrid } from "@/components/schedule/schedule-time-grid";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import type { ScheduleEvent } from "@/features/schedule/types";
+import { addCalendarDays } from "@/lib/dates/schedule";
 
-const day = new Date(2026, 6, 12);
+const day = "2026-07-12";
 const member: FamilyMemberWithDetails = {
   id: "member-a",
   familyId: "family-a",
@@ -72,12 +73,12 @@ describe("ScheduleTimeGrid", () => {
   });
 
   it("contains week overflow inside a scrollable calendar canvas", () => {
+    const weekStartsOn = "2026-09-06";
     render(
       <ScheduleTimeGrid
         conflicts={new Map()}
-        days={Array.from(
-          { length: 7 },
-          (_, index) => new Date(2026, 6, 12 + index),
+        days={Array.from({ length: 7 }, (_, index) =>
+          addCalendarDays(weekStartsOn, index),
         )}
         events={[]}
         members={[member]}
@@ -93,6 +94,77 @@ describe("ScheduleTimeGrid", () => {
     expect(screen.getByTestId("schedule-time-grid").parentElement).toHaveClass(
       "overflow-x-auto",
     );
+    expect(
+      within(screen.getByTestId("schedule-time-grid")).getByText("Sep 6"),
+    ).toBeVisible();
+    expect(
+      within(screen.getByTestId("schedule-time-grid")).getByText("Sep 12"),
+    ).toBeVisible();
+  });
+
+  it("renders September 12 events under September 12 in Regina", () => {
+    render(
+      <ScheduleTimeGrid
+        conflicts={new Map()}
+        days={["2026-09-12"]}
+        events={[
+          eventAt(
+            "regina-event",
+            new Date("2026-09-12T20:30:00.000Z"),
+            new Date("2026-09-12T21:30:00.000Z"),
+          ),
+        ]}
+        members={[member]}
+        timeZone="America/Regina"
+      />,
+    );
+
+    const desktopGrid = screen.getByTestId("schedule-time-grid");
+    expect(within(desktopGrid).getByText("Sat")).toBeVisible();
+    expect(within(desktopGrid).getByText("Sep 12")).toBeVisible();
+    expect(within(desktopGrid).getByLabelText(/Dance practice/)).toBeVisible();
+  });
+
+  it("keeps an event crossing Regina midnight on both civil days", () => {
+    const lateEvent = {
+      ...eventAt(
+        "imported-late-event",
+        new Date("2026-09-13T05:30:00.000Z"),
+        new Date("2026-09-13T06:30:00.000Z"),
+      ),
+      title: "Imported late practice",
+    };
+    const { rerender } = render(
+      <ScheduleTimeGrid
+        conflicts={new Map()}
+        days={["2026-09-12"]}
+        events={[lateEvent]}
+        members={[member]}
+        timeZone="America/Regina"
+      />,
+    );
+
+    expect(
+      within(screen.getByTestId("schedule-time-grid")).getByLabelText(
+        /Imported late practice/,
+      ),
+    ).toBeVisible();
+
+    rerender(
+      <ScheduleTimeGrid
+        conflicts={new Map()}
+        days={["2026-09-13"]}
+        events={[lateEvent]}
+        members={[member]}
+        timeZone="America/Regina"
+      />,
+    );
+
+    expect(
+      within(screen.getByTestId("schedule-time-grid")).getByLabelText(
+        /Imported late practice/,
+      ),
+    ).toBeVisible();
   });
 });
 
