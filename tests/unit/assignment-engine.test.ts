@@ -185,7 +185,7 @@ describe("generateAssignmentPreview", () => {
     ).toContain("1 schedule conflict");
   });
 
-  it("does not treat No School as unavailable time", () => {
+  it("does not treat all-day events as unavailable time", () => {
     const [preview] = generateAssignmentPreview({
       assignmentWindowEnd: windowEnd,
       assignmentWindowStart: windowStart,
@@ -194,7 +194,7 @@ describe("generateAssignmentPreview", () => {
       scheduleEvents: [
         event({
           allDay: true,
-          eventType: "no_school",
+          eventType: "appointment",
           memberId: childAId,
           memberIds: [childAId],
           startsAt: "2026-07-13T06:00:00.000Z",

@@ -11,8 +11,10 @@ function event(
   startsAt: string,
   endsAt: string,
   eventType: ScheduleEvent["eventType"] = "extracurricular",
+  allDay = false,
 ) {
   return {
+    allDay,
     id,
     memberId: memberIds[0] ?? null,
     memberIds,
@@ -21,7 +23,13 @@ function event(
     eventType,
   } as Pick<
     ScheduleEvent,
-    "id" | "memberId" | "memberIds" | "startsAt" | "endsAt" | "eventType"
+    | "id"
+    | "memberId"
+    | "memberIds"
+    | "startsAt"
+    | "endsAt"
+    | "eventType"
+    | "allDay"
   >;
 }
 
@@ -106,6 +114,35 @@ describe("findScheduleConflicts", () => {
         ["member-a"],
         "2026-07-12T15:30:00.000Z",
         "2026-07-12T17:00:00.000Z",
+      ),
+    ]);
+
+    expect(conflicts.size).toBe(0);
+  });
+
+  it("does not flag all-day events against events on the same day", () => {
+    const conflicts = findScheduleConflicts([
+      event(
+        "all-day-appointment",
+        ["member-a"],
+        "2026-07-12T06:00:00.000Z",
+        "2026-07-13T06:00:00.000Z",
+        "appointment",
+        true,
+      ),
+      event(
+        "practice",
+        ["member-a"],
+        "2026-07-12T15:30:00.000Z",
+        "2026-07-12T17:00:00.000Z",
+      ),
+      event(
+        "all-day-family-event",
+        ["member-a"],
+        "2026-07-12T06:00:00.000Z",
+        "2026-07-13T06:00:00.000Z",
+        "family_event",
+        true,
       ),
     ]);
 

@@ -432,15 +432,36 @@ test.describe("parent family setup smoke flow", () => {
     const importCalendarButton = page.getByRole("button", {
       name: "Import calendar",
     });
-    const calendarViewLinks = await page
-      .getByRole("navigation", { name: "Calendar view" })
-      .getByRole("link")
-      .all();
+    const calendarMemberFilter = page.getByRole("navigation", {
+      name: "Calendar member filter",
+    });
+    const mobileMemberFilter = calendarMemberFilter.getByTestId(
+      "calendar-member-select",
+    );
+    const desktopMemberLinks = calendarMemberFilter.getByTestId(
+      "calendar-member-links",
+    );
+    const dateNavigation = page.getByRole("navigation", {
+      name: "Calendar date navigation",
+    });
     const calendarRegion = page.getByRole("region", { name: "Daily calendar" });
     await expect(addEventButton).toBeVisible();
     await expectVerticallyStacked([addEventButton, importCalendarButton]);
-    await expectVerticallyStacked(calendarViewLinks);
-    await expectButtonBeforeRegion(addEventButton, calendarRegion);
+    await expect(mobileMemberFilter).toBeVisible();
+    await expect(desktopMemberLinks).not.toBeVisible();
+    await mobileMemberFilter
+      .getByLabel("Family member")
+      .selectOption({ label: childName });
+    await mobileMemberFilter
+      .getByRole("button", { name: "Apply member filter" })
+      .click();
+    await expect(
+      page.getByLabel("Family member").locator("option:checked"),
+    ).toHaveText(childName);
+    await expectHorizontallyAligned(
+      await dateNavigation.getByRole("link").all(),
+    );
+    await expectButtonBeforeRegion(dateNavigation, calendarRegion);
     await addEventButton.click();
     const addDialog = page.getByRole("dialog", { name: "Add schedule item" });
     await expect(addDialog).toBeVisible();
@@ -461,7 +482,10 @@ test.describe("parent family setup smoke flow", () => {
     await expect(addDialog).toHaveCount(0);
     await expect(page.getByText("Schedule event added.")).toBeVisible();
 
-    await expect(eventButton(page, eventTitle)).toBeVisible();
+    await expect(eventButton(page, eventTitle)).toHaveAttribute(
+      "title",
+      eventTitle,
+    );
     await expect(page.getByText(/^1 event · 1h$/)).toBeVisible();
     await expectNoPageOverflow(page);
     await eventButton(page, eventTitle).click();
@@ -542,14 +566,34 @@ test.describe("parent family setup smoke flow", () => {
       page.getByRole("button", { name: "Add event" }),
       page.getByRole("button", { name: "Import calendar" }),
     ]);
+    const desktopCalendarMemberFilter = page.getByRole("navigation", {
+      name: "Calendar member filter",
+    });
+    await expect(
+      desktopCalendarMemberFilter.getByTestId("calendar-member-select"),
+    ).not.toBeVisible();
     await expectHorizontallyAligned(
-      await page
-        .getByRole("navigation", { name: "Calendar view" })
+      await desktopCalendarMemberFilter
+        .getByTestId("calendar-member-links")
         .getByRole("link")
         .all(),
     );
+    const desktopDateNavigation = page.getByRole("navigation", {
+      name: "Calendar date navigation",
+    });
+    await expectHorizontallyAligned(
+      await desktopDateNavigation.getByRole("link").all(),
+    );
+    await expectButtonBeforeRegion(
+      desktopDateNavigation,
+      page.getByRole("region", { name: "Daily calendar" }),
+    );
     const allDayCoverage = page.getByTestId("all-day-coverage-2026-07-13");
     await expect(allDayCoverage).toBeVisible();
+    await expect(eventButton(page, noSchoolTitle)).toHaveAttribute(
+      "title",
+      noSchoolTitle,
+    );
     await expect
       .poll(async () => (await allDayCoverage.boundingBox())?.height ?? 0)
       .toBeGreaterThan(600);

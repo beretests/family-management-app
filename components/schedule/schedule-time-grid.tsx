@@ -293,6 +293,7 @@ function ScheduleMobileAgenda({
                       borderColor: `color-mix(in srgb, ${color} 45%, white)`,
                       boxShadow: `inset 5px 0 0 ${color}`,
                     }}
+                    title={event.title}
                     type="button"
                   >
                     <span className="flex min-w-0 items-start justify-between gap-2 pl-1">
@@ -365,6 +366,7 @@ function TimedEventCard({
         borderColor: `color-mix(in srgb, ${color} 45%, white)`,
         boxShadow: `inset 5px 0 0 ${color}`,
       }}
+      title={event.title}
       type="button"
     >
       <div className="flex items-start justify-between gap-1 pl-1">
@@ -416,6 +418,7 @@ function AllDayEventCard({
         backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
         borderColor: color,
       }}
+      title={event.title}
       type="button"
     >
       {event.title}
