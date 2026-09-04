@@ -6,6 +6,97 @@ import {
 
 const dateParamPattern = /^\d{4}-\d{2}-\d{2}$/;
 
+type CalendarDateParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+function getCalendarDateParts(dateKey: string): CalendarDateParts | null {
+  if (!dateParamPattern.test(dateKey)) {
+    return null;
+  }
+
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function calendarDateAsUtcNoon(dateKey: string) {
+  const parts = getCalendarDateParts(dateKey);
+
+  if (!parts) {
+    throw new Error("Choose a valid calendar date.");
+  }
+
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12));
+}
+
+export function isValidCalendarDate(dateKey: string) {
+  return getCalendarDateParts(dateKey) !== null;
+}
+
+export function resolveCalendarDate(
+  value: string | string[] | undefined,
+  fallbackDateKey: string,
+) {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate && isValidCalendarDate(candidate)
+    ? candidate
+    : fallbackDateKey;
+}
+
+export function addCalendarDays(dateKey: string, days: number) {
+  const date = calendarDateAsUtcNoon(dateKey);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+export function calendarWeekday(dateKey: string) {
+  return calendarDateAsUtcNoon(dateKey).getUTCDay();
+}
+
+export function startOfCalendarWeek(dateKey: string) {
+  return addCalendarDays(dateKey, -calendarWeekday(dateKey));
+}
+
+export function endOfCalendarWeek(dateKey: string) {
+  return addCalendarDays(startOfCalendarWeek(dateKey), 6);
+}
+
+export function formatCalendarShortDate(dateKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(calendarDateAsUtcNoon(dateKey));
+}
+
+export function formatCalendarWeekday(dateKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone: "UTC",
+  }).format(calendarDateAsUtcNoon(dateKey));
+}
+
+export function formatCalendarDateHeading(dateKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(calendarDateAsUtcNoon(dateKey));
+}
+
 export function toDateParam(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

@@ -18,16 +18,13 @@ import {
 import { countUniqueScheduleEvents } from "@/features/schedule/metrics";
 import { getScheduleEvents } from "@/features/schedule/queries";
 import {
-  addDays,
+  addCalendarDays,
   dateTimeLocalToIso,
-  endOfDay,
-  endOfWeek,
-  formatDateHeading,
-  formatShortDate,
-  parseDateParam,
-  startOfDay,
-  startOfWeek,
-  toDateParam,
+  endOfCalendarWeek,
+  formatCalendarDateHeading,
+  formatCalendarShortDate,
+  resolveCalendarDate,
+  startOfCalendarWeek,
 } from "@/lib/dates/schedule";
 import { isFullAppEnabled } from "@/lib/feature-flags";
 import {
@@ -55,7 +52,10 @@ export default async function SchedulePage({
     params?.timeZone && isValidTimeZone(params.timeZone)
       ? params.timeZone
       : "UTC";
-  const selectedDate = startOfDay(parseDateParam(params?.date));
+  const selectedDate = resolveCalendarDate(
+    params?.date,
+    zonedDateKey(new Date(), timeZone),
+  );
   const view = resolveCalendarView(params?.view, isFullAppEnabled());
   const context = await getFamilyContext();
 
@@ -64,12 +64,12 @@ export default async function SchedulePage({
   }
 
   const rangeStartsAt =
-    view === "week" ? startOfWeek(selectedDate) : selectedDate;
+    view === "week" ? startOfCalendarWeek(selectedDate) : selectedDate;
   const rangeEndsAt =
-    view === "week" ? endOfWeek(selectedDate) : endOfDay(selectedDate);
-  const queryStartsAt = startOfZonedDay(toDateParam(rangeStartsAt), timeZone);
+    view === "week" ? endOfCalendarWeek(selectedDate) : selectedDate;
+  const queryStartsAt = startOfZonedDay(rangeStartsAt, timeZone);
   const queryEndsAt = startOfZonedDay(
-    toDateParam(addDays(rangeEndsAt, 1)),
+    addCalendarDays(rangeEndsAt, 1),
     timeZone,
   );
   const events = await getScheduleEvents({
@@ -87,15 +87,8 @@ export default async function SchedulePage({
   );
   const conflicts = findScheduleConflicts(visibleEvents);
   const canManageAll = context.currentMember.role === "parent";
-  const selectedDateKey = toDateParam(selectedDate);
-  const defaultStartsAt = dateTimeLocalToIso(
-    `${selectedDateKey}T16:00`,
-    timeZone,
-  );
-  const defaultEndsAt = dateTimeLocalToIso(
-    `${selectedDateKey}T17:00`,
-    timeZone,
-  );
+  const defaultStartsAt = dateTimeLocalToIso(`${selectedDate}T16:00`, timeZone);
+  const defaultEndsAt = dateTimeLocalToIso(`${selectedDate}T17:00`, timeZone);
   const eventCount = countUniqueScheduleEvents(visibleEvents);
   const duration = formatScheduleDuration(
     getScheduleDurationMinutes(visibleEvents),
@@ -117,8 +110,8 @@ export default async function SchedulePage({
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
               {view === "week"
-                ? `${formatShortDate(rangeStartsAt)} - ${formatShortDate(rangeEndsAt)}`
-                : formatDateHeading(selectedDate)}
+                ? `${formatCalendarShortDate(rangeStartsAt)} - ${formatCalendarShortDate(rangeEndsAt)}`
+                : formatCalendarDateHeading(selectedDate)}
               {selectedMember
                 ? " · Includes events for this member and the whole family."
                 : " · Everyone's plans in one place."}
@@ -164,7 +157,7 @@ export default async function SchedulePage({
           familyId={context.family.id}
           members={context.members}
           timeZone={timeZone}
-          weekStartsAt={rangeStartsAt}
+          weekStartsOn={rangeStartsAt}
         />
       ) : (
         <ScheduleBoard
@@ -189,7 +182,7 @@ function CalendarMemberSelector({
   view,
   timeZone,
 }: {
-  date: Date;
+  date: string;
   members: FamilyMemberWithDetails[];
   selectedMemberId: string | null;
   view: "day" | "week";
@@ -237,13 +230,13 @@ function ScheduleControls({
   view,
   timeZone,
 }: {
-  date: Date;
+  date: string;
   memberId: string | null;
   view: "day" | "week";
   timeZone: string;
 }) {
   const step = view === "week" ? 7 : 1;
-  const today = parseDateParam(zonedDateKey(new Date(), timeZone));
+  const today = zonedDateKey(new Date(), timeZone);
   const linkClass =
     "inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--line)] px-3 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]";
   const activeLinkClass =
@@ -255,7 +248,7 @@ function ScheduleControls({
         <Link
           className={linkClass}
           href={getScheduleHref({
-            date: addDays(date, -step),
+            date: addCalendarDays(date, -step),
             memberId,
             view,
             timeZone,
@@ -272,7 +265,7 @@ function ScheduleControls({
         <Link
           className={linkClass}
           href={getScheduleHref({
-            date: addDays(date, step),
+            date: addCalendarDays(date, step),
             memberId,
             view,
             timeZone,
@@ -309,7 +302,7 @@ function ScheduleControls({
           Jump to date
           <input
             className="min-h-10 min-w-0 rounded-md border border-[var(--line)] px-2 text-sm text-[var(--foreground)]"
-            defaultValue={toDateParam(date)}
+            defaultValue={date}
             name="date"
             type="date"
           />
@@ -328,13 +321,13 @@ function getScheduleHref({
   view,
   timeZone,
 }: {
-  date: Date;
+  date: string;
   memberId: string | null;
   view: "day" | "week";
   timeZone: string;
 }) {
   const searchParams = new URLSearchParams({
-    date: toDateParam(date),
+    date,
     view,
     timeZone,
   });

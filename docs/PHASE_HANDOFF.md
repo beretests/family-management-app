@@ -2,103 +2,104 @@
 
 ## Current Phase
 
-Phase 30: Copyable Child Invitation Links
+Phase 31: Schedule Civil Dates and Idempotent Saves
 
 ## Branch and Worktree
 
-- Branch: `phase/30-copy-child-invite-links`
-- Worktree: `../family-app-phase-30-copy-child-invite-links`
-- Base branch: `main` at `0e3c347`
+- Branch: `phase/31-schedule-civil-dates`
+- Worktree: `../family-app-phase-31-schedule-civil-dates`
+- Base branch: `main` at `b4abb40`
 
 ## Implemented Changes
 
-- Added **Generate secure link** beside the existing child connection-email
-  action.
-- Added **Generate fresh link** for pending child invitations so parents can
-  recover when an Auth email is delayed or not delivered.
-- Added a responsive secure-link modal with a read-only selectable URL, an
-  explicit Clipboard API action, and a manual-select fallback.
-- Preserved the existing email-delivery route as the default behavior.
-- Added schema, component, and browser coverage for both delivery methods.
-- Documented the copied-link workflow, account behavior, setup, and security
-  expectations in the auth, Supabase, architecture, and roadmap docs.
-
-## Account and Security Behavior
-
-- Link generation runs only in parent-authorized Server Actions and uses the
-  server-only Supabase admin client.
-- Confirmed existing accounts receive a `magiclink`, retain their current
-  password, and are never duplicated.
-- Missing or unconfirmed accounts receive an `invite` and create a password
-  during acceptance.
-- Fresh-link generation rechecks current Auth confirmation and active-family
-  status before issuing a link.
-- Exact invited-email matching, pending-invitation expiry, atomic acceptance,
-  and one-family account restrictions remain enforced.
-- Raw generated URLs are returned only to the authorized action response. They
-  are not written to invitation rows, audit metadata, or application logs.
-- Audit events record the invitation/member IDs, account mode, and generation
-  source without storing the email address or bearer credential.
+- Kept selected calendar days and week columns as validated `YYYY-MM-DD`
+  strings across the Server Component and Client Component boundary.
+- Added timezone-independent civil-date validation, formatting, weekday, week
+  boundary, and day-arithmetic helpers.
+- Derived Day/Week query endpoints from explicit browser-zone midnights while
+  preserving overlap reads for overnight and multi-day events.
+- Updated desktop/mobile labels, event filtering, event positioning, previous
+  and next navigation, date input values, and create defaults to use the same
+  civil dates.
+- Added one UUID idempotency key to every manual create form. Replayed keys
+  return the original event ID without repeating attendee, recurrence, or audit
+  writes.
+- Removed the redundant `refresh()` call. A successful Server Action now uses
+  one `/schedule` invalidation, and the modal closes only after the refreshed
+  action response completes.
+- Added schedule-specific refresh failure UI with a safe retry explanation.
+- Made Playwright's development server inherit the supported Node executable
+  that launched Playwright and set its browser timezone to `America/Regina`.
 
 ## Database and Platform Changes
 
-- No migration, RLS policy, database function, Storage bucket, dependency, or
-  auth/session architecture changed.
-- No new Supabase or Vercel dashboard setting is required.
-- No environment variable is new or changed. The feature reuses
-  `NEXT_PUBLIC_APP_URL`, the existing public Supabase settings, and the
-  server-only `SUPABASE_SECRET_KEY`.
-- The existing local and production `/callback` redirect allow-list entries
-  cover generated links.
-- No paid provider or service was added. Direct link generation avoids SMTP
-  delivery limits but requires the parent to share the bearer link privately.
+- Added `20260904170000_schedule_event_idempotency.sql`.
+- The migration adds nullable `schedule_events.idempotency_key uuid` and a
+  unique `(family_id, created_by_member_id, idempotency_key)` constraint.
+- Existing, generated, and imported rows may retain a null key. ICS import
+  continues to use its existing family/source UID constraint.
+- No RLS policy, grant, Storage bucket, Auth setting, Vercel setting, dependency,
+  environment variable, or paid service changed.
 
 ## Manual Setup Still Required
 
-- Ensure the production `NEXT_PUBLIC_APP_URL` matches the deployed app origin.
-- Keep the production `/callback` URLs allow-listed in Supabase Auth.
-- Keep `SUPABASE_SECRET_KEY` server-only in Vercel and never expose it through a
-  public environment variable.
-- Test one generated link in a Vercel preview deployment before production
-  rollout. Production deployment was not performed.
+- Apply `20260904170000_schedule_event_idempotency.sql` before deploying this
+  application version, normally with `supabase db push`.
+- Redeploy the app after the migration is present.
+- No Supabase or Vercel dashboard setting is required.
 
 ## Known Issues and Limitations
 
-- Anyone who obtains an unused generated URL may be able to authenticate as the
-  invited account. Parents must use a trusted sharing channel and revoke the
-  pending invitation if exposure is suspected.
-- Direct link generation does not deliver a message or notify the child; it
-  only gives the parent a link to copy.
-- The copied URL is intentionally not recoverable after the modal closes. A
-  parent can generate a fresh link while the invitation remains pending.
-- Existing OAuth-only accounts may still depend on the Supabase project's
-  identity configuration for passwordless email-link acceptance.
-- Verification used Node 22.14.0 because the host shell defaults to unsupported
-  Node 18.
-- The full Playwright suite emitted the previously documented Next.js
-  development-only `The destination stream closed early` message during a
-  client-aborted RSC navigation; all four browser tests passed.
+- A fresh local `supabase db reset` exposes an older migration/grant gap before
+  browser tests reach Calendar: `authenticated` lacks read access to
+  `family_member_pin_credentials`.
+- Existing schedule permission and ICS SQL checks also stop at `permission
+denied for table schedule_event_members`; the table has RLS policies but its
+  authenticated table privileges do not include the required operations.
+- Those privilege gaps predate Phase 31 and were not changed because correcting
+  them broadens database access and requires a separate approved security scope.
+- The full Playwright flow was stopped after confirming the pre-Calendar grant
+  blocker. Phase 31's browser assertions are committed but could not execute on
+  the freshly reset schema.
+- `npm audit` reports one high-severity transitive `browserslist` finding
+  (`GHSA-c83g-rgw3-j3cx` and `GHSA-73wf-gq98-2v4g`) with a fix available.
+  Dependency files were not changed because upgrades are outside this phase.
+- The host defaults to unsupported Node 18. Final JavaScript checks used the
+  available Node 24.3.0 runtime.
 
 ## Checks
 
-- Clean dependency installation completed under Node 22.14.0 with zero npm
-  vulnerabilities.
+- Current official Next.js 16.3.3 local guidance for forms, Server Actions,
+  `revalidatePath`, and `refresh` was reviewed.
+- Current official Supabase migration guidance was reviewed.
+- Clean dependency installation was repaired under Node 24 to include native
+  optional build packages.
+- `npm audit --json` completed and reported the one transitive `browserslist`
+  finding described above.
 - TypeScript checking passed.
 - Repository-wide lint passed.
-- Full unit/component suite passed: 43 files, 187 tests.
-- The focused unconfirmed-account copied invite-link flow passed.
-- The full Playwright parent/family suite passed: 4 tests covering new,
-  confirmed-existing, and occupied accounts plus the existing family,
-  calendar, chores, assignments, and grocery workflow.
-- Production build passed with Next.js 16.3.3.
+- Every Phase 31 file passed the Prettier check. The repository-wide Prettier
+  check still reports 22 unchanged pre-existing files.
+- Full unit/component suite passed: 45 files, 196 tests.
+- Focused Phase 31 date/layout/grid/form/action/error tests passed: 9 files, 39
+  tests.
+- Local `supabase db reset` applied every migration, including Phase 31, and
+  seeded successfully.
+- Phase 31 SQL idempotency verification passed and rolled back.
+- Existing schedule permission/ICS SQL verification failed on the pre-existing
+  `schedule_event_members` table-privilege gap described above.
+- Regina Playwright testing was blocked before Calendar by the pre-existing
+  `family_member_pin_credentials` table-privilege gap described above.
+- Production build passed with Next.js 16.3.3 under Node 24.3.0.
 - `git diff --check` passed.
 
 ## Next Recommended Action
 
-- Review and commit Phase 30, then merge it after owner approval.
-- Validate a generated link in a Vercel preview using the production Supabase
-  project before production rollout.
+- Review and commit Phase 31, then merge it after owner approval.
+- Plan a separate security-reviewed phase to reconcile authenticated table
+  grants with the existing RLS policies on post-Phase-3 tables, rerun every SQL
+  verification file from a clean reset, and then run the full Playwright suite.
 
 ## Recommended Commit
 
-`feat(family): add copyable child invitation links`
+`fix(schedule): preserve civil dates and idempotent saves`

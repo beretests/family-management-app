@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh, revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import {
   createScheduleEventSchema,
   deleteScheduleEventSchema,
@@ -20,9 +20,16 @@ import { normalizeAllDayFormRange } from "@/features/schedule/all-day";
 
 export type ScheduleActionState = {
   error?: string;
+  eventId?: string;
+  replayed?: boolean;
   success?: string;
   submissionId?: string;
 };
+
+type ScheduleEventMutationInput = Omit<
+  ReturnType<typeof createScheduleEventSchema.parse>,
+  "idempotencyKey"
+>;
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -69,6 +76,7 @@ function readScheduleEventForm(formData: FormData) {
 
   return {
     familyId: getString(formData, "familyId"),
+    idempotencyKey: getString(formData, "idempotencyKey"),
     memberIds: formData
       .getAll("memberIds")
       .filter((value): value is string => typeof value === "string"),
@@ -153,7 +161,7 @@ function validateTimeZone(timeZone: string) {
 function recurrenceRow(
   eventId: string,
   familyId: string,
-  input: ReturnType<typeof createScheduleEventSchema.parse>,
+  input: ScheduleEventMutationInput,
 ) {
   if (input.repeatType === "none") {
     return null;
@@ -174,9 +182,7 @@ function recurrenceRow(
   };
 }
 
-function eventPayload(
-  input: ReturnType<typeof createScheduleEventSchema.parse>,
-) {
+function eventPayload(input: ScheduleEventMutationInput) {
   return {
     event_type: input.eventType,
     title: input.title,
@@ -192,7 +198,6 @@ function eventPayload(
 function finishScheduleMutation() {
   revalidatePath("/dashboard");
   revalidatePath("/schedule");
-  refresh();
 }
 
 async function replaceScheduleEventRecurrence({
@@ -203,7 +208,7 @@ async function replaceScheduleEventRecurrence({
 }: {
   eventId: string;
   familyId: string;
-  input: ReturnType<typeof createScheduleEventSchema.parse>;
+  input: ScheduleEventMutationInput;
   supabase: AppSupabaseClient;
 }) {
   const row = recurrenceRow(eventId, familyId, input);
@@ -243,6 +248,9 @@ export async function createScheduleEvent(
   }
 
   const supabase = await createClient();
+  const eventId = crypto.randomUUID();
+  let savedEventId = eventId;
+  let replayed = false;
 
   try {
     const actor = await requireScheduleActor(supabase, parsed.data.familyId);
@@ -254,54 +262,80 @@ export async function createScheduleEvent(
       supabase,
     });
 
-    const eventId = crypto.randomUUID();
     const { error } = await actor.writeClient.from("schedule_events").insert({
       id: eventId,
       family_id: actor.familyId,
       member_id: memberIds[0] ?? null,
       created_by_member_id: actor.memberId,
+      idempotency_key: parsed.data.idempotencyKey,
       ...eventPayload(parsed.data),
     });
 
     if (error) {
-      return { error: error.message };
+      if (error.code === "23505") {
+        const { data: existingEvent, error: existingError } =
+          await actor.writeClient
+            .from("schedule_events")
+            .select("id")
+            .eq("family_id", actor.familyId)
+            .eq("created_by_member_id", actor.memberId)
+            .eq("idempotency_key", parsed.data.idempotencyKey)
+            .maybeSingle();
+
+        if (existingError) {
+          return { error: existingError.message };
+        }
+
+        if (existingEvent) {
+          savedEventId = existingEvent.id;
+          replayed = true;
+        }
+      }
+
+      if (!replayed) {
+        return { error: error.message };
+      }
     }
 
-    try {
-      await replaceScheduleEventMembers({
-        eventId,
-        familyId: actor.familyId,
-        memberIds,
-        supabase: actor.writeClient,
-      });
-      await replaceScheduleEventRecurrence({
-        eventId,
-        familyId: actor.familyId,
-        input: parsed.data,
-        supabase: actor.writeClient,
-      });
-    } catch (memberError) {
-      await actor.writeClient
-        .from("schedule_events")
-        .delete()
-        .eq("family_id", actor.familyId)
-        .eq("id", eventId);
-      throw memberError;
-    }
+    if (!replayed) {
+      try {
+        await replaceScheduleEventMembers({
+          eventId,
+          familyId: actor.familyId,
+          memberIds,
+          supabase: actor.writeClient,
+        });
+        await replaceScheduleEventRecurrence({
+          eventId,
+          familyId: actor.familyId,
+          input: parsed.data,
+          supabase: actor.writeClient,
+        });
+      } catch (memberError) {
+        await actor.writeClient
+          .from("schedule_events")
+          .delete()
+          .eq("family_id", actor.familyId)
+          .eq("id", eventId);
+        throw memberError;
+      }
 
-    await insertAuditEvent({
-      action: "schedule_event.created",
-      actorMemberId: actor.memberId,
-      familyId: actor.familyId,
-      supabase: actor.writeClient,
-      target: { eventId, memberIds, repeatType: parsed.data.repeatType },
-    });
+      await insertAuditEvent({
+        action: "schedule_event.created",
+        actorMemberId: actor.memberId,
+        familyId: actor.familyId,
+        supabase: actor.writeClient,
+        target: { eventId, memberIds, repeatType: parsed.data.repeatType },
+      });
+    }
   } catch (error) {
     return { error: errorMessage(error) };
   }
 
   finishScheduleMutation();
   return {
+    eventId: savedEventId,
+    replayed,
     success: "Schedule event added.",
     submissionId: crypto.randomUUID(),
   };

@@ -560,6 +560,30 @@ approved phase scope.
 - Recommended commit message:
   `feat(family): add copyable child invitation links`
 
+## Phase 31: Schedule Civil Dates and Idempotent Saves
+
+- Branch: `phase/31-schedule-civil-dates`
+- Worktree: `../family-app-phase-31-schedule-civil-dates`
+- Scope: keep calendar navigation and grid columns as civil date strings;
+  convert only explicit browser-zone boundaries and event timestamps to UTC;
+  remove redundant schedule refresh work; and make manual event creates safe
+  to retry with creator-scoped UUID request identifiers.
+- Acceptance criteria: Day and Week labels, input values, query ranges, event
+  totals, and selectable event cards agree in `America/Regina`; create success
+  follows a fresh schedule payload; refresh failures are explicit; repeated
+  create keys return the original event without duplicate related/audit rows.
+- Tests: civil date and zoned-boundary units, Regina grid/layout components,
+  form/schema/action idempotency, SQL uniqueness, and Regina Playwright
+  create/refetch/edit/delete coverage, followed by full repository checks.
+- Supabase impact: apply
+  `20260904170000_schedule_event_idempotency.sql`; no RLS or dashboard change.
+- Vercel/environment impact: no new setting or variable; deploy the migration
+  before the matching application build.
+- Free-tier risk: negligible storage/index growth; no dependency or paid
+  service.
+- Recommended commit message:
+  `fix(schedule): preserve civil dates and idempotent saves`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

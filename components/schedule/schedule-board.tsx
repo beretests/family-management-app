@@ -1,7 +1,6 @@
 import { ScheduleTimeGrid } from "@/components/schedule/schedule-time-grid";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import type { ScheduleEvent } from "@/features/schedule/types";
-import { startOfDay } from "@/lib/dates/schedule";
 
 export function ScheduleBoard({
   actorMemberId,
@@ -16,7 +15,7 @@ export function ScheduleBoard({
   actorMemberId: string;
   canManageAll: boolean;
   conflicts: Map<string, string[]>;
-  day: Date;
+  day: string;
   events: ScheduleEvent[];
   familyId: string;
   members: FamilyMemberWithDetails[];
@@ -27,7 +26,7 @@ export function ScheduleBoard({
       actorMemberId={actorMemberId}
       canManageAll={canManageAll}
       conflicts={conflicts}
-      days={[startOfDay(day)]}
+      days={[day]}
       events={events}
       familyId={familyId}
       members={members}

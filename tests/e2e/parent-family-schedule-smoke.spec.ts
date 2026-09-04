@@ -389,13 +389,22 @@ test.describe("parent family setup smoke flow", () => {
     ).toBeVisible();
     await expectNoPageOverflow(page);
 
-    await page.goto("/schedule?date=2026-07-12&view=day");
+    await page.goto(
+      "/schedule?date=2026-07-12&view=day&timeZone=America%2FRegina",
+    );
     await expect(
       page.getByRole("heading", { name: /Daily Calendar$/ }),
     ).toBeVisible();
     await expect(
       page.getByText("Sunday, July 12", { exact: false }),
     ).toBeVisible();
+    await expect(page.getByLabel("Jump to date")).toHaveValue("2026-07-12");
+    await expect(
+      page.getByTestId("schedule-time-grid").getByText("Sun"),
+    ).toHaveText("Sun");
+    await expect(
+      page.getByTestId("schedule-time-grid").getByText("Jul 12"),
+    ).toHaveText("Jul 12");
 
     const addEventButton = page.getByRole("button", { name: "Add event" });
     const importCalendarButton = page.getByRole("button", {
@@ -431,6 +440,7 @@ test.describe("parent family setup smoke flow", () => {
     await expect(page.getByText("Schedule event added.")).toBeVisible();
 
     await expect(eventButton(page, eventTitle)).toBeVisible();
+    await expect(page.getByText(/^1 event · 1h$/)).toBeVisible();
     await expectNoPageOverflow(page);
     await eventButton(page, eventTitle).click();
     expect(browserErrors).toEqual([]);
@@ -443,6 +453,14 @@ test.describe("parent family setup smoke flow", () => {
       eventDialog.getByText("Bring water bottle.").first(),
     ).toBeVisible();
     await expectDialogFitsViewport(page, eventDialog);
+    await eventDialog.getByText("Edit event").click();
+    await eventDialog
+      .getByLabel("Notes")
+      .fill("Bring water bottle and cleats.");
+    await eventDialog.getByRole("button", { name: "Save" }).click();
+    await expect(
+      eventDialog.getByText("Schedule event updated."),
+    ).toBeVisible();
     await eventDialog
       .getByRole("button", { name: "Close event details" })
       .click();
@@ -478,13 +496,22 @@ test.describe("parent family setup smoke flow", () => {
       .getByRole("button", { name: "Close event details" })
       .click();
 
-    await page.goto("/schedule?date=2026-07-12&view=week");
+    await page.goto(
+      "/schedule?date=2026-07-12&view=week&timeZone=America%2FRegina",
+    );
     await expect(
       page.getByRole("region", { name: "Weekly calendar" }),
     ).toBeVisible();
     await expect(
       page.getByTestId("schedule-mobile-agenda").locator(":scope > section"),
     ).toHaveCount(7);
+    const weekSections = page
+      .getByTestId("schedule-mobile-agenda")
+      .locator(":scope > section");
+    await expect(weekSections.first()).toContainText("Sun");
+    await expect(weekSections.first()).toContainText("Jul 12");
+    await expect(weekSections.last()).toContainText("Sat");
+    await expect(weekSections.last()).toContainText("Jul 18");
     await expectNoPageOverflow(page);
 
     await page.setViewportSize({ width: 1024, height: 900 });
@@ -504,6 +531,17 @@ test.describe("parent family setup smoke flow", () => {
     await expect
       .poll(async () => (await allDayCoverage.boundingBox())?.height ?? 0)
       .toBeGreaterThan(600);
+    await eventButton(page, noSchoolTitle).click();
+    const noSchoolDeleteDialog = page.getByRole("dialog", {
+      name: noSchoolTitle,
+    });
+    await noSchoolDeleteDialog.getByText("Edit event").click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await noSchoolDeleteDialog
+      .getByRole("button", { name: "Delete event" })
+      .click();
+    await expect(noSchoolDeleteDialog).toHaveCount(0);
+    await expect(eventButton(page, noSchoolTitle)).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
 
     await page.goto("/schedule?date=2026-07-19&view=day");

@@ -1,6 +1,6 @@
 import type { ScheduleEvent } from "@/features/schedule/types";
 import { dateTimeLocalToUtc, getZonedDateParts } from "@/lib/dates/time-zone";
-import { toDateParam } from "@/lib/dates/schedule";
+import { addCalendarDays } from "@/lib/dates/schedule";
 
 export const calendarDefaultStartHour = 6;
 export const calendarDefaultEndHour = 22;
@@ -88,7 +88,7 @@ export function layoutCalendarEventsForDay({
   startHour,
   timeZone,
 }: {
-  day: Date;
+  day: string;
   endHour: number;
   events: ScheduleEvent[];
   hourHeight?: number;
@@ -183,41 +183,17 @@ function splitIntoOverlapGroups(events: PositionedEvent[]) {
   return groups;
 }
 
-function atHour(day: Date, hour: number, timeZone?: string) {
-  if (timeZone) {
-    const dateKey = toDateParam(day);
+function atHour(day: string, hour: number, timeZone?: string) {
+  const dateKey = hour === 24 ? addCalendarDays(day, 1) : day;
+  const normalizedHour = hour === 24 ? 0 : hour;
 
-    if (hour === 24) {
-      const nextDay = new Date(day);
-      nextDay.setDate(nextDay.getDate() + 1);
-      return dateTimeLocalToUtc(`${toDateParam(nextDay)}T00:00`, timeZone);
-    }
-
-    return dateTimeLocalToUtc(
-      `${dateKey}T${String(hour).padStart(2, "0")}:00`,
-      timeZone,
-    );
+  if (!timeZone) {
+    const [year, month, date] = dateKey.split("-").map(Number);
+    return new Date(year, month - 1, date, normalizedHour);
   }
 
-  if (hour === 24) {
-    return new Date(
-      day.getFullYear(),
-      day.getMonth(),
-      day.getDate() + 1,
-      0,
-      0,
-      0,
-      0,
-    );
-  }
-
-  return new Date(
-    day.getFullYear(),
-    day.getMonth(),
-    day.getDate(),
-    hour,
-    0,
-    0,
-    0,
+  return dateTimeLocalToUtc(
+    `${dateKey}T${String(normalizedHour).padStart(2, "0")}:00`,
+    timeZone,
   );
 }

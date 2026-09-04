@@ -12,11 +12,11 @@ import {
 import { scheduleEventTypeLabels } from "@/features/schedule/labels";
 import type { ScheduleEvent } from "@/features/schedule/types";
 import {
-  addDays,
-  formatShortDate,
+  addCalendarDays,
+  calendarWeekday,
+  formatCalendarShortDate,
+  formatCalendarWeekday,
   formatTimeRange,
-  formatWeekday,
-  toDateParam,
 } from "@/lib/dates/schedule";
 import { dateTimeLocalToUtc } from "@/lib/dates/time-zone";
 
@@ -35,7 +35,7 @@ export function ScheduleTimeGrid({
   actorMemberId?: string;
   canManageAll?: boolean;
   conflicts: Map<string, string[]>;
-  days: Date[];
+  days: string[];
   events: ScheduleEvent[];
   familyId?: string;
   members: FamilyMemberWithDetails[];
@@ -89,13 +89,13 @@ export function ScheduleTimeGrid({
                 className={`border-r border-[var(--line)] px-3 py-3 text-center last:border-r-0 ${
                   isWeekend(day) ? "bg-[#f0eef9]" : ""
                 }`}
-                key={day.toISOString()}
+                key={day}
               >
                 <p className="text-xs font-bold uppercase tracking-wide text-[var(--foreground)]">
-                  {formatWeekday(day)}
+                  {formatCalendarWeekday(day)}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-[var(--accent-strong)]">
-                  {formatShortDate(day)}
+                  {formatCalendarShortDate(day)}
                 </p>
               </div>
             ))}
@@ -114,7 +114,7 @@ export function ScheduleTimeGrid({
                   className={`grid content-start gap-1 border-r border-[var(--line)] p-1.5 last:border-r-0 ${
                     isWeekend(day) ? "bg-[#f7f5fc]" : ""
                   }`}
-                  key={day.toISOString()}
+                  key={day}
                 >
                   {eventsForDay(allDayEvents, day, timeZone).map((event) => (
                     <AllDayEventCard
@@ -168,7 +168,7 @@ export function ScheduleTimeGrid({
                   className={`relative overflow-hidden border-r border-[var(--line)] last:border-r-0 ${
                     isWeekend(day) ? "bg-[#fbfaff]" : "bg-white"
                   }`}
-                  key={day.toISOString()}
+                  key={day}
                   style={{
                     backgroundImage:
                       "linear-gradient(to bottom, transparent calc(100% - 1px), var(--line) 0)",
@@ -180,7 +180,7 @@ export function ScheduleTimeGrid({
                     <div
                       aria-hidden="true"
                       className="pointer-events-none absolute inset-0 z-0"
-                      data-testid={`all-day-coverage-${toDateParam(day)}`}
+                      data-testid={`all-day-coverage-${day}`}
                       style={{
                         backgroundColor: `color-mix(in srgb, ${getEventColor(dayAllDayEvents[0], members)} 9%, transparent)`,
                         boxShadow: `inset 5px 0 0 color-mix(in srgb, ${getEventColor(dayAllDayEvents[0], members)} 42%, transparent)`,
@@ -238,7 +238,7 @@ function ScheduleMobileAgenda({
   timeZone,
 }: {
   conflicts: Map<string, string[]>;
-  days: Date[];
+  days: string[];
   events: ScheduleEvent[];
   members: FamilyMemberWithDetails[];
   onSelect: (eventId: string) => void;
@@ -257,7 +257,7 @@ function ScheduleMobileAgenda({
         return (
           <section
             className="min-w-0 overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-sm"
-            key={day.toISOString()}
+            key={day}
           >
             <header
               className={`border-b border-[var(--line)] px-4 py-3 ${
@@ -265,10 +265,10 @@ function ScheduleMobileAgenda({
               }`}
             >
               <p className="text-xs font-bold uppercase tracking-wide text-[var(--foreground)]">
-                {formatWeekday(day)}
+                {formatCalendarWeekday(day)}
               </p>
               <p className="mt-0.5 text-sm font-semibold text-[var(--accent-strong)]">
-                {formatShortDate(day)}
+                {formatCalendarShortDate(day)}
               </p>
             </header>
             <div className="grid gap-2 p-3">
@@ -457,13 +457,10 @@ function ColorKeyItem({ color, label }: { color: string; label: string }) {
   );
 }
 
-function eventsForDay(events: ScheduleEvent[], day: Date, timeZone: string) {
-  const dayStart = dateTimeLocalToUtc(
-    `${toDateParam(day)}T00:00`,
-    timeZone,
-  ).getTime();
+function eventsForDay(events: ScheduleEvent[], day: string, timeZone: string) {
+  const dayStart = dateTimeLocalToUtc(`${day}T00:00`, timeZone).getTime();
   const nextDayStart = dateTimeLocalToUtc(
-    `${toDateParam(addDays(day, 1))}T00:00`,
+    `${addCalendarDays(day, 1)}T00:00`,
     timeZone,
   ).getTime();
 
@@ -503,8 +500,9 @@ function getStatusSuffix(member: FamilyMemberWithDetails) {
   return status === "normal" ? "" : ` · ${status.replaceAll("_", " ")}`;
 }
 
-function isWeekend(day: Date) {
-  return day.getDay() === 0 || day.getDay() === 6;
+function isWeekend(day: string) {
+  const weekday = calendarWeekday(day);
+  return weekday === 0 || weekday === 6;
 }
 
 function formatTimeBand(startsAt: number, endsAt: number) {

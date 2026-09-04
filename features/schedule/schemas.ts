@@ -137,7 +137,9 @@ const scheduleEventBaseSchema = z
     },
   );
 
-export const createScheduleEventSchema = scheduleEventBaseSchema;
+export const createScheduleEventSchema = scheduleEventBaseSchema.extend({
+  idempotencyKey: z.string().uuid("Missing event request identifier."),
+});
 
 export const updateScheduleEventSchema = scheduleEventBaseSchema
   .extend({

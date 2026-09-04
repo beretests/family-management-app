@@ -132,6 +132,19 @@ The visible calendar time zone is the browser's IANA zone and is carried in the
 schedule URL. Query boundaries, grid positions, labels, manual datetime saves,
 and ICS previews use that same zone. Timestamps remain stored as UTC instants.
 
+Phase 31 keeps selected days and week columns as validated `YYYY-MM-DD` civil
+date strings across the Server Component and Client Component boundary. Civil
+dates are formatted and advanced without interpreting them as UTC-midnight
+instants. Only event timestamps and explicit local-midnight query/layout
+boundaries are converted to UTC. This keeps headers, controls, summaries, grid
+columns, and event cards on the same date in negative-offset time zones.
+
+Each manual create form also generates one UUID request identifier. The
+database scopes it to the family and creating member, so a retried response
+returns the already-created event instead of inserting attendees, recurrence,
+or audit history again. ICS imports continue to use their source UID as their
+separate idempotency mechanism.
+
 Calendar event cards are compact launch controls rather than a second details
 surface. Selecting a timed or all-day event opens one accessible modal with its
 full details and, when permitted, the existing edit/delete controls. Add-event

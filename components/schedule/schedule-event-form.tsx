@@ -58,7 +58,11 @@ export function CreateScheduleEventForm({
   onSuccess?: (message: string) => void;
   timeZone: string;
 }) {
-  const [state, formAction] = useActionState(createScheduleEvent, initialState);
+  const [state, formAction, pending] = useActionState(
+    createScheduleEvent,
+    initialState,
+  );
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     if (state.submissionId && state.success && !state.error) {
@@ -76,6 +80,8 @@ export function CreateScheduleEventForm({
       members={members}
       actorMemberId={actorMemberId}
       canManageAll={canManageAll}
+      idempotencyKey={idempotencyKey}
+      pending={pending}
       state={state}
       submitLabel="Add event"
       timeZone={timeZone}
@@ -176,6 +182,8 @@ function ScheduleEventFields({
   members,
   actorMemberId,
   canManageAll,
+  idempotencyKey,
+  pending = false,
   state,
   submitLabel,
   timeZone: calendarTimeZone,
@@ -188,6 +196,8 @@ function ScheduleEventFields({
   members: FamilyMemberWithDetails[];
   actorMemberId: string;
   canManageAll: boolean;
+  idempotencyKey?: string;
+  pending?: boolean;
   state: ScheduleActionState;
   submitLabel: string;
   timeZone: string;
@@ -305,8 +315,15 @@ function ScheduleEventFields({
   }
 
   return (
-    <form action={action} className="mt-4 min-w-0 grid gap-4">
+    <form
+      action={action}
+      aria-busy={pending}
+      className="mt-4 min-w-0 grid gap-4"
+    >
       <input name="familyId" type="hidden" value={familyId} />
+      {idempotencyKey ? (
+        <input name="idempotencyKey" type="hidden" value={idempotencyKey} />
+      ) : null}
       {!canManageAll ? (
         <input name="memberIds" type="hidden" value={actorMemberId} />
       ) : null}

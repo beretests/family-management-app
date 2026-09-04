@@ -170,8 +170,10 @@ Schedule flow:
 
 1. `/schedule` loads the signed-in user's family context.
 2. A small client synchronizer adds the browser IANA time zone to the schedule
-   URL. The route derives local day/week boundaries in that zone and reads
-   events through `features/schedule/queries.ts`.
+   URL. The selected day and week columns remain validated `YYYY-MM-DD` civil
+   date strings across server/client rendering. The route converts only the
+   visible range's local-midnight boundaries to UTC and reads events through
+   `features/schedule/queries.ts`.
 3. Event reads return each schedule event once and include attendee IDs from
    `schedule_event_members`; older rows can still fall back to
    `schedule_events.member_id`.
@@ -180,7 +182,9 @@ Schedule flow:
 5. Schedule actions validate input with Zod, resolve the active actor
    server-side, verify assigned members belong to the family, and rely on
    Supabase RLS for authenticated writes. Kid Mode is validated against its
-   signed child session before using the server-only admin client.
+   signed child session before using the server-only admin client. Manual
+   creates include a creator-scoped UUID idempotency key; a repeated key returns
+   the existing event and does not repeat related or audit writes.
 6. Optional recurrence settings are read from `schedule_event_recurrences` and
    expanded only for the requested date range in the stored IANA time zone.
    Modified/cancelled local dates from `schedule_event_occurrence_overrides`
@@ -193,6 +197,9 @@ Schedule flow:
    same event appears in multiple member lanes.
 9. Conflict detection runs in `features/schedule/conflicts.ts` for overlapping
    events assigned to at least one shared family member.
+10. Successful schedule Server Actions invalidate `/schedule` once. Next.js
+    returns the refreshed route payload and action state in the same response;
+    the create modal closes only after that response completes.
 
 Chore template flow:
 

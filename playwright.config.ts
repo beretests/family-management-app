@@ -24,11 +24,12 @@ export default defineConfig({
   use: {
     baseURL,
     channel: browserChannel,
+    timezoneId: "America/Regina",
     trace: "on-first-retry",
     ...devices["Desktop Chrome"],
   },
   webServer: {
-    command: `npm run dev -- --hostname 127.0.0.1 --port ${serverPort}`,
+    command: `${JSON.stringify(process.execPath)} node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port ${serverPort}`,
     env: {
       ...process.env,
       E2E_TEST_AUTH_ENABLED: "true",
