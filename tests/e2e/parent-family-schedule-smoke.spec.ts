@@ -486,7 +486,7 @@ test.describe("parent family setup smoke flow", () => {
       "title",
       eventTitle,
     );
-    await expect(page.getByText(/^1 event · 1h$/)).toBeVisible();
+    await expect(page.getByText(/^1 event · 1 hr$/)).toBeVisible();
     await expectNoPageOverflow(page);
     await eventButton(page, eventTitle).click();
     expect(browserErrors).toEqual([]);
@@ -511,7 +511,9 @@ test.describe("parent family setup smoke flow", () => {
       .getByRole("button", { name: "Close event details" })
       .click();
     await expect(eventDialog).toHaveCount(0);
-    await expect(page.getByRole("link", { name: childName })).toBeVisible();
+    await expect(
+      mobileMemberFilter.getByLabel("Family member").locator("option:checked"),
+    ).toHaveText(childName);
 
     await addEventButton.click();
     const noSchoolDialog = page.getByRole("dialog", {
