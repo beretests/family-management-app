@@ -42,7 +42,12 @@ describe("ScheduleTimeGrid", () => {
     const desktopGrid = screen.getByTestId("schedule-time-grid");
     expect(
       within(desktopGrid).getByLabelText(/Dance practice/),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("title", "Dance practice");
+    expect(
+      within(screen.getByTestId("schedule-mobile-agenda")).getByLabelText(
+        /Dance practice/,
+      ),
+    ).toHaveAttribute("title", "Dance practice");
     expect(within(desktopGrid).getByText("Studio A")).toBeVisible();
     expect(screen.getByText("6-8 AM")).toBeVisible();
     expect(screen.getByTestId("schedule-time-grid")).toHaveClass("min-w-0");
@@ -51,7 +56,7 @@ describe("ScheduleTimeGrid", () => {
   it("keeps all-day events in a separate row", () => {
     render(
       <ScheduleTimeGrid
-        conflicts={new Map([["rest", ["Rest overlaps a task."]]])}
+        conflicts={new Map()}
         days={[day]}
         events={[
           {
@@ -66,7 +71,12 @@ describe("ScheduleTimeGrid", () => {
 
     const desktopGrid = screen.getByTestId("schedule-time-grid");
     expect(within(desktopGrid).getByText("All day")).toBeVisible();
-    expect(within(desktopGrid).getByText("Rest day · Conflict")).toBeVisible();
+    expect(
+      within(desktopGrid).getByRole("button", {
+        name: /Rest day/,
+      }),
+    ).toHaveAttribute("title", "Rest day");
+    expect(within(desktopGrid).queryByText("Conflict")).not.toBeInTheDocument();
     expect(screen.getByTestId("all-day-coverage-2026-07-12")).toHaveClass(
       "inset-0",
     );

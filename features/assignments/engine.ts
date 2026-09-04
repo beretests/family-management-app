@@ -291,7 +291,7 @@ function countScheduleConflicts({
   scheduleEvents: ScheduleEvent[];
 }) {
   return scheduleEvents.filter((event) => {
-    if (event.eventType === "no_school") {
+    if (event.allDay || event.eventType === "no_school") {
       return false;
     }
 

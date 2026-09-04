@@ -604,6 +604,27 @@ approved phase scope.
 - Recommended commit message:
   `fix(ui): replace blocking delete confirmations`
 
+## Phase 33: Calendar Interaction Polish
+
+- Branch: `phase/33-calendar-interaction-polish`
+- Worktree: `../family-app-phase-33-calendar-interaction-polish`
+- Scope: ignore all-day records in calendar and chore-assignment conflict
+  calculations, expose complete event titles on hover, move date navigation
+  directly above the calendar, and use a compact member select on mobile.
+- Acceptance criteria: all-day events never generate same-day conflict badges
+  or assignment penalties; timed overlaps still conflict; every event-card
+  variant exposes its complete title; Previous/Today/Next sit immediately above
+  the calendar; mobile uses a member dropdown while desktop keeps member pills;
+  navigation preserves date, view, timezone, and member state.
+- Tests: conflict and assignment units, event-card title attributes, responsive
+  member filter and URL-state units, and mobile/desktop Playwright assertions,
+  followed by lint, typecheck, full tests, and build.
+- Supabase impact: none; no migration, RLS policy, or dashboard change.
+- Vercel/environment impact: no new setting or variable.
+- Free-tier risk: none.
+- Recommended commit message:
+  `fix(schedule): polish calendar conflicts and navigation`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:
