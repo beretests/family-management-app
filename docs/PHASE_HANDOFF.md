@@ -2,104 +2,71 @@
 
 ## Current Phase
 
-Phase 31: Schedule Civil Dates and Idempotent Saves
+Phase 32: Automation-Safe Confirmations
 
 ## Branch and Worktree
 
-- Branch: `phase/31-schedule-civil-dates`
-- Worktree: `../family-app-phase-31-schedule-civil-dates`
-- Base branch: `main` at `b4abb40`
+- Branch: `phase/32-automation-safe-confirmations`
+- Worktree: `../family-app-phase-32-automation-safe-confirmations`
+- Base branch: `main` at `bc0e107`
 
 ## Implemented Changes
 
-- Kept selected calendar days and week columns as validated `YYYY-MM-DD`
-  strings across the Server Component and Client Component boundary.
-- Added timezone-independent civil-date validation, formatting, weekday, week
-  boundary, and day-arithmetic helpers.
-- Derived Day/Week query endpoints from explicit browser-zone midnights while
-  preserving overlap reads for overnight and multi-day events.
-- Updated desktop/mobile labels, event filtering, event positioning, previous
-  and next navigation, date input values, and create defaults to use the same
-  civil dates.
-- Added one UUID idempotency key to every manual create form. Replayed keys
-  return the original event ID without repeating attendee, recurrence, or audit
-  writes.
-- Removed the redundant `refresh()` call. A successful Server Action now uses
-  one `/schedule` invalidation, and the modal closes only after the refreshed
-  action response completes.
-- Added schedule-specific refresh failure UI with a safe retry explanation.
-- Made Playwright's development server inherit the supported Node executable
-  that launched Playwright and set its browser timezone to `America/Regina`.
+- Replaced the schedule event deletion `window.confirm()` call with an inline,
+  accessible confirmation panel inside the existing event dialog.
+- Kept recurring-event deletion scope visible and reflected the selected scope
+  in the confirmation heading.
+- Replaced the permanent grocery-list deletion `window.confirm()` call with an
+  inline confirmation panel on the history card.
+- Added a reusable destructive-action control that moves focus to the safe
+  cancel choice, restores focus when cancelled, and disables cancel/confirm
+  controls while its Server Action is pending.
+- Removed browser-dialog acceptance from Playwright and added cancel/confirm
+  coverage for both deletion flows.
+- Added a repository guard test that rejects browser-level `alert`, `confirm`,
+  `prompt`, and `beforeunload` APIs in application source.
 
 ## Database and Platform Changes
 
-- Added `20260904170000_schedule_event_idempotency.sql`.
-- The migration adds nullable `schedule_events.idempotency_key uuid` and a
-  unique `(family_id, created_by_member_id, idempotency_key)` constraint.
-- Existing, generated, and imported rows may retain a null key. ICS import
-  continues to use its existing family/source UID constraint.
-- No RLS policy, grant, Storage bucket, Auth setting, Vercel setting, dependency,
-  environment variable, or paid service changed.
+- No migration, RLS policy, grant, Storage, Auth, dependency, environment
+  variable, Supabase dashboard, or Vercel dashboard change.
+- No paid service or additional free-tier usage was introduced.
 
 ## Manual Setup Still Required
 
-- Apply `20260904170000_schedule_event_idempotency.sql` before deploying this
-  application version, normally with `supabase db push`.
-- Redeploy the app after the migration is present.
-- No Supabase or Vercel dashboard setting is required.
+- None. Deploy the application normally after this phase is merged.
 
 ## Known Issues and Limitations
 
-- A fresh local `supabase db reset` exposes an older migration/grant gap before
-  browser tests reach Calendar: `authenticated` lacks read access to
-  `family_member_pin_credentials`.
-- Existing schedule permission and ICS SQL checks also stop at `permission
-denied for table schedule_event_members`; the table has RLS policies but its
-  authenticated table privileges do not include the required operations.
-- Those privilege gaps predate Phase 31 and were not changed because correcting
-  them broadens database access and requires a separate approved security scope.
-- The full Playwright flow was stopped after confirming the pre-Calendar grant
-  blocker. Phase 31's browser assertions are committed but could not execute on
-  the freshly reset schema.
-- `npm audit` reports one high-severity transitive `browserslist` finding
-  (`GHSA-c83g-rgw3-j3cx` and `GHSA-73wf-gq98-2v4g`) with a fix available.
-  Dependency files were not changed because upgrades are outside this phase.
-- The host defaults to unsupported Node 18. Final JavaScript checks used the
-  available Node 24.3.0 runtime.
+- The focused Playwright flow remains blocked immediately after family setup by
+  the pre-existing `permission denied for table family_member_pin_credentials`
+  error, before it reaches Groceries or Calendar.
+- The older `schedule_event_members` authenticated table-privilege gap recorded
+  in Phase 31 also remains outside this UI-only phase.
+- `npm ci` reports one existing high-severity transitive dependency finding.
+  Dependencies were not changed because upgrades are outside this phase.
+- The host defaults to unsupported Node 18. JavaScript checks used the available
+  Node 24.3.0 runtime.
 
 ## Checks
 
-- Current official Next.js 16.3.3 local guidance for forms, Server Actions,
-  `revalidatePath`, and `refresh` was reviewed.
-- Current official Supabase migration guidance was reviewed.
-- Clean dependency installation was repaired under Node 24 to include native
-  optional build packages.
-- `npm audit --json` completed and reported the one transitive `browserslist`
-  finding described above.
+- Reviewed the repository-local Next.js 16.3.3 guidance for forms, Server
+  Actions, Client Components, and accessibility.
+- Focused confirmation and browser-dialog guard tests passed: 4 files, 6 tests.
+- Full unit/component suite passed: 47 files, 199 tests.
+- Repository-wide ESLint passed.
 - TypeScript checking passed.
-- Repository-wide lint passed.
-- Every Phase 31 file passed the Prettier check. The repository-wide Prettier
-  check still reports 22 unchanged pre-existing files.
-- Full unit/component suite passed: 45 files, 196 tests.
-- Focused Phase 31 date/layout/grid/form/action/error tests passed: 9 files, 39
-  tests.
-- Local `supabase db reset` applied every migration, including Phase 31, and
-  seeded successfully.
-- Phase 31 SQL idempotency verification passed and rolled back.
-- Existing schedule permission/ICS SQL verification failed on the pre-existing
-  `schedule_event_members` table-privilege gap described above.
-- Regina Playwright testing was blocked before Calendar by the pre-existing
-  `family_member_pin_credentials` table-privilege gap described above.
-- Production build passed with Next.js 16.3.3 under Node 24.3.0.
-- `git diff --check` passed.
+- Production build passed with Next.js 16.3.3.
+- Changed-file Prettier checks and `git diff --check` passed.
+- Focused Playwright verification attempted and failed at the pre-existing
+  `family_member_pin_credentials` grant blocker described above.
 
 ## Next Recommended Action
 
-- Review and commit Phase 31, then merge it after owner approval.
-- Plan a separate security-reviewed phase to reconcile authenticated table
-  grants with the existing RLS policies on post-Phase-3 tables, rerun every SQL
-  verification file from a clean reset, and then run the full Playwright suite.
+- Review and commit Phase 32, then merge it after owner approval.
+- Plan a security-reviewed phase to reconcile authenticated table grants with
+  existing RLS policies, then rerun the full browser suite.
 
 ## Recommended Commit
 
-`fix(schedule): preserve civil dates and idempotent saves`
+`fix(ui): replace blocking delete confirmations`

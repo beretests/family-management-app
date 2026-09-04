@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
+import { DestructiveActionConfirmation } from "@/components/ui/destructive-action-confirmation";
 import {
   createScheduleEvent,
   deleteScheduleEvent,
@@ -114,6 +115,15 @@ export function EditScheduleEventForm({
     deleteScheduleEvent,
     initialState,
   );
+  const [deleteScope, setDeleteScope] = useState<ScheduleEventEditScope>(
+    event.recurrence ? "occurrence" : "series",
+  );
+  const deleteTarget =
+    !event.recurrence || deleteScope === "occurrence"
+      ? "this event"
+      : deleteScope === "following"
+        ? "this and all following events"
+        : "the entire series";
 
   return (
     <div className="grid gap-3">
@@ -129,23 +139,7 @@ export function EditScheduleEventForm({
         timeZone={timeZone}
       />
       {canDelete ? (
-        <form
-          action={deleteAction}
-          onSubmit={(submitEvent) => {
-            const data = new FormData(submitEvent.currentTarget);
-            const scope = data.get("editScope");
-            const label =
-              !event.recurrence || scope === "occurrence"
-                ? "this event"
-                : scope === "following"
-                  ? "this and all following events"
-                  : "the entire series";
-
-            if (!window.confirm(`Delete ${label}?`)) {
-              submitEvent.preventDefault();
-            }
-          }}
-        >
+        <form action={deleteAction}>
           <input name="familyId" type="hidden" value={familyId} />
           <input
             name="eventId"
@@ -157,15 +151,24 @@ export function EditScheduleEventForm({
             type="hidden"
             value={event.occurrenceDate ?? ""}
           />
-          <DeleteScopeFields event={event} />
+          <DeleteScopeFields
+            event={event}
+            onChange={setDeleteScope}
+            value={deleteScope}
+          />
           <ActionMessage
             error={deleteState.error}
             success={deleteState.success}
           />
           <div className="mt-3">
-            <SubmitButton pendingLabel="Deleting..." tone="danger">
-              Delete event
-            </SubmitButton>
+            <DestructiveActionConfirmation
+              cancelLabel="Keep event"
+              confirmLabel="Delete now"
+              description={`“${event.title}” will be removed from the calendar. This cannot be undone.`}
+              pendingLabel="Deleting event..."
+              title={`Delete ${deleteTarget}?`}
+              triggerLabel="Delete event"
+            />
           </div>
         </form>
       ) : null}
@@ -744,7 +747,15 @@ function ScheduleEventFields({
   );
 }
 
-function DeleteScopeFields({ event }: { event: ScheduleEvent }) {
+function DeleteScopeFields({
+  event,
+  onChange,
+  value,
+}: {
+  event: ScheduleEvent;
+  onChange: (scope: ScheduleEventEditScope) => void;
+  value: ScheduleEventEditScope;
+}) {
   if (!event.recurrence) {
     return <input name="editScope" type="hidden" value="series" />;
   }
@@ -754,8 +765,11 @@ function DeleteScopeFields({ event }: { event: ScheduleEvent }) {
       Delete
       <select
         className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
-        defaultValue="occurrence"
         name="editScope"
+        onChange={(changeEvent) =>
+          onChange(changeEvent.target.value as ScheduleEventEditScope)
+        }
+        value={value}
       >
         <option value="occurrence">This event</option>
         <option value="following">This and following events</option>
