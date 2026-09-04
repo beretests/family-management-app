@@ -111,6 +111,10 @@ This repo intentionally uses non-default local ports:
 - Analytics: `http://127.0.0.1:55427`
 - Shadow database: `55420`
 
+The local email-testing service uses the current Supabase CLI `[inbucket]`
+configuration section. If the CLI reports that `local_smtp` is an invalid key,
+update the CLI configuration rather than downgrading the CLI.
+
 ## Remote Migrations
 
 Do not make manual dashboard table edits for app schema. Keep schema changes in
@@ -180,6 +184,20 @@ dashboard configuration. Run
 `tests/sql/schedule-idempotency-verification.sql` after local migration reset to
 verify duplicate and creator-scoping behavior.
 
+Phase 34 requires
+`20260904190000_repair_authenticated_table_grants.sql`. It adds explicit,
+operation-specific `authenticated` grants for PIN credentials, adult
+invitations, schedule attendees, recurrences, and occurrence overrides created
+after the initial schema migration. It also grants the server-only
+`service_role` the minimum table and function operations used by adult/child
+invitation acceptance, Kid Mode writes, schedule recurrence helpers, reminders,
+and retention cleanup. It revokes all `anon` access to the repaired private
+tables and leaves the existing family- and parent-scoped RLS policies unchanged.
+Apply it to every environment before rerunning the family setup and Calendar
+browser flow. Run `tests/sql/table-grants-verification.sql` afterward to verify
+required grants, unexpected authenticated grants, anonymous denial, and
+server-only workflow grants.
+
 ## Storage
 
 Phase 8 creates a private `task-evidence` bucket by migration.
@@ -215,6 +233,13 @@ After migrations, verify:
   the child profile, history, Kid Mode credential, or Auth user.
 - Parents can select and manage `family_member_pin_credentials`; child accounts
   cannot read PIN hashes.
+- Post-bootstrap private family tables explicitly grant only their required
+  Data API operations to `authenticated`; `anon` has no privileges, and RLS
+  continues to decide which authenticated rows are accessible.
+- The server-only `service_role` has explicit object privileges for reviewed
+  invitation, Kid Mode, schedule, reminder, and retention workflows. Keep the
+  corresponding secret key on the server; object grants do not make it safe to
+  expose that key.
 - Children can read family schedule and their own assignments/submissions.
 - Active family members can create and update only their own self-assigned
   schedule events; parents can manage all schedule events.
@@ -238,6 +263,9 @@ The SQL helpers in `tests/sql`, including
 `schedule-occurrence-overrides-verification.sql` and
 `no-school-verification.sql`, and `grocery-lists-verification.sql` provide
 lightweight local verification.
+`table-grants-verification.sql` verifies the explicit Data API privilege
+boundary for post-bootstrap PIN, invitation, and schedule tables plus the
+minimum `service_role` grants needed by reviewed server-only workflows.
 `child-email-invitations-verification.sql` covers Phase 26 linking and
 disconnection boundaries. `existing-child-account-link-verification.sql`
 covers Phase 28 RPC grants, safe invitation defaults, existing-account

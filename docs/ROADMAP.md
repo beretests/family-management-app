@@ -625,6 +625,30 @@ approved phase scope.
 - Recommended commit message:
   `fix(schedule): polish calendar conflicts and navigation`
 
+## Phase 34: Supabase Grant Repair
+
+- Branch: `phase/34-supabase-grant-repair`
+- Worktree: `../family-app-phase-34-supabase-grant-repair`
+- Scope: repair missing Data API object privileges on post-bootstrap private
+  family tables, add minimum `service_role` privileges for reviewed server-only
+  workflows, preserve existing RLS boundaries, update the local Supabase
+  email-testing configuration, and add grant regression checks.
+- Acceptance criteria: authenticated parent flows can reach PIN credentials,
+  adult invitations, schedule attendees, recurrence rows, and occurrence
+  overrides; anonymous callers retain no access; authenticated roles receive
+  only operations used by the app; server-only invitation, Kid Mode, schedule,
+  reminder, and retention operations can reach their required database objects;
+  the current Supabase CLI parses the local configuration.
+- Tests: SQL privilege verification, Supabase CLI config parsing, browser flow
+  after applying the migration, then lint, typecheck, full tests, and build.
+- Supabase impact: apply
+  `20260904190000_repair_authenticated_table_grants.sql`; existing RLS policies
+  remain unchanged and no dashboard feature is required.
+- Vercel/environment impact: no setting or variable change.
+- Free-tier risk: none.
+- Recommended commit message:
+  `fix(db): grant RLS-protected post-bootstrap tables`
+
 ## Review, Merge, and Cleanup Gate
 
 At the end of each approved phase, review from inside that phase worktree:

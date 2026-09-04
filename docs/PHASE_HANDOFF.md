@@ -2,73 +2,81 @@
 
 ## Current Phase
 
-Phase 33: Calendar Interaction Polish
+Phase 34: Supabase Grant Repair
 
 ## Branch and Worktree
 
-- Branch: `phase/33-calendar-interaction-polish`
-- Worktree: `../family-app-phase-33-calendar-interaction-polish`
-- Base branch: `main` at `520758c`
+- Branch: `phase/34-supabase-grant-repair`
+- Worktree: `../family-app-phase-34-supabase-grant-repair`
+- Base branch: `main` at `8731d59`
 
 ## Implemented Changes
 
-- Excluded every all-day schedule event from calendar conflict badges while
-  preserving conflict detection for overlapping timed events assigned to the
-  same member.
-- Excluded every all-day schedule event from chore-assignment conflict warnings
-  and scoring penalties.
-- Added full event-title hover text to desktop timed cards, desktop all-day
-  cards, and mobile agenda cards without introducing browser dialogs.
-- Moved Previous, Today, and Next into a dedicated navigation bar directly
-  above the day/week calendar.
-- Kept Day/Week and Jump-to-date controls in the schedule header.
-- Replaced the mobile stack of family-member links with a GET-backed select and
-  Apply button while retaining horizontally scrollable member pills on desktop.
-- Preserved the selected civil date, view, timezone, and member across all
-  schedule navigation controls.
+- Added a forward-only migration that explicitly grants authenticated users the
+  operations used on PIN credentials, adult invitations, schedule attendees,
+  recurrences, and occurrence overrides created after the initial schema.
+- Kept all six repaired private tables inaccessible to `anon`; their existing
+  parent- and family-scoped RLS policies remain unchanged.
+- Added operation-specific `service_role` grants for reviewed server-only adult
+  and child invitation, Kid Mode write, schedule recurrence, reminder, evidence
+  cleanup, and grocery retention workflows.
+- Added the missing `service_role` execution grant for the existing Kid Mode
+  task-submission function.
+- Added SQL regression checks for required authenticated and server privileges,
+  unexpected authenticated privileges, anonymous denial, and function access.
+- Updated the obsolete local Supabase `[local_smtp]` configuration section to
+  the current `[inbucket]` name.
+- Corrected two stale Calendar smoke-test expectations exposed after the
+  database blocker was removed: duration copy and the Phase 33 mobile member
+  dropdown.
 
 ## Database and Platform Changes
 
-- No migration, RLS policy, grant, Storage, Auth, dependency, environment
-  variable, Supabase dashboard, or Vercel dashboard change.
+- New migration:
+  `20260904190000_repair_authenticated_table_grants.sql`.
+- No table, column, constraint, index, RLS policy, Storage policy, Auth setting,
+  dependency, environment variable, or Vercel configuration changed.
 - No paid service or additional free-tier usage was introduced.
 
 ## Manual Setup Still Required
 
-- None. Deploy the application normally after this phase is merged.
+- Apply the Phase 34 migration to each hosted Supabase environment before
+  deploying or rerunning its browser automation.
+- Optionally run `tests/sql/table-grants-verification.sql` against each migrated
+  environment to confirm its object-privilege boundary.
+- No Vercel dashboard or environment-variable change is required.
 
 ## Known Issues and Limitations
 
-- The focused Playwright flow remains blocked immediately after family setup by
-  the pre-existing `permission denied for table family_member_pin_credentials`
-  error, before it reaches Calendar.
-- The older `schedule_event_members` authenticated table-privilege gap remains
-  outside this UI-only phase.
+- The migration was applied and verified only against the local Supabase test
+  database; no hosted database was changed.
 - `npm ci` reports one existing high-severity transitive dependency finding.
-  Dependencies were not changed because upgrades are outside this phase.
-- The host defaults to unsupported Node 18. JavaScript checks used the available
-  Node 24.3.0 runtime.
+  Dependencies remain unchanged because upgrades are outside this phase.
+- The host defaults to unsupported Node 18. JavaScript checks pass with the
+  available Node 24.3.0 runtime.
 
 ## Checks
 
-- Reviewed repository-local Next.js 16.3.3 guidance for forms, Server and
-  Client Components, and accessibility.
-- Focused conflict, assignment, event-card, and navigation tests passed: 4
-  files, 18 tests.
-- Full unit/component suite passed: 48 files, 202 tests.
+- Reviewed current official Supabase guidance for explicit table grants, RLS,
+  Data API `42501` failures, and current local CLI configuration.
+- Supabase CLI 2.84.2 parses `config.toml`; local stack status succeeded.
+- Confirmed only the Phase 34 migration was pending, then applied it locally
+  without resetting or deleting local data.
+- Grant verification passed: all five result sets returned zero rows.
+- Existing child-email invitation SQL verification passed.
+- Supabase database lint passed with no schema errors.
+- Focused family/Groceries/Calendar Playwright flow passed.
+- Complete Playwright suite passed: 4 tests.
 - Repository-wide ESLint passed.
 - TypeScript checking passed.
+- Full unit/component suite passed: 48 files, 202 tests.
 - Production build passed with Next.js 16.3.3.
-- Changed-file Prettier checks and `git diff --check` passed.
-- Focused Playwright verification attempted and failed at the pre-existing
-  `family_member_pin_credentials` grant blocker described above.
 
 ## Next Recommended Action
 
-- Review and commit Phase 33, then merge it after owner approval.
-- Plan a security-reviewed phase to reconcile authenticated table grants with
-  existing RLS policies, then rerun the full browser suite.
+- Review and commit Phase 34, apply its migration to the browser-test Supabase
+  environment, rerun automation there, then merge after owner approval.
 
 ## Recommended Commit
 
-`fix(schedule): polish calendar conflicts and navigation`
+`fix(db): grant RLS-protected app workflows`
