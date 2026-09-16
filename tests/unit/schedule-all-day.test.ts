@@ -6,6 +6,17 @@ import {
 } from "@/features/schedule/all-day";
 
 describe("all-day schedule ranges", () => {
+  it("leaves invalid and reversed input for server validation instead of correcting it", () => {
+    for (const [startsAt, endsAt] of [
+      ["2026-02-30T00:00", "2026-03-01T00:00"],
+      ["2026-09-03T00:00", "2026-09-01T00:00"],
+    ]) {
+      expect(normalizeAllDayFormRange(startsAt, endsAt)).toEqual({
+        startsAt,
+        endsAt,
+      });
+    }
+  });
   it("stores a one-day form range as local midnight to next midnight", () => {
     expect(
       normalizeAllDayFormRange("2026-09-01T16:00", "2026-09-01T17:00"),

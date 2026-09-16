@@ -2,7 +2,6 @@
 
 import { refresh, revalidatePath } from "next/cache";
 import {
-  MAX_ICS_FILE_BYTES,
   MAX_ICS_IMPORT_EVENTS,
   parseIcsCalendar,
 } from "@/features/schedule/ics/parser";
@@ -19,13 +18,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { normalizeImportedNoSchoolRange } from "@/features/schedule/all-day";
 
-const acceptedCalendarTypes = new Set([
-  "",
-  "application/ics",
-  "application/octet-stream",
-  "text/calendar",
-  "text/plain",
-]);
+import { validateCalendarFile } from "@/features/schedule/ics/source";
 
 export type IcsImportActionState = {
   error?: string;
@@ -230,30 +223,6 @@ export async function importIcsEvents(
       error: error instanceof Error ? error.message : "Calendar import failed.",
     };
   }
-}
-
-function validateCalendarFile(value: FormDataEntryValue | null) {
-  if (!(value instanceof File)) {
-    return "Choose an .ics calendar file.";
-  }
-
-  if (!value.name.toLowerCase().endsWith(".ics")) {
-    return "Choose a file whose name ends in .ics.";
-  }
-
-  if (!acceptedCalendarTypes.has(value.type.toLowerCase())) {
-    return "Choose an iCalendar (.ics) file.";
-  }
-
-  if (value.size === 0) {
-    return "The calendar file is empty.";
-  }
-
-  if (value.size > MAX_ICS_FILE_BYTES) {
-    return "Calendar files must be 512 KB or smaller.";
-  }
-
-  return null;
 }
 
 async function insertImportAudit({

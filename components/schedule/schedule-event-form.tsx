@@ -16,6 +16,9 @@ import type { ScheduleEvent } from "@/features/schedule/types";
 import type { ScheduleEventEditScope } from "@/features/schedule/types";
 import { getRecurrenceOccurrenceNumber } from "@/features/schedule/recurrence";
 import { addDaysToDateKey } from "@/features/schedule/all-day";
+import { ScheduleDateInput } from "./schedule-date-input";
+import { scheduleRangeError } from "@/features/schedule/date-input";
+import { isValidCalendarDate } from "@/lib/dates/schedule";
 import { toDateTimeLocalValue } from "@/lib/dates/schedule";
 
 const initialState: ScheduleActionState = {};
@@ -27,18 +30,6 @@ const colorOptions = [
   "#7c3aed",
   "#be123c",
 ];
-
-function addOneHour(dateTimeLocalValue: string) {
-  const date = new Date(dateTimeLocalValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return dateTimeLocalValue;
-  }
-
-  date.setHours(date.getHours() + 1);
-
-  return toDateTimeLocalValue(date.toISOString());
-}
 
 export function CreateScheduleEventForm({
   defaultEndsAt,
@@ -213,10 +204,10 @@ function ScheduleEventFields({
     ? toDateTimeLocalValue(event.endsAt, formTimeZone)
     : toDateTimeLocalValue(defaultEndsAt, formTimeZone);
   const [startsAt, setStartsAt] = useState(initialStartsAt);
-  const [endsAt, setEndsAt] = useState(
-    new Date(initialEndsAt).getTime() > new Date(initialStartsAt).getTime()
-      ? initialEndsAt
-      : addOneHour(initialStartsAt),
+  const [endsAt, setEndsAt] = useState(initialEndsAt);
+  const [textEntry, setTextEntry] = useState(false);
+  const [recurrenceEndsOn, setRecurrenceEndsOn] = useState(
+    event?.recurrence?.endsOn ?? "",
   );
   const [eventType, setEventType] = useState(
     event?.eventType ?? "extracurricular",
@@ -273,21 +264,13 @@ function ScheduleEventFields({
     canManageAll ? (event?.memberIds ?? []) : [actorMemberId],
   );
 
-  function handleStartsAtChange(value: string) {
-    setStartsAt(value);
-
-    if (new Date(endsAt).getTime() <= new Date(value).getTime()) {
-      setEndsAt(addOneHour(value));
-    }
-  }
-
-  function handleEndsAtChange(value: string) {
-    setEndsAt(
-      new Date(value).getTime() <= new Date(startsAt).getTime()
-        ? addOneHour(startsAt)
-        : value,
-    );
-  }
+  const rangeError = allDay
+    ? !isValidCalendarDate(allDayStartsOn) || !isValidCalendarDate(allDayEndsOn)
+      ? "Enter valid first and last days."
+      : allDayEndsOn < allDayStartsOn
+        ? "Last day must be on or after first day."
+        : undefined
+    : scheduleRangeError(startsAt, endsAt);
 
   function handleEditScopeChange(scope: ScheduleEventEditScope) {
     setEditScope(scope);
@@ -320,6 +303,9 @@ function ScheduleEventFields({
   return (
     <form
       action={action}
+      onSubmit={(event) => {
+        if (rangeError) event.preventDefault();
+      }}
       aria-busy={pending}
       className="mt-4 min-w-0 grid gap-4"
     >
@@ -415,6 +401,14 @@ function ScheduleEventFields({
         </label>
       </div>
 
+      <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={textEntry}
+          onChange={(event) => setTextEntry(event.target.checked)}
+        />
+        Enter dates and times as text
+      </label>
       {allDay ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <input
@@ -425,66 +419,59 @@ function ScheduleEventFields({
           <input
             name="endsAt"
             type="hidden"
-            value={`${addDaysToDateKey(allDayEndsOn, 1)}T00:00`}
+            value={
+              isValidCalendarDate(allDayEndsOn)
+                ? `${addDaysToDateKey(allDayEndsOn, 1)}T00:00`
+                : ""
+            }
           />
-          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-            First day
-            <input
-              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-              onChange={(changeEvent) => {
-                const nextDate = changeEvent.target.value;
-                setAllDayStartsOn(nextDate);
-
-                if (allDayEndsOn < nextDate) {
-                  setAllDayEndsOn(nextDate);
-                }
-              }}
-              required
-              type="date"
-              value={allDayStartsOn}
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-            Last day
-            <input
-              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-              min={allDayStartsOn}
-              onChange={(changeEvent) =>
-                setAllDayEndsOn(changeEvent.target.value)
-              }
-              required
-              type="date"
-              value={allDayEndsOn}
-            />
-          </label>
+          <ScheduleDateInput
+            label="First day"
+            dateOnly
+            textEntry={textEntry}
+            value={allDayStartsOn}
+            onChange={setAllDayStartsOn}
+          />
+          <ScheduleDateInput
+            label="Last day"
+            dateOnly
+            textEntry={textEntry}
+            value={allDayEndsOn}
+            onChange={setAllDayEndsOn}
+          />
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-            Starts
-            <input
-              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-              name="startsAt"
-              onChange={(event) => handleStartsAtChange(event.target.value)}
-              required
-              type="datetime-local"
-              value={startsAt}
-            />
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-            Ends
-            <input
-              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]"
-              min={startsAt}
-              name="endsAt"
-              onChange={(event) => handleEndsAtChange(event.target.value)}
-              required
-              type="datetime-local"
-              value={endsAt}
-            />
-          </label>
+          <ScheduleDateInput
+            label="Starts"
+            name="startsAt"
+            textEntry={textEntry}
+            value={startsAt}
+            onChange={setStartsAt}
+          />
+          <ScheduleDateInput
+            label="Ends"
+            name="endsAt"
+            textEntry={textEntry}
+            value={endsAt}
+            onChange={setEndsAt}
+          />
         </div>
+      )}
+      {rangeError ? (
+        <p role="alert" className="text-sm text-[var(--warning)]">
+          {rangeError}
+        </p>
+      ) : (
+        <p
+          role="status"
+          className="rounded-md bg-[var(--info-soft)] p-3 text-sm text-[var(--info)]"
+        >
+          {allDay
+            ? `All day: ${allDayStartsOn} through ${allDayEndsOn}`
+            : `Starts ${startsAt.replace("T", " at ")} · Ends ${endsAt.replace("T", " at ")}`}{" "}
+          ({formTimeZone})
+        </p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
@@ -645,16 +632,14 @@ function ScheduleEventFields({
                 </select>
               </label>
               {recurrenceEndType === "on" ? (
-                <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-                  End date
-                  <input
-                    className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
-                    defaultValue={event?.recurrence?.endsOn ?? ""}
-                    name="recurrenceEndsOn"
-                    required
-                    type="date"
-                  />
-                </label>
+                <ScheduleDateInput
+                  label="End date"
+                  name="recurrenceEndsOn"
+                  dateOnly
+                  textEntry={textEntry}
+                  value={recurrenceEndsOn}
+                  onChange={setRecurrenceEndsOn}
+                />
               ) : null}
               {recurrenceEndType === "after" ? (
                 <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
@@ -739,7 +724,10 @@ function ScheduleEventFields({
       </label>
 
       <div>
-        <SubmitButton pendingLabel="Saving event...">
+        <SubmitButton
+          disabled={Boolean(rangeError)}
+          pendingLabel="Saving event..."
+        >
           {submitLabel}
         </SubmitButton>
       </div>
