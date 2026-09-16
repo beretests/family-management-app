@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isValidCalendarDate } from "@/lib/dates/schedule";
+import { isValidLocalDateTime, scheduleRangeError } from "./date-input";
 
 export const scheduleEventTypes = [
   "school",
@@ -45,7 +47,7 @@ const dateTimeLocal = z
   .string()
   .trim()
   .min(1, "Choose a date and time.")
-  .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+  .refine(isValidLocalDateTime, {
     message: "Choose a valid date and time.",
   });
 
@@ -92,14 +94,10 @@ const scheduleEventBaseSchema = z
     recurrenceCount: optionalPositiveInteger,
     timeZone: z.string().trim().min(1).max(100).default("UTC"),
   })
-  .refine(
-    (value) =>
-      new Date(value.endsAt).getTime() > new Date(value.startsAt).getTime(),
-    {
-      message: "End time must be after start time.",
-      path: ["endsAt"],
-    },
-  )
+  .refine((value) => !scheduleRangeError(value.startsAt, value.endsAt), {
+    message: "End time must be after start time.",
+    path: ["endsAt"],
+  })
   .refine((value) => value.eventType !== "no_school" || value.allDay, {
     message: "No School entries must be all-day events.",
     path: ["allDay"],
@@ -120,7 +118,7 @@ const scheduleEventBaseSchema = z
     (value) =>
       value.repeatType === "none" ||
       value.recurrenceEndType !== "on" ||
-      /^\d{4}-\d{2}-\d{2}$/.test(value.recurrenceEndsOn ?? ""),
+      isValidCalendarDate(value.recurrenceEndsOn ?? ""),
     {
       message: "Choose when the series ends.",
       path: ["recurrenceEndsOn"],

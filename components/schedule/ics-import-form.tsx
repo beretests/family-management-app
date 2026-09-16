@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import {
@@ -9,7 +9,6 @@ import {
   type IcsImportActionState,
 } from "@/features/schedule/ics/actions";
 import {
-  MAX_ICS_FILE_BYTES,
   MAX_ICS_IMPORT_EVENTS,
   parseIcsCalendar,
 } from "@/features/schedule/ics/parser";
@@ -19,6 +18,9 @@ import type {
 } from "@/features/schedule/ics/types";
 import { scheduleEventTypeLabels } from "@/features/schedule/labels";
 import { scheduleEventTypes } from "@/features/schedule/schemas";
+
+import { IcsSourceInput } from "./ics-source-input";
+import type { IcsSource } from "@/features/schedule/ics/source";
 
 const initialState: IcsImportActionState = {};
 
@@ -35,7 +37,12 @@ export function IcsImportForm({
   members: FamilyMemberWithDetails[];
   onSuccess?: (message: string) => void;
 }) {
-  const [state, formAction] = useActionState(importIcsEvents, initialState);
+  const [state, formAction, pending] = useActionState(
+    importIcsEvents,
+    initialState,
+  );
+  const [source, setSource] = useState<IcsSource | null>(null);
+  const revision = useRef(0);
   const [preview, setPreview] = useState<IcsPreview | null>(null);
   const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [previewError, setPreviewError] = useState<string>();
@@ -54,32 +61,32 @@ export function IcsImportForm({
     }
   }, [onSuccess, state.error, state.submissionId, state.success]);
 
-  async function previewFile(form: HTMLFormElement) {
+  useEffect(
+    () => () => {
+      revision.current += 1;
+    },
+    [],
+  );
+
+  function changeSource(next: IcsSource | null) {
+    revision.current += 1;
+    setSource(next);
+    setPreview(null);
+    setPreviewError(undefined);
+    setSelectedUids(new Set());
+    setIsPreviewing(false);
+  }
+
+  async function previewFile() {
+    if (!source) return;
+    const current = ++revision.current;
     setPreviewError(undefined);
     setPreview(null);
     setSelectedUids(new Set());
-    const input = form.elements.namedItem("calendarFile");
-    const file = input instanceof HTMLInputElement ? input.files?.[0] : null;
-
-    if (!file) {
-      setPreviewError("Choose an .ics calendar file.");
-      return;
-    }
-
-    if (!file.name.toLowerCase().endsWith(".ics")) {
-      setPreviewError("Choose a file whose name ends in .ics.");
-      return;
-    }
-
-    if (file.size > MAX_ICS_FILE_BYTES) {
-      setPreviewError("Calendar files must be 512 KB or smaller.");
-      return;
-    }
-
     setIsPreviewing(true);
 
     try {
-      const parsed = parseIcsCalendar(await file.text(), {
+      const parsed = parseIcsCalendar(source.text, {
         fallbackTimeZone: browserTimeZone,
       });
       const databaseDuplicates = new Set(
@@ -105,14 +112,16 @@ export function IcsImportForm({
         .slice(0, MAX_ICS_IMPORT_EVENTS)
         .map((event) => event.uid);
 
+      if (current !== revision.current) return;
       setPreview(nextPreview);
       setSelectedUids(new Set(nextSelected));
     } catch (error) {
+      if (current !== revision.current) return;
       setPreviewError(
         error instanceof Error ? error.message : "Could not preview the file.",
       );
     } finally {
-      setIsPreviewing(false);
+      if (current === revision.current) setIsPreviewing(false);
     }
   }
 
@@ -133,146 +142,149 @@ export function IcsImportForm({
   }
 
   return (
-    <form action={formAction} className="min-w-0 grid gap-5">
-      <input name="familyId" type="hidden" value={familyId} />
-      <input
-        name="browserTimeZone"
-        suppressHydrationWarning
-        type="hidden"
-        value={browserTimeZone}
-      />
-      {!canManageAll ? (
-        <input name="memberIds" type="hidden" value={actorMemberId} />
-      ) : null}
-
-      <ActionMessage
-        error={previewError ?? state.error}
-        success={state.success}
-      />
-
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          iCalendar file
-          <input
-            accept=".ics,text/calendar"
-            className="min-h-11 w-full min-w-0 rounded-md border border-[var(--line)] bg-white px-2 py-2 text-sm file:mr-2 file:max-w-full file:rounded-md file:border-0 file:bg-[var(--accent-soft)] file:px-2 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--accent-strong)] sm:px-3 sm:file:mr-3 sm:file:px-3 sm:file:text-sm"
-            name="calendarFile"
-            onChange={() => {
-              setPreview(null);
-              setPreviewError(undefined);
-              setSelectedUids(new Set());
-            }}
-            required
-            type="file"
-          />
-          <span className="text-xs font-normal text-[var(--muted)]">
-            Maximum 512 KB and 500 events. The file stays in memory and is not
-            stored.
-          </span>
-        </label>
-        <button
-          className="min-h-11 rounded-md border border-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isPreviewing}
-          onClick={(clickEvent) =>
-            void previewFile(clickEvent.currentTarget.form as HTMLFormElement)
-          }
-          type="button"
-        >
-          {isPreviewing ? "Checking..." : "Preview events"}
-        </button>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
-          Import as
-          <select
-            className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
-            name="eventType"
-            onChange={(changeEvent) => setEventType(changeEvent.target.value)}
-            value={eventType}
-          >
-            {scheduleEventTypes.map((type) => (
-              <option key={type} value={type}>
-                {scheduleEventTypeLabels[type]}
-              </option>
-            ))}
-          </select>
-          {eventType === "no_school" ? (
-            <span className="text-xs font-normal text-[var(--info)]">
-              Imported events will be converted to all-day No School dates.
-            </span>
-          ) : null}
-        </label>
-
-        <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium text-[var(--foreground)]">
-            Calendar members
-          </legend>
-          {canManageAll ? (
-            <label className="flex min-h-11 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-medium">
-              <input
-                checked={wholeFamily}
-                className="size-4"
-                name="wholeFamily"
-                onChange={(changeEvent) =>
-                  setWholeFamily(changeEvent.target.checked)
-                }
-                type="checkbox"
-              />
-              Whole family
-            </label>
-          ) : (
-            <p className="flex min-h-11 items-center rounded-md border border-[var(--line)] px-3 text-sm">
-              Import to your calendar
-            </p>
-          )}
-        </fieldset>
-      </div>
-
-      {canManageAll ? (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {activeMembers.map((member) => (
-            <label
-              className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm"
-              key={member.id}
-            >
-              <input
-                className="size-4"
-                defaultChecked={member.id === actorMemberId}
-                disabled={wholeFamily}
-                name="memberIds"
-                onChange={() => setWholeFamily(false)}
-                type="checkbox"
-                value={member.id}
-              />
-              {member.displayName}
-            </label>
-          ))}
-        </div>
-      ) : null}
-
-      {preview ? (
-        <PreviewList
-          browserTimeZone={browserTimeZone}
-          preview={preview}
-          selectedUids={selectedUids}
-          toggleUid={toggleUid}
+    <form
+      action={(data) => {
+        if (!source || !preview || isPreviewing || selectedUids.size === 0) {
+          setPreviewError(
+            "Preview the calendar and select events before importing.",
+          );
+          return;
+        }
+        data.set("calendarFile", source.file);
+        formAction(data);
+      }}
+      className="min-w-0 grid gap-5"
+    >
+      <fieldset disabled={pending} className="min-w-0 grid gap-5">
+        <input name="familyId" type="hidden" value={familyId} />
+        <input
+          name="browserTimeZone"
+          suppressHydrationWarning
+          type="hidden"
+          value={browserTimeZone}
         />
-      ) : null}
+        {!canManageAll ? (
+          <input name="memberIds" type="hidden" value={actorMemberId} />
+        ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton
-          disabled={!preview || selectedUids.size === 0}
-          pendingLabel="Importing events..."
-        >
-          Import {selectedUids.size || "selected"} event
-          {selectedUids.size === 1 ? "" : "s"}
-        </SubmitButton>
-        <span className="text-xs text-[var(--muted)]">
-          Up to {MAX_ICS_IMPORT_EVENTS} events per import. Existing UIDs are
-          skipped.
-        </span>
-      </div>
+        <ActionMessage
+          error={previewError ?? state.error}
+          success={state.success}
+        />
+
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="min-w-0 grid gap-2">
+            <IcsSourceInput onChange={changeSource} disabled={pending} />
+            {source ? (
+              <p role="status" className="text-xs text-[var(--muted)]">
+                Ready to preview: {source.file.name}
+              </p>
+            ) : null}
+          </div>
+          <button
+            className="min-h-11 rounded-md border border-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-strong)] transition hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isPreviewing || !source}
+            onClick={() => void previewFile()}
+            type="button"
+          >
+            {isPreviewing ? "Checking..." : "Preview events"}
+          </button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium text-[var(--foreground)]">
+            Import as
+            <select
+              className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
+              name="eventType"
+              onChange={(changeEvent) => setEventType(changeEvent.target.value)}
+              value={eventType}
+            >
+              {scheduleEventTypes.map((type) => (
+                <option key={type} value={type}>
+                  {scheduleEventTypeLabels[type]}
+                </option>
+              ))}
+            </select>
+            {eventType === "no_school" ? (
+              <span className="text-xs font-normal text-[var(--info)]">
+                Imported events will be converted to all-day No School dates.
+              </span>
+            ) : null}
+          </label>
+
+          <fieldset className="grid gap-2">
+            <legend className="text-sm font-medium text-[var(--foreground)]">
+              Calendar members
+            </legend>
+            {canManageAll ? (
+              <label className="flex min-h-11 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-medium">
+                <input
+                  checked={wholeFamily}
+                  className="size-4"
+                  name="wholeFamily"
+                  onChange={(changeEvent) =>
+                    setWholeFamily(changeEvent.target.checked)
+                  }
+                  type="checkbox"
+                />
+                Whole family
+              </label>
+            ) : (
+              <p className="flex min-h-11 items-center rounded-md border border-[var(--line)] px-3 text-sm">
+                Import to your calendar
+              </p>
+            )}
+          </fieldset>
+        </div>
+
+        {canManageAll ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {activeMembers.map((member) => (
+              <label
+                className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm"
+                key={member.id}
+              >
+                <input
+                  className="size-4"
+                  defaultChecked={member.id === actorMemberId}
+                  disabled={wholeFamily}
+                  name="memberIds"
+                  onChange={() => setWholeFamily(false)}
+                  type="checkbox"
+                  value={member.id}
+                />
+                {member.displayName}
+              </label>
+            ))}
+          </div>
+        ) : null}
+
+        {preview ? (
+          <PreviewList
+            browserTimeZone={browserTimeZone}
+            preview={preview}
+            selectedUids={selectedUids}
+            toggleUid={toggleUid}
+          />
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <SubmitButton
+            disabled={
+              !source || !preview || isPreviewing || selectedUids.size === 0
+            }
+            pendingLabel="Importing events..."
+          >
+            Import {selectedUids.size || "selected"} event
+            {selectedUids.size === 1 ? "" : "s"}
+          </SubmitButton>
+          <span className="text-xs text-[var(--muted)]">
+            Up to {MAX_ICS_IMPORT_EVENTS} events per import. Existing UIDs are
+            skipped.
+          </span>
+        </div>
+      </fieldset>
     </form>
   );
 }

@@ -11,6 +11,46 @@ const eventId = "44444444-4444-4444-8444-444444444444";
 const idempotencyKey = "55555555-5555-4555-8555-555555555555";
 
 describe("createScheduleEventSchema", () => {
+  it.each([
+    "2026-02-30T16:00",
+    "09/22/2026 4:30 PM",
+    "2026-09-22T24:00",
+    "2026-09-22T16:00Z",
+  ])("rejects invalid or non-local date input %s", (startsAt) => {
+    expect(
+      createScheduleEventSchema.safeParse({
+        familyId,
+        idempotencyKey,
+        memberIds: [],
+        wholeFamily: true,
+        eventType: "family_event",
+        title: "Soccer",
+        allDay: false,
+        startsAt,
+        endsAt: "2026-12-22T18:00",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects impossible recurrence end dates", () => {
+    expect(
+      createScheduleEventSchema.safeParse({
+        familyId,
+        idempotencyKey,
+        memberIds: [],
+        wholeFamily: true,
+        eventType: "family_event",
+        title: "Soccer",
+        allDay: false,
+        startsAt: "2026-01-22T16:00",
+        endsAt: "2026-01-22T18:00",
+        repeatType: "weekly",
+        recurrenceEndType: "on",
+        recurrenceEndsOn: "2026-02-30",
+      }).success,
+    ).toBe(false);
+  });
+
   it("trims text fields and normalizes optional values", () => {
     const parsed = createScheduleEventSchema.parse({
       familyId,

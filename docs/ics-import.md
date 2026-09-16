@@ -69,3 +69,23 @@ concurrent imports safely. Existing events are skipped rather than overwritten.
 
 ICS export, one-occurrence series edits, exception dates, and replacing an
 already imported event are outside Phase 20.
+
+## Reliable file and text entry (Phase 35)
+
+Selecting a file immediately reads it into memory. Preview and import use the
+same captured bytes, so removing or moving the original file after the read
+cannot break submission. A failed read gives a retry message and keeps import
+disabled. The user can select the same file again or choose **Paste calendar
+text** and paste the complete `.ics` contents. Pasted contents are sent as an
+in-memory `pasted-calendar.ics` file through the same Server Action, parser,
+512 KB byte limit, permissions, duplicate checks, and event limits.
+
+Changing the source clears the preview and selection. Old asynchronous file
+reads or duplicate checks cannot restore a preview for a different source.
+Sources are locked while an import is saving. No file is persisted to storage.
+
+For browser automation, wait for **Ready to preview**, then **Preview events**,
+check the dates and selected events, and only then import. Passing file bytes
+with Playwright `setInputFiles({ name, mimeType, buffer })` also avoids temporary
+path availability problems. A filename displayed by a picker alone does not
+prove the file is readable.

@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createConfirmedParentUser } from "./supabase-local";
 
@@ -458,6 +461,8 @@ test.describe("parent family setup smoke flow", () => {
     await expect(
       page.getByLabel("Family member").locator("option:checked"),
     ).toHaveText(childName);
+    await expect(page).toHaveURL(/member=/);
+    await expect(dateNavigation.getByRole("link")).toHaveCount(3);
     await expectHorizontallyAligned(
       await dateNavigation.getByRole("link").all(),
     );
@@ -469,8 +474,24 @@ test.describe("parent family setup smoke flow", () => {
     const scheduleForm = addDialog.locator("form");
     await scheduleForm.getByLabel("Title").fill(eventTitle);
     await scheduleForm.getByLabel("Type").selectOption("extracurricular");
+    await scheduleForm.getByLabel("Enter dates and times as text").check();
+    await scheduleForm.getByLabel("Starts").fill("2026-02-30T16:00");
+    await expect(
+      scheduleForm.getByRole("button", { name: "Add event" }),
+    ).toBeDisabled();
     await scheduleForm.getByLabel("Starts").fill("2026-07-12T16:00");
-    await scheduleForm.getByLabel("Ends").fill("2026-07-12T17:00");
+    await scheduleForm
+      .getByLabel("Ends", { exact: true })
+      .fill("2026-07-12T15:00");
+    await expect(scheduleForm.getByRole("alert")).toHaveText(
+      "End time must be after start time.",
+    );
+    await expect(scheduleForm.getByLabel("Ends", { exact: true })).toHaveValue(
+      "2026-07-12T15:00",
+    );
+    await scheduleForm
+      .getByLabel("Ends", { exact: true })
+      .fill("2026-07-12T17:00");
     await scheduleForm.getByLabel("Whole family").uncheck();
     await scheduleForm.getByLabel(childName).check();
     await scheduleForm.getByLabel("Location").fill("Community field");
@@ -478,6 +499,13 @@ test.describe("parent family setup smoke flow", () => {
     await scheduleForm.getByLabel("Repeats").selectOption("daily");
     await scheduleForm.getByLabel("Series ends").selectOption("after");
     await scheduleForm.getByLabel("Number of occurrences").fill("10");
+    await scheduleForm.getByLabel("Enter dates and times as text").uncheck();
+    await expect(scheduleForm.getByLabel("Starts")).toHaveValue(
+      "2026-07-12T16:00",
+    );
+    await expect(scheduleForm.getByLabel("Ends", { exact: true })).toHaveValue(
+      "2026-07-12T17:00",
+    );
     await scheduleForm.getByRole("button", { name: "Add event" }).click();
     await expect(addDialog).toHaveCount(0);
     await expect(page.getByText("Schedule event added.")).toBeVisible();
@@ -500,6 +528,12 @@ test.describe("parent family setup smoke flow", () => {
     ).toBeVisible();
     await expectDialogFitsViewport(page, eventDialog);
     await eventDialog.getByText("Edit event").click();
+    await expect(eventDialog.getByLabel("Starts")).toHaveValue(
+      "2026-07-12T16:00",
+    );
+    await expect(eventDialog.getByLabel("Ends", { exact: true })).toHaveValue(
+      "2026-07-12T17:00",
+    );
     await eventDialog
       .getByLabel("Notes")
       .fill("Bring water bottle and cleats.");
@@ -644,7 +678,20 @@ test.describe("parent family setup smoke flow", () => {
       name: "Import calendar file",
     });
     const importForm = importDialog.locator("form");
-    await importForm.getByLabel("iCalendar file").setInputFiles(calendarFile);
+    const calendarDirectory = await mkdtemp(
+      join(tmpdir(), "calendar-import-e2e-"),
+    );
+    try {
+      const calendarPath = join(calendarDirectory, calendarFile.name);
+      await writeFile(calendarPath, calendarFile.buffer);
+      await importForm.getByLabel("iCalendar file").setInputFiles(calendarPath);
+      await expect(
+        importForm.getByText(`Ready to preview: ${calendarFile.name}`),
+      ).toBeVisible();
+    } finally {
+      // Preview and submit must work even after the original file disappears.
+      await rm(calendarDirectory, { recursive: true, force: true });
+    }
     await importForm.getByRole("button", { name: "Preview events" }).click();
     await expect(importForm.getByText("1 ready")).toBeVisible();
     await expect(importForm.getByText(importedEventTitle)).toBeVisible();
@@ -672,8 +719,11 @@ test.describe("parent family setup smoke flow", () => {
       .getByRole("dialog", { name: "Import calendar file" })
       .locator("form");
     await duplicateImportForm
-      .getByLabel("iCalendar file")
-      .setInputFiles(calendarFile);
+      .getByLabel("Calendar source")
+      .selectOption("text");
+    await duplicateImportForm
+      .getByLabel("Calendar text")
+      .fill(calendarFile.buffer.toString());
     await duplicateImportForm
       .getByRole("button", { name: "Preview events" })
       .click();

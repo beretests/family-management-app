@@ -1,4 +1,5 @@
 import { addCalendarDays, dateTimeLocalToIso } from "@/lib/dates/schedule";
+import { isValidLocalDateTime } from "./date-input";
 import { zonedDateKey } from "@/lib/dates/time-zone";
 
 const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -12,6 +13,13 @@ export function addDaysToDateKey(dateKey: string, days: number) {
 }
 
 export function normalizeAllDayFormRange(startsAt: string, endsAt: string) {
+  if (
+    !isValidLocalDateTime(startsAt) ||
+    !isValidLocalDateTime(endsAt) ||
+    endsAt < startsAt
+  ) {
+    return { startsAt, endsAt };
+  }
   const startsOn = startsAt.slice(0, 10);
   let endsBefore = endsAt.slice(0, 10);
 
