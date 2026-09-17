@@ -1,3 +1,4 @@
+import { SchoolEventBadge } from "@/components/schedule/school-event-badge";
 import { EditScheduleEventForm } from "@/components/schedule/schedule-event-form";
 import { Modal } from "@/components/ui/modal";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -44,9 +45,13 @@ export function ScheduleEventModal({
       <div className="grid gap-5">
         <div className="grid gap-3 rounded-lg bg-[#f7fafc] p-4 text-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone="info">
-              {scheduleEventTypeLabels[event.eventType]}
-            </StatusPill>
+            {event.eventType === "school" ? (
+              <SchoolEventBadge eventType={event.eventType} />
+            ) : (
+              <StatusPill tone="info">
+                {scheduleEventTypeLabels[event.eventType]}
+              </StatusPill>
+            )}
             {conflicts.length > 0 ? (
               <StatusPill tone="warning">Conflict</StatusPill>
             ) : null}

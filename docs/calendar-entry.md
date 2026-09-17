@@ -27,3 +27,15 @@ References checked for this change:
 - [Next.js forms](https://nextjs.org/docs/app/guides/forms), plus installed Next.js 16.3.3 forms guidance.
 - [React controlled inputs](https://react.dev/reference/react-dom/components/input).
 - [Playwright date input and file upload](https://playwright.dev/docs/input).
+
+## School events
+
+Events categorized as **School** display a school-building icon and **At school**
+badge in the day/week calendar, mobile agenda, all-day row, and event details.
+Each child's existing color continues to identify who is attending. On narrow
+or overlapping desktop cards the icon remains visible; opening the event shows
+the full label. Screen readers receive the label even on compact cards.
+
+The badge reflects only the event's **Type**. **No School**, extracurricular,
+and other categories do not receive it, even when their title or location
+mentions a school. Existing School events gain the indicator automatically.

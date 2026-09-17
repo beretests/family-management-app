@@ -2,110 +2,84 @@
 
 ## Current Phase
 
-Phase 35: Calendar Import and Date Entry Compatibility
+Phase 36: School Event Indicators (implementation complete; delivery approved)
 
 ## Branch and Worktree
 
-- Branch: `phase/35-calendar-compatibility`
-- Worktree: `/tmp/family-app-phase-35-calendar-compatibility`
-- Base: clean local `main` at `26cf12a` (Phase 34 merged)
-- Implementation approved by the owner after the compatibility investigation.
-- The owner subsequently approved committing, merging to main, pushing to origin,
-  and removing the merged phase worktree and branch.
+- Branch: `phase/36-school-event-indicators`
+- Worktree: `/tmp/family-app-phase-36-school-event-indicators`
+- Base: clean, synchronized `main` at `7c0a22e` (Phase 35 merged)
 
 ## Implemented Features
 
-- Read uploaded ICS bytes immediately and reuse the captured file for preview
-  and import. Report read failures with retry/paste recovery instructions.
-- Add pasted ICS with the same file validation, byte limits, parser, server
-  authorization and UID duplicate protection as uploads.
-- Ignore obsolete file reads and duplicate checks; clear preview/selection on
-  source changes; lock the source while saving.
-- Add text entry for timed, all-day and recurrence end dates while retaining
-  native controls and a shared value for each field.
-- Preserve invalid ranges and show errors instead of replacing the end time.
-  Display the current date/time range and calendar time zone before saving.
-- Strengthen server date validation to reject impossible or non-local values.
-- Add component and browser coverage for input failures, exact timestamps,
-  source changes, and source files removed after capture.
+- School-building icon and **At school** badge for School-category events only.
+- Indicators on day/week timed cards, all-day cards, mobile agenda cards, and
+  event details, while preserving family-member and event colors.
+- Narrow desktop cards retain the icon and an accessible label; wider cards,
+  mobile cards and event details show both icon and text.
+- Compact timed cards keep the icon fully visible with tighter vertical padding.
+- No classification inferred from title, location, time, or child age. No School
+  and extracurricular events receive no school badge.
 
 ## Changed Files
 
-- `components/schedule/{ics-import-form,ics-source-input,schedule-event-form,schedule-date-input}.tsx`
-- `features/schedule/{all-day,date-input,schemas}.ts`
-- `features/schedule/ics/{actions,source}.ts`
-- `tests/unit/{ics-import-form,schedule-event-form}.test.tsx`
-- `tests/unit/{schedule-all-day,schedule-schemas}.test.ts`
-- `tests/e2e/parent-family-schedule-smoke.spec.ts`
-- `docs/{ics-import,calendar-entry,DECISIONS,PHASE_HANDOFF}.md`
+- `components/schedule/school-event-badge.tsx`
+- `components/schedule/schedule-time-grid.tsx`
+- `components/schedule/schedule-event-modal.tsx`
+- `tests/unit/schedule-time-grid.test.tsx`
+- `tests/e2e/school-event-indicators.spec.ts`
+- `docs/DECISIONS.md`, `docs/calendar-entry.md`, `docs/PHASE_HANDOFF.md`
 
 ## Manual Setup and Costs
 
-No new migrations, RLS policies, Supabase/Vercel dashboard settings, environment
-variables, dependencies, paid services, or persistent storage. Hosted environments
-still need the Phase 34 grant-repair migration if not already applied.
-
-## Known Limitations
-
-- Valid defaults cannot reveal an automation tool's unreceived intended values.
-  Automation must assert values before saving and verify the saved event.
-- A source file must be readable at initial selection; otherwise retry or paste.
-- Existing incorrect series require review and explicit correction; this phase
-  does not change existing calendar data or deploy to production.
-- The host defaults to Node 18; checks use the available Node 24.3.0 runtime.
+None. No migrations, RLS changes, dashboard steps, environment variables, new
+packages, paid services, or extra storage. Existing events use their stored type.
 
 ## Verification
 
-Checks ran inside the phase worktree with Node 24.3.0:
+Checks ran in this worktree using Node 24.3.0:
 
-- `npm ci --no-audit --no-fund --cache /tmp/family-calendar-npm-cache`: passed;
-  installed the existing lockfile because the original dependency directory
-  lacked `ical.js`. No manifest or lockfile change.
+- Installed the unchanged lockfile from the local npm cache. The sandbox blocked
+  esbuild's install check; the same command succeeded with local process permission.
 - `npm run lint`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed, 50 files and 217 tests. The focused import suite passed
-  again after the final accessible-label correction.
-- `npm run test:e2e -- --grep 'creates family'`: passed against local Supabase;
-  verifies exact saved timestamps, recurrence, import after source removal,
-  pasted duplicate detection, and the existing family/chores flow.
-- Stabilized an existing member-filter navigation wait and made the end-time
-  selector exact after browser verification exposed ambiguous/timing-sensitive
-  assertions. A paste test now accounts for textarea newline normalization.
-- Targeted Prettier checks and `git diff --check`: passed.
-- `npm run build`: passed with Next.js 16.3.3 after clearing the generated
-  worktree cache and allowing the local CSS-worker port required by Turbopack.
-  The initial sandbox build failure was environmental.
+- `npm test`: passed, 50 files and 218 tests. The focused six calendar tests passed
+  again after the final badge sizing adjustment.
+- `npm run test:e2e -- tests/e2e/school-event-indicators.spec.ts`: passed with local
+  Supabase and Chrome. Checked day/week, mobile, all-day and detail views; no
+  badges on No School/extracurricular events; unchanged attendee colors; actual
+  icon bounds inside compact overlapping cards; and no mobile page overflow.
+- Reviewed the generated day/week/mobile screenshots in `test-results/`.
+- `npm run build`: passed with Next.js 16.3.3 (local worker permission enabled).
+- Targeted Prettier verification and `git diff --check`: passed.
 
-The three unrelated account-invitation browser tests were not rerun.
+The first browser run timed out on an overly exact test selector for the existing
+Type dropdown; corrected the selector and reran successfully. The unrelated
+browser flows were not rerun.
 
-## Recommended Commit and Review
+## Limitations
 
-`fix(schedule): harden calendar import and date entry`
+Narrow desktop cards show the icon without visible text to preserve title space.
+The full label is available to screen readers and in event details. Events that
+should have the badge must be categorized as School; no data is reclassified.
 
-The owner approved the delivery sequence below. The branch and worktree above
-record where this phase was implemented; after delivery, use the main checkout.
-Verify main before removing the merged worktree and phase branch. Never force removal.
+## Recommended Commit
 
-Review before committing:
+`feat(schedule): highlight school events on the calendar`
 
-```bash
-cd /tmp/family-app-phase-35-calendar-compatibility
-git status --short
-git diff --stat
-git diff
-```
+## Review, Merge and Cleanup
 
-New files are untracked until staged; review the files listed above as well.
-After committing, approved merging, and verification on main, cleanup from the
-main repository can use:
+The owner approved committing, merging to `main`, pushing, and cleaning up the
+phase worktree and branch. The branch and worktree above record the implementation
+location. Verify that `main` matches the tested phase and that the push succeeds
+before cleanup from the main repository:
 
 ```bash
-git worktree remove /tmp/family-app-phase-35-calendar-compatibility
-git branch -d phase/35-calendar-compatibility
+git worktree remove /tmp/family-app-phase-36-school-event-indicators
+git branch -d phase/36-school-event-indicators
 git worktree prune
 ```
 
 ## Next Recommended Action
 
-Test the original automation using the new paste/text options. Review and
-explicitly correct any pre-existing incorrect calendar series.
+Use the School category for events that should display the At school indicator.
