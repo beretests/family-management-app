@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useState } from "react";
+import { SchoolEventBadge } from "@/components/schedule/school-event-badge";
 import { ScheduleEventModal } from "@/components/schedule/schedule-event-modal";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 import {
@@ -284,7 +285,7 @@ function ScheduleMobileAgenda({
 
                 return (
                   <button
-                    aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, event.allDay, timeZone)}, ${attendeeLabel}`}
+                    aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, event.allDay, timeZone)}, ${attendeeLabel}${event.eventType === "school" ? ", At school" : ""}`}
                     className="min-w-0 rounded-lg border px-3 py-3 text-left shadow-sm transition hover:shadow-md"
                     key={event.id}
                     onClick={() => onSelect(event.id)}
@@ -298,8 +299,11 @@ function ScheduleMobileAgenda({
                   >
                     <span className="flex min-w-0 items-start justify-between gap-2 pl-1">
                       <span className="min-w-0">
-                        <span className="block break-words text-sm font-bold text-[var(--foreground)]">
-                          {event.title}
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <SchoolEventBadge eventType={event.eventType} />
+                          <span className="min-w-0 break-words text-sm font-bold text-[var(--foreground)]">
+                            {event.title}
+                          </span>
                         </span>
                         <span className="mt-1 block text-xs font-semibold text-[var(--accent-strong)]">
                           {formatTimeRange(
@@ -357,8 +361,8 @@ function TimedEventCard({
 
   return (
     <button
-      aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, false, timeZone)}, ${attendeeLabel}`}
-      className="absolute z-10 cursor-pointer overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-sm transition hover:z-20 hover:shadow-md focus-visible:z-30"
+      aria-label={`${event.title}, ${formatTimeRange(event.startsAt, event.endsAt, false, timeZone)}, ${attendeeLabel}${event.eventType === "school" ? ", At school" : ""}`}
+      className={`@container/event absolute z-10 content-start cursor-pointer overflow-hidden rounded-lg border px-2 text-left shadow-sm transition hover:z-20 hover:shadow-md focus-visible:z-30 ${height < 48 ? "py-1" : "py-1.5"}`}
       onClick={onSelect}
       style={{
         ...style,
@@ -369,8 +373,9 @@ function TimedEventCard({
       title={event.title}
       type="button"
     >
-      <div className="flex items-start justify-between gap-1 pl-1">
-        <p className="truncate text-xs font-bold leading-4 text-[var(--foreground)]">
+      <div className="flex items-start gap-1 pl-1">
+        <SchoolEventBadge eventType={event.eventType} compact />
+        <p className="min-w-0 flex-1 truncate text-xs font-bold leading-4 text-[var(--foreground)]">
           {event.title}
         </p>
         {conflict ? (
@@ -411,8 +416,8 @@ function AllDayEventCard({
 
   return (
     <button
-      aria-label={`${event.title}, all day, ${getAttendeeLabel(event, members)}`}
-      className="min-h-10 w-full cursor-pointer truncate rounded-md border px-2 py-1 text-left text-[0.65rem] font-semibold text-[var(--foreground)] transition hover:brightness-95"
+      aria-label={`${event.title}, all day, ${getAttendeeLabel(event, members)}${event.eventType === "school" ? ", At school" : ""}`}
+      className="@container/event min-h-10 w-full cursor-pointer overflow-hidden rounded-md border px-2 py-1 text-left text-[0.65rem] font-semibold text-[var(--foreground)] transition hover:brightness-95"
       onClick={onSelect}
       style={{
         backgroundColor: `color-mix(in srgb, ${color} 10%, white)`,
@@ -421,8 +426,11 @@ function AllDayEventCard({
       title={event.title}
       type="button"
     >
-      {event.title}
-      {conflict ? " · Conflict" : ""}
+      <span className="flex items-center gap-1">
+        <SchoolEventBadge eventType={event.eventType} compact />
+        <span className="min-w-0 flex-1 truncate">{event.title}</span>
+        {conflict ? <span className="shrink-0">Conflict</span> : null}
+      </span>
     </button>
   );
 }

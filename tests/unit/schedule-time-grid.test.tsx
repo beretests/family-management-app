@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ScheduleTimeGrid } from "@/components/schedule/schedule-time-grid";
 import type { FamilyMemberWithDetails } from "@/features/family/types";
@@ -24,6 +24,58 @@ const member: FamilyMemberWithDetails = {
 };
 
 describe("ScheduleTimeGrid", () => {
+  it("keeps School identifiable on a child's compact card and details without relabeling No School", () => {
+    const school = {
+      ...eventAt(
+        "assembly",
+        new Date("2026-09-17T15:00:00Z"),
+        new Date("2026-09-17T15:15:00Z"),
+      ),
+      title: "Assembly",
+      eventType: "school" as const,
+    };
+    const { rerender } = render(
+      <ScheduleTimeGrid
+        conflicts={new Map()}
+        days={["2026-09-17"]}
+        events={[school]}
+        members={[member]}
+        timeZone="America/Regina"
+      />,
+    );
+    const grid = within(screen.getByTestId("schedule-time-grid"));
+    const schoolCard = grid.getByRole("button", {
+      name: /Assembly,.*Ari, At school/,
+    });
+    expect(within(schoolCard).getByText("At school")).toBeInTheDocument();
+    expect(schoolCard.style.boxShadow).toContain(member.color!);
+    const mobileCard = within(
+      screen.getByTestId("schedule-mobile-agenda"),
+    ).getByRole("button", { name: /Assembly,.*At school/ });
+    fireEvent.click(mobileCard);
+    expect(
+      within(screen.getByRole("dialog", { name: "Assembly" })).getByText(
+        "At school",
+      ),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close event details" }),
+    );
+    rerender(
+      <ScheduleTimeGrid
+        conflicts={new Map()}
+        days={["2026-09-17"]}
+        events={[{ ...school, eventType: "no_school", allDay: true }]}
+        members={[member]}
+        timeZone="America/Regina"
+      />,
+    );
+    expect(screen.queryByText("At school")).not.toBeInTheDocument();
+    expect(
+      grid.getByRole("button", { name: /Assembly/ }),
+    ).not.toHaveAccessibleName(/At school/);
+  });
+
   it("renders a timed day event in the shared calendar grid", () => {
     render(
       <ScheduleTimeGrid
