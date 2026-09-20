@@ -1,4 +1,4 @@
--- Phase 24 grocery list permissions and lifecycle verification. The transaction
+-- Phase 24/37 grocery list permissions and lifecycle verification. The transaction
 -- is rolled back so local development data is preserved.
 
 begin;
@@ -176,25 +176,39 @@ begin
   end if;
 end $$;
 
--- A parent can complete the list with a 90-day deletion timestamp, while a
--- second open list remains prevented by the partial unique index.
-set local request.jwt.claim.sub = '24111111-1111-4111-8111-111111111111';
+set local request.jwt.claim.sub = '24222222-2222-4222-8222-222222222222';
+
+-- Multiple open lists can reuse catalog items without sharing bought state.
+insert into public.grocery_lists(id, family_id, name, created_by_member_id) values (
+  '24dddddd-dddd-4ddd-8ddd-dddddddddddd',
+  '24444444-4444-4444-8444-444444444444',
+  'Weekend groceries',
+  '24666666-6666-4666-8666-666666666666'
+);
+insert into public.grocery_list_items(
+  family_id, grocery_list_id, catalog_item_id, name_snapshot, added_by_member_id
+) values (
+  '24444444-4444-4444-8444-444444444444',
+  '24dddddd-dddd-4ddd-8ddd-dddddddddddd',
+  '24777777-7777-4777-8777-777777777777',
+  'Green Apples',
+  '24666666-6666-4666-8666-666666666666'
+);
 
 do $$
 begin
-  begin
-    insert into public.grocery_lists(
-      family_id, name, created_by_member_id
-    ) values (
-      '24444444-4444-4444-8444-444444444444',
-      'Duplicate open list',
-      '24555555-5555-4555-8555-555555555555'
-    );
-    raise exception 'duplicate open list unexpectedly succeeded';
-  exception
-    when unique_violation then null;
-  end;
+  if (select count(*) from public.grocery_lists
+      where family_id = '24444444-4444-4444-8444-444444444444' and status = 'open') <> 2 then
+    raise exception 'multiple open lists failed';
+  end if;
+  if exists (select 1 from public.grocery_list_items
+      where grocery_list_id = '24dddddd-dddd-4ddd-8ddd-dddddddddddd' and checked) then
+    raise exception 'bought state leaked between lists';
+  end if;
 end $$;
+
+-- A parent can complete/reopen a list while another stays open.
+set local request.jwt.claim.sub = '24111111-1111-4111-8111-111111111111';
 
 update public.grocery_lists
 set status = 'completed',
@@ -214,6 +228,24 @@ begin
     raise exception 'parent lifecycle or retention timestamp failed';
   end if;
 end $$;
+
+update public.grocery_lists
+set status = 'open', closed_at = null, closed_by_member_id = null, delete_after = null
+where id = '24888888-8888-4888-8888-888888888888';
+
+do $$
+begin
+  if (select count(*) from public.grocery_lists
+      where family_id = '24444444-4444-4444-8444-444444444444' and status = 'open') <> 2 then
+    raise exception 'reopening alongside an open list failed';
+  end if;
+end $$;
+
+update public.grocery_lists
+set status = 'archived', closed_at = now(),
+    closed_by_member_id = '24555555-5555-4555-8555-555555555555',
+    delete_after = now() + interval '90 days'
+where id = '24888888-8888-4888-8888-888888888888';
 
 delete from public.grocery_lists
 where id = '24888888-8888-4888-8888-888888888888';

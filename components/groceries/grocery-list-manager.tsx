@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   Archive,
@@ -11,9 +11,11 @@ import {
   Trash2,
 } from "lucide-react";
 import { ActionMessage, SubmitButton } from "@/components/family/form-status";
+import { Modal } from "@/components/ui/modal";
+import { AddGroceryItemModal } from "@/components/groceries/add-grocery-item-modal";
+import { DownloadGroceryList } from "@/components/groceries/download-grocery-list";
 import { DestructiveActionConfirmation } from "@/components/ui/destructive-action-confirmation";
 import {
-  addGroceryItem,
   createGroceryList,
   manageGroceryCatalogItem,
   manageGroceryList,
@@ -29,17 +31,6 @@ import type {
 import type { FamilyMemberWithDetails } from "@/features/family/types";
 
 const initialState: GroceryActionState = {};
-const categories = [
-  "Produce",
-  "Dairy",
-  "Meat",
-  "Pantry",
-  "Frozen",
-  "Household",
-  "Other",
-] as const;
-const units = ["", "each", "bag", "box", "bottle", "can", "kg", "g", "L", "mL"];
-
 export function GroceryListManager({
   catalog,
   familyId,
@@ -47,7 +38,7 @@ export function GroceryListManager({
   isParent,
   items,
   members,
-  openList,
+  openLists,
 }: {
   catalog: GroceryCatalogItem[];
   familyId: string;
@@ -55,23 +46,75 @@ export function GroceryListManager({
   isParent: boolean;
   items: GroceryListItem[];
   members: FamilyMemberWithDetails[];
-  openList: GroceryList | null;
+  openLists: GroceryList[];
 }) {
+  const [selectedListId, setSelectedListId] = useState(openLists[0]?.id ?? "");
+  const [creatingList, setCreatingList] = useState(false);
+  const openList =
+    openLists.find((list) => list.id === selectedListId) ?? openLists[0];
+  const onCreated = useCallback((id: string) => {
+    setSelectedListId(id);
+    setCreatingList(false);
+  }, []);
   const activeCatalog = catalog.filter((item) => item.active);
 
   return (
     <div className="grid gap-5">
       {openList ? (
+        <div className="flex items-end gap-3">
+          <label className="grid min-w-0 flex-1 gap-1.5 text-sm font-semibold">
+            Open lists
+            <select
+              className="min-h-11 w-full rounded-md border border-[var(--line)] bg-white px-3 text-base"
+              onChange={(event) => setSelectedListId(event.target.value)}
+              value={openList.id}
+            >
+              {openLists.map((list) => (
+                <option key={list.id} value={list.id}>
+                  {list.name} ({list.checkedItemCount}/{list.itemCount})
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-bold text-white"
+            onClick={() => setCreatingList(true)}
+            type="button"
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            New list
+          </button>
+        </div>
+      ) : null}
+      {creatingList && openList ? (
+        <Modal
+          closeLabel="Close new list"
+          onClose={() => setCreatingList(false)}
+          title="New grocery list"
+        >
+          <StartGroceryListForm
+            catalog={activeCatalog}
+            familyId={familyId}
+            onCreated={onCreated}
+          />
+        </Modal>
+      ) : null}
+      {openList ? (
         <OpenGroceryList
           catalog={activeCatalog}
           familyId={familyId}
           isParent={isParent}
-          items={items}
+          items={items.filter((item) => item.groceryListId === openList.id)}
+          key={openList.id}
           list={openList}
           members={members}
         />
       ) : (
-        <StartGroceryListForm catalog={activeCatalog} familyId={familyId} />
+        <StartGroceryListForm
+          catalog={activeCatalog}
+          familyId={familyId}
+          onCreated={onCreated}
+        />
       )}
 
       {isParent && catalog.length > 0 ? (
@@ -82,6 +125,7 @@ export function GroceryListManager({
         <GroceryHistory
           familyId={familyId}
           history={history}
+          items={items}
           isParent={isParent}
         />
       ) : null}
@@ -92,11 +136,16 @@ export function GroceryListManager({
 function StartGroceryListForm({
   catalog,
   familyId,
+  onCreated,
 }: {
   catalog: GroceryCatalogItem[];
   familyId: string;
+  onCreated: (id: string) => void;
 }) {
   const [state, formAction] = useActionState(createGroceryList, initialState);
+  useEffect(() => {
+    if (state.success && state.groceryListId) onCreated(state.groceryListId);
+  }, [state.submissionId, state.success, state.groceryListId, onCreated]);
   const [search, setSearch] = useState("");
   const visibleCatalog = filterCatalog(catalog, search);
 
@@ -111,8 +160,7 @@ function StartGroceryListForm({
             Start a grocery list
           </h2>
           <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-            There is no open list. Start one empty or prefill it from saved
-            groceries.
+            Start a list empty or prefill it from saved groceries.
           </p>
         </div>
       </div>
@@ -204,6 +252,7 @@ function OpenGroceryList({
   list: GroceryList;
   members: FamilyMemberWithDetails[];
 }) {
+  const [addingItem, setAddingItem] = useState(false);
   const remaining = items.filter((item) => !item.checked);
   const checked = items.filter((item) => item.checked);
   const progress =
@@ -243,14 +292,23 @@ function OpenGroceryList({
         </div>
       </section>
 
-      <QuickAddItemForm familyId={familyId} groceryListId={list.id} />
-
-      {catalog.length > 0 ? (
-        <SavedGroceryPicker
+      <div className="flex flex-wrap gap-2">
+        <button
+          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--accent)] px-4 text-sm font-bold text-white"
+          onClick={() => setAddingItem(true)}
+          type="button"
+        >
+          <Plus aria-hidden="true" className="size-4" />
+          Add item
+        </button>
+        <DownloadGroceryList items={items} list={list} />
+      </div>
+      {addingItem ? (
+        <AddGroceryItemModal
           catalog={catalog}
-          familyId={familyId}
-          groceryListId={list.id}
           items={items}
+          list={list}
+          onClose={() => setAddingItem(false)}
         />
       ) : null}
 
@@ -269,7 +327,7 @@ function OpenGroceryList({
           </p>
         ) : null}
         {remaining.length > 0 ? (
-          <div className="grid gap-2">
+          <div className="overflow-hidden rounded-lg border border-[var(--line)]">
             {remaining.map((item) => (
               <GroceryItemRow
                 familyId={familyId}
@@ -305,176 +363,6 @@ function OpenGroceryList({
   );
 }
 
-function QuickAddItemForm({
-  familyId,
-  groceryListId,
-}: {
-  familyId: string;
-  groceryListId: string;
-}) {
-  const [state, formAction] = useActionState(addGroceryItem, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.submissionId && state.success) {
-      formRef.current?.reset();
-    }
-  }, [state.submissionId, state.success]);
-
-  return (
-    <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
-      <h2 className="text-lg font-extrabold">Add something low</h2>
-      <form action={formAction} className="mt-4 grid gap-3" ref={formRef}>
-        <input name="familyId" type="hidden" value={familyId} />
-        <input name="groceryListId" type="hidden" value={groceryListId} />
-        <ActionMessage error={state.error} success={state.success} />
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_100px_120px]">
-          <label className="grid gap-1.5 text-sm font-semibold">
-            Item
-            <input
-              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
-              maxLength={120}
-              name="name"
-              placeholder="Milk"
-              required
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm font-semibold">
-            Quantity
-            <input
-              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
-              min="0.01"
-              name="quantity"
-              placeholder="1"
-              step="0.01"
-              type="number"
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm font-semibold">
-            Unit
-            <select
-              className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
-              name="unit"
-            >
-              {units.map((unit) => (
-                <option key={unit || "none"} value={unit}>
-                  {unit || "None"}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1.5 text-sm font-semibold">
-            Category
-            <select
-              className="min-h-11 rounded-md border border-[var(--line)] bg-white px-3 text-base"
-              name="category"
-            >
-              <option value="">No category</option>
-              {categories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm font-semibold">
-            Note{" "}
-            <span className="font-normal text-[var(--muted)]">(optional)</span>
-            <input
-              className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
-              maxLength={240}
-              name="note"
-              placeholder="Unsweetened, large size..."
-            />
-          </label>
-        </div>
-        <div>
-          <SubmitButton pendingLabel="Adding item...">
-            <Plus aria-hidden="true" className="size-4" /> Add item
-          </SubmitButton>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function SavedGroceryPicker({
-  catalog,
-  familyId,
-  groceryListId,
-  items,
-}: {
-  catalog: GroceryCatalogItem[];
-  familyId: string;
-  groceryListId: string;
-  items: GroceryListItem[];
-}) {
-  const [search, setSearch] = useState("");
-  const existingCatalogIds = new Set(items.map((item) => item.catalogItemId));
-  const visibleCatalog = filterCatalog(catalog, search);
-
-  return (
-    <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
-      <h2 className="text-lg font-extrabold">Add from saved groceries</h2>
-      <label className="mt-3 grid gap-1.5 text-sm font-semibold">
-        Search saved items
-        <input
-          className="min-h-11 rounded-md border border-[var(--line)] px-3 text-base"
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search the family catalog"
-          type="search"
-          value={search}
-        />
-      </label>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleCatalog.map((item) => (
-          <CatalogAddForm
-            disabled={existingCatalogIds.has(item.id)}
-            familyId={familyId}
-            groceryListId={groceryListId}
-            item={item}
-            key={item.id}
-          />
-        ))}
-        {visibleCatalog.length === 0 ? (
-          <p className="text-sm text-[var(--muted)]">No saved items match.</p>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function CatalogAddForm({
-  disabled,
-  familyId,
-  groceryListId,
-  item,
-}: {
-  disabled: boolean;
-  familyId: string;
-  groceryListId: string;
-  item: GroceryCatalogItem;
-}) {
-  const [state, formAction] = useActionState(addGroceryItem, initialState);
-
-  return (
-    <form action={formAction} className="grid gap-1">
-      <input name="catalogItemId" type="hidden" value={item.id} />
-      <input name="familyId" type="hidden" value={familyId} />
-      <input name="groceryListId" type="hidden" value={groceryListId} />
-      <button
-        className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-left text-sm font-semibold transition hover:border-[var(--accent)] disabled:cursor-default disabled:bg-slate-100 disabled:text-[var(--muted)]"
-        disabled={disabled}
-        type="submit"
-      >
-        <span className="min-w-0 break-words">{item.name}</span>
-        <span className="shrink-0 text-xs">{disabled ? "Added" : "+ Add"}</span>
-      </button>
-      <ActionMessage error={state.error} success={state.success} />
-    </form>
-  );
-}
-
 function GroceryItemRow({
   familyId,
   item,
@@ -484,11 +372,11 @@ function GroceryItemRow({
   item: GroceryListItem;
   members: FamilyMemberWithDetails[];
 }) {
-  const [toggleState, toggleAction] = useActionState(
+  const [toggleState, toggleAction, toggling] = useActionState(
     toggleGroceryItem,
     initialState,
   );
-  const [removeState, removeAction] = useActionState(
+  const [removeState, removeAction, removing] = useActionState(
     removeGroceryItem,
     initialState,
   );
@@ -502,9 +390,9 @@ function GroceryItemRow({
 
   return (
     <article
-      className={`rounded-xl border border-[var(--line)] bg-white p-3 shadow-sm ${item.checked ? "opacity-75" : ""}`}
+      className={`border-b border-[var(--line)] bg-white px-2 py-2 last:border-b-0 sm:px-3 ${item.checked ? "opacity-75" : ""}`}
     >
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center justify-between gap-2">
         <div className="min-w-0">
           <h3
             className={`break-words font-bold ${item.checked ? "line-through" : ""}`}
@@ -527,7 +415,7 @@ function GroceryItemRow({
             </p>
           ) : null}
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+        <div className="flex shrink-0 gap-1">
           <form action={toggleAction}>
             <ItemHiddenFields familyId={familyId} item={item} />
             <input
@@ -536,7 +424,10 @@ function GroceryItemRow({
               value={item.checked ? "false" : "true"}
             />
             <button
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-bold text-white sm:w-auto"
+              aria-label={item.checked ? "Put back" : "Bought"}
+              title={item.checked ? "Put back" : "Bought"}
+              disabled={toggling || removing}
+              className="inline-flex size-11 items-center justify-center gap-2 rounded-md text-[var(--accent-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-50 sm:w-auto sm:px-3"
               type="submit"
             >
               {item.checked ? (
@@ -544,24 +435,27 @@ function GroceryItemRow({
               ) : (
                 <Check aria-hidden="true" className="size-4" />
               )}
-              {item.checked ? "Put back" : "Bought"}
+              <span className="hidden text-sm font-bold sm:inline">
+                {item.checked ? "Put back" : "Bought"}
+              </span>
             </button>
           </form>
           <form action={removeAction}>
             <ItemHiddenFields familyId={familyId} item={item} />
             <button
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[var(--warning)] px-3 text-sm font-bold text-[var(--warning)] sm:w-auto"
+              aria-label="Remove"
+              title="Remove"
+              disabled={toggling || removing}
+              className="inline-flex size-11 items-center justify-center gap-2 rounded-md text-[var(--warning)] hover:bg-red-50 disabled:opacity-50 sm:w-auto sm:px-3"
               type="submit"
             >
-              <Trash2 aria-hidden="true" className="size-4" /> Remove
+              <Trash2 aria-hidden="true" className="size-4" />
+              <span className="hidden text-sm font-bold sm:inline">Remove</span>
             </button>
           </form>
         </div>
       </div>
-      <ActionMessage
-        error={toggleState.error ?? removeState.error}
-        success={toggleState.success ?? removeState.success}
-      />
+      <ActionMessage error={toggleState.error ?? removeState.error} />
     </article>
   );
 }
@@ -721,10 +615,12 @@ function CatalogLifecycleForm({
 function GroceryHistory({
   familyId,
   history,
+  items,
   isParent,
 }: {
   familyId: string;
   history: GroceryList[];
+  items: GroceryListItem[];
   isParent: boolean;
 }) {
   return (
@@ -753,6 +649,9 @@ function GroceryHistory({
                 Scheduled for deletion {formatDate(list.deleteAfter)}
               </p>
             ) : null}
+            <div className="mt-3">
+              <DownloadGroceryList items={items} list={list} />
+            </div>
             {isParent ? (
               <div className="mt-3">
                 <ListLifecycleForm

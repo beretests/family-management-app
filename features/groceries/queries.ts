@@ -117,80 +117,91 @@ function mapList(
   };
 }
 
+// Page through PostgREST's row limit so counts and downloads include every item.
+async function readAllRows<T>(
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{
+    data: T[] | null;
+    error: { message: string } | null;
+  }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  const pageSize = 500;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await fetchPage(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) return rows;
+  }
+}
+
 export async function getGroceryPageData(
   familyId: string,
 ): Promise<GroceryPageData> {
   const supabase = await createClient();
   const [
-    { data: catalogRows, error: catalogError },
-    { data: openListRow, error: openListError },
+    catalogRows,
+    openListRows,
     { data: historyRows, error: historyError },
   ] = await Promise.all([
-    supabase
-      .from("grocery_catalog_items")
-      .select(catalogSelect)
-      .eq("family_id", familyId)
-      .order("active", { ascending: false })
-      .order("name", { ascending: true }),
-    supabase
-      .from("grocery_lists")
-      .select(listSelect)
-      .eq("family_id", familyId)
-      .eq("status", "open")
-      .maybeSingle(),
+    readAllRows<CatalogRow>((from, to) =>
+      supabase
+        .from("grocery_catalog_items")
+        .select(catalogSelect)
+        .eq("family_id", familyId)
+        .order("active", { ascending: false })
+        .order("name", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    readAllRows<ListRow>((from, to) =>
+      supabase
+        .from("grocery_lists")
+        .select(listSelect)
+        .eq("family_id", familyId)
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    ),
     supabase
       .from("grocery_lists")
       .select(listSelect)
       .eq("family_id", familyId)
       .neq("status", "open")
       .order("closed_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(10),
   ]);
 
-  if (catalogError) {
-    throw new Error(catalogError.message);
-  }
+  if (historyError) throw new Error(historyError.message);
 
-  if (openListError) {
-    throw new Error(openListError.message);
-  }
-
-  if (historyError) {
-    throw new Error(historyError.message);
-  }
-
-  const lists = [
-    ...(openListRow ? [openListRow as ListRow] : []),
-    ...((historyRows ?? []) as ListRow[]),
-  ];
+  const lists = [...openListRows, ...((historyRows ?? []) as ListRow[])];
   const listIds = lists.map((list) => list.id);
-  let items: GroceryListItem[] = [];
-
-  if (listIds.length > 0) {
-    const { data: itemRows, error: itemError } = await supabase
-      .from("grocery_list_items")
-      .select(itemSelect)
-      .eq("family_id", familyId)
-      .in("grocery_list_id", listIds)
-      .order("checked", { ascending: true })
-      .order("created_at", { ascending: true });
-
-    if (itemError) {
-      throw new Error(itemError.message);
-    }
-
-    items = ((itemRows ?? []) as ItemRow[]).map(mapItem);
+  const items: GroceryListItem[] = [];
+  // Bound the ID filter length as families accumulate lists.
+  for (let start = 0; start < listIds.length; start += 100) {
+    const itemRows = await readAllRows<ItemRow>((from, to) =>
+      supabase
+        .from("grocery_list_items")
+        .select(itemSelect)
+        .eq("family_id", familyId)
+        .in("grocery_list_id", listIds.slice(start, start + 100))
+        .order("checked", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
+    items.push(...itemRows.map(mapItem));
   }
 
   const mappedLists = lists.map((list) => mapList(list, items));
-  const openList = mappedLists.find((list) => list.status === "open") ?? null;
-
   return {
-    catalog: ((catalogRows ?? []) as CatalogRow[]).map(mapCatalog),
-    history: mappedLists.filter((list) => list.status !== "open").slice(0, 10),
-    items: openList
-      ? items.filter((item) => item.groceryListId === openList.id)
-      : [],
-    openList,
+    catalog: catalogRows.map(mapCatalog),
+    history: mappedLists.filter((list) => list.status !== "open"),
+    items,
+    openLists: mappedLists.filter((list) => list.status === "open"),
   };
 }

@@ -26,6 +26,7 @@ export type GroceryActionState = {
   error?: string;
   success?: string;
   submissionId?: string;
+  groceryListId?: string;
 };
 
 type CatalogSource = {
@@ -223,6 +224,7 @@ export async function createGroceryList(
   }
 
   const supabase = await createClient();
+  const groceryListId = crypto.randomUUID();
 
   try {
     const actor = await requireGroceryActor(supabase, parsed.data.familyId);
@@ -249,7 +251,6 @@ export async function createGroceryList(
       }
     }
 
-    const groceryListId = crypto.randomUUID();
     const { error: listError } = await actor.writeClient
       .from("grocery_lists")
       .insert({
@@ -258,12 +259,6 @@ export async function createGroceryList(
         id: groceryListId,
         name: parsed.data.name ?? defaultGroceryListName(),
       });
-
-    if (listError?.code === "23505") {
-      return {
-        error: "Finish or archive the current list before starting another.",
-      };
-    }
 
     if (listError) {
       throw new Error(listError.message);
@@ -306,7 +301,7 @@ export async function createGroceryList(
   }
 
   finishGroceryMutation();
-  return success("Grocery list started.");
+  return { ...success("Grocery list started."), groceryListId };
 }
 
 export async function addGroceryItem(
@@ -351,13 +346,19 @@ export async function addGroceryItem(
       .insert({
         added_by_member_id: actor.memberId,
         catalog_item_id: catalogItem.id,
-        category_snapshot: parsed.data.category ?? catalogItem.category,
+        category_snapshot: formData.has("category")
+          ? (parsed.data.category ?? null)
+          : catalogItem.category,
         family_id: actor.familyId,
         grocery_list_id: parsed.data.groceryListId,
         name_snapshot: catalogItem.name,
         note: parsed.data.note ?? null,
-        quantity: parsed.data.quantity ?? catalogItem.default_quantity,
-        unit: parsed.data.unit ?? catalogItem.default_unit,
+        quantity: formData.has("quantity")
+          ? (parsed.data.quantity ?? null)
+          : catalogItem.default_quantity,
+        unit: formData.has("unit")
+          ? (parsed.data.unit ?? null)
+          : catalogItem.default_unit,
       });
 
     if (error?.code === "23505") {
@@ -526,12 +527,6 @@ export async function manageGroceryList(
         .neq("status", "open")
         .select("id")
         .maybeSingle();
-
-      if (error?.code === "23505") {
-        return {
-          error: "Finish or archive the current list before reopening another.",
-        };
-      }
 
       if (error) {
         throw new Error(error.message);

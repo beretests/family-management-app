@@ -349,10 +349,11 @@ test.describe("parent family setup smoke flow", () => {
       page.getByRole("heading", { name: groceryListName }),
     ).toBeVisible();
 
-    const quickAddForm = page.locator("form").filter({
-      has: page.getByRole("button", { name: /Add item/ }),
-    });
-    await quickAddForm.getByLabel("Item").fill(groceryItemTitle);
+    await page.getByRole("button", { name: "Add item", exact: true }).click();
+    const quickAddForm = page.getByRole("dialog", { name: "Add item" });
+    await quickAddForm
+      .getByLabel("Item", { exact: true })
+      .fill(groceryItemTitle);
     await quickAddForm.getByLabel("Quantity").fill("2");
     await quickAddForm.getByLabel("Unit").selectOption("L");
     await quickAddForm.getByLabel("Category").selectOption("Dairy");
@@ -363,7 +364,10 @@ test.describe("parent family setup smoke flow", () => {
     });
     await expect(groceryItemCard).toContainText("2 L");
     await expect(groceryItemCard).toContainText("Unsweetened");
-    await quickAddForm.getByLabel("Item").fill(removableGroceryItemTitle);
+    await page.getByRole("button", { name: "Add item", exact: true }).click();
+    await quickAddForm
+      .getByLabel("Item", { exact: true })
+      .fill(removableGroceryItemTitle);
     await quickAddForm.getByRole("button", { name: /Add item/ }).click();
     const removableGroceryItemCard = page.locator("article").filter({
       has: page.getByRole("heading", { name: removableGroceryItemTitle }),

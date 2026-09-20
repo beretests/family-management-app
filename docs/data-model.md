@@ -219,7 +219,9 @@ calculations.
 - `grocery_list_items`: list-specific snapshots, quantities, notes, check-off
   attribution, and links back to reusable catalog items.
 
-A partial unique index allows only one open list per family. A family/name
+Phase 37 replaces the one-open-list unique index with a non-unique partial
+index on family, creation time, and ID. Multiple open lists are supported,
+and each list retains its own items and bought state. A family/name
 unique constraint uses `normalize_grocery_item_name` to collapse whitespace and
 case for catalog deduplication. Deleting a closed list cascades its list items
 but does not delete catalog items. Column-level grants keep family contributors

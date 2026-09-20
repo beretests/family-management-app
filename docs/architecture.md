@@ -232,10 +232,15 @@ Rewards and reminders flow:
 
 Grocery flow:
 
-1. `/groceries` loads the current open list, reusable family item catalog, and
+1. `/groceries` loads all open lists, reusable family item catalog, and
    recent completed or archived lists.
-2. Any active linked or Kid Mode family member can start a list when none is
-   open, add catalog or new items, check or uncheck items, and remove items.
+2. Any active linked or Kid Mode family member can start multiple lists,
+   add catalog or new items, check or uncheck items, and remove items. The list
+   selector scopes all item actions and progress to one list. Add item opens a
+   modal with searchable saved-item suggestions and editable defaults.
+   Open lists, catalog, and item reads are paginated to avoid truncated CSVs.
+   CSV downloads are generated locally from family-authorized data and include
+   only the chosen list; recent closed lists can also be downloaded.
 3. Parents can complete, archive, reopen, or manually delete lists and hide or
    restore saved catalog items.
 4. Server Actions resolve the family and actor rather than trusting submitted

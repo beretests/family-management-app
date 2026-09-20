@@ -16,7 +16,7 @@ This repository is built iteratively with the workflow in `AGENTS.md`:
 The implementation is complete through Phase 23, with the approved Phase 24
 grocery-list work ready for review. It includes Supabase Auth, family and child
 profiles, responsive schedule views, a reusable shared grocery-item catalog,
-one open household shopping list, house-based chore templates, fair
+multiple open household shopping lists, house-based chore templates, fair
 assignments, kid task submissions with private evidence, parent reviews and
 points, rewards, leaderboard, reminders, and daily retention cleanup. Completed
 or archived grocery lists are deleted after 90 days; open lists and catalog
