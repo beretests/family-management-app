@@ -51,5 +51,5 @@ export type GroceryPageData = {
   catalog: GroceryCatalogItem[];
   history: GroceryList[];
   items: GroceryListItem[];
-  openList: GroceryList | null;
+  openLists: GroceryList[];
 };

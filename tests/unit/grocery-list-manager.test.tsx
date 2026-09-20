@@ -39,7 +39,7 @@ describe("GroceryListManager", () => {
         isParent={false}
         items={[]}
         members={[]}
-        openList={null}
+        openLists={[]}
       />,
     );
 
@@ -77,17 +77,30 @@ describe("GroceryListManager", () => {
         isParent
         items={[]}
         members={[]}
-        openList={openList}
+        openLists={[openList]}
       />,
     );
 
     expect(
       screen.getByRole("heading", { name: "Weekly groceries" }),
     ).toBeVisible();
-    expect(
-      screen.getByRole("heading", { name: "Add something low" }),
-    ).toBeVisible();
-    expect(screen.getByRole("button", { name: /Milk/ })).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "Add item" }).focus();
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    const dialog = screen.getByRole("dialog", { name: "Add item" });
+    const input = within(dialog).getByRole("combobox", { name: "Item" });
+    fireEvent.change(input, { target: { value: "mil" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveValue("Milk");
+    expect(within(dialog).getByLabelText("Quantity")).toHaveValue(2);
+    expect(within(dialog).getByLabelText("Unit")).toHaveValue("L");
+    expect(within(dialog).getByLabelText("Category")).toHaveValue("Dairy");
+    expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Close add item" }),
+    );
+    expect(screen.getByRole("button", { name: "Add item" })).toHaveFocus();
     expect(screen.getByRole("button", { name: "Complete" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Archive" })).toBeVisible();
   });
@@ -116,7 +129,7 @@ describe("GroceryListManager", () => {
         isParent
         items={[]}
         members={[]}
-        openList={null}
+        openLists={[]}
       />,
     );
 

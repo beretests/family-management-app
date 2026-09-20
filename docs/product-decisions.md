@@ -91,9 +91,14 @@ responses do not disclose whether an address is registered.
 
 ## Grocery Shopping Lists
 
-Phase 24 provides one open grocery list per family. Any active family member,
-including a verified Kid Mode profile, can start the list when none exists and
-can add, check, return, or remove its items. Parents alone complete, archive,
+Phase 37 extends Phase 24 to multiple open grocery lists per family. Any active
+family member, including a verified Kid Mode profile, can start lists and add,
+check, return, or remove their items. A selector displays one open list at a
+time. Add item uses a modal with keyboard-accessible saved-grocery suggestions;
+choosing a suggestion prefills editable quantity, unit, and category defaults.
+Items already on the selected list are marked unavailable in the dropdown.
+On phones, compact icon actions stay beside item details with 44px touch targets.
+Lists can be downloaded as CSV, including bought items and notes. Parents alone complete, archive,
 reopen, or permanently delete a whole list and hide or restore saved catalog
 items.
 

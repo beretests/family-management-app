@@ -30,19 +30,22 @@ export default async function GroceriesPage() {
   }
 
   const data = await getGroceryPageData(context.family.id);
-  const remaining = data.items.filter((item) => !item.checked).length;
+  const openListIds = new Set(data.openLists.map((list) => list.id));
+  const remaining = data.items.filter(
+    (item) => openListIds.has(item.groceryListId) && !item.checked,
+  ).length;
 
   return (
     <section className="grid gap-5">
       <header className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-sm sm:p-5">
-        <StatusPill tone="success">Shared family list</StatusPill>
+        <StatusPill tone="success">Shared family lists</StatusPill>
         <h1 className="mt-4 text-2xl font-extrabold sm:text-3xl">Groceries</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
           Add groceries as they run low, check them off while shopping, and
           reuse saved items on the next list.
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
-          <Metric label="Open lists" value={data.openList ? 1 : 0} />
+          <Metric label="Open lists" value={data.openLists.length} />
           <Metric label="Still needed" value={remaining} />
           <Metric
             label="Saved items"
@@ -58,7 +61,7 @@ export default async function GroceriesPage() {
         isParent={context.currentMember.role === "parent"}
         items={data.items}
         members={context.members}
-        openList={data.openList}
+        openLists={data.openLists}
       />
     </section>
   );

@@ -157,6 +157,58 @@ indexes; explicit grants; and operation-specific RLS. Apply it before exposing
 `/groceries`. It requires no dashboard setting, Storage bucket, new secret, or
 paid Supabase feature.
 
+Phase 37 requires `20260920120000_multiple_open_grocery_lists.sql`. It removes
+only the one-open-list unique index and replaces it with a non-unique partial
+index; no rows, grants, or RLS policies change. Apply it with your normal
+migration workflow before releasing the Phase 37 app. For local development,
+run `supabase migration up --local`, then run
+`tests/sql/grocery-lists-verification.sql` with `psql -v ON_ERROR_STOP=1` against
+the local database. The SQL checks roll back their fixture data. No additional
+Supabase dashboard settings, environment variables, storage, or paid features
+are needed. Do not roll the app back to its old single-list query once families
+have multiple open lists; keep the multiple-list reader or coordinate a fix.
+
+**Applying the Phase 37 migration when using multiple projects**
+
+Run commands from the Phase 37 checkout, where the new migration exists. A new
+Git worktree does not inherit the main checkout's ignored Supabase link files.
+The main checkout was configured for `dagltdgamhmsucrxxexh` when Phase 37 was
+prepared; verify the intended project name in the dashboard/account before use.
+
+```bash
+cd /tmp/family-app-phase-37-grocery-list-improvements
+supabase projects list
+```
+
+If that account does not list the family app reference, run `supabase login`
+locally using an account with access, then repeat `supabase projects list`.
+If using a named CLI profile, pass the same `--profile` to every command.
+Only proceed when the project name and reference match the intended family app.
+
+Explicitly link this checkout, then preview pending migrations:
+
+```bash
+supabase link --project-ref dagltdgamhmsucrxxexh
+cat supabase/.temp/project-ref
+test "$(cat supabase/.temp/project-ref)" = "dagltdgamhmsucrxxexh" && supabase db push --linked --dry-run --skip-vault
+```
+
+The preview should list only
+`20260920120000_multiple_open_grocery_lists.sql`. If other migrations appear,
+review them before applying. After confirming the preview, apply and verify:
+
+```bash
+test "$(cat supabase/.temp/project-ref)" = "dagltdgamhmsucrxxexh" && supabase db push --linked --skip-vault
+supabase migration list --linked
+```
+
+Confirm `20260920120000` appears in both local and remote history. The installed
+CLI supports `--skip-vault`, which keeps this operation scoped to migrations.
+Do not use `--include-all`, seed, or reset flags for this change. Apply before
+releasing the Phase 37 application. See the
+[Supabase CLI reference](https://supabase.com/docs/reference/cli/supabase-db-push)
+for linked-project migration and dry-run behavior.
+
 Phase 26 requires `20260828210000_child_email_invitations.sql` and
 `20260828211000_fix_child_disconnect_actor.sql`. They add parent-scoped child
 invitation records, active-link uniqueness, exact-email atomic acceptance, and
@@ -252,8 +304,8 @@ After migrations, verify:
   truncation remain parent-only.
 - ICS imports use the existing schedule-event, attendee, and recurrence RLS;
   the atomic import function does not broaden those policies.
-- Active family members can read the family grocery catalog/lists, create the
-  single open list, and contribute items. Only parents can close/delete lists
+- Active family members can read the family grocery catalog/lists, create
+  multiple open lists, and contribute items. Only parents can close/delete lists
   or hide/restore catalog items. Column grants prevent contributor updates to
   relationship, attribution, and snapshot columns.
 - Children cannot approve submissions or manage parent settings/templates.

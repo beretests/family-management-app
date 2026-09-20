@@ -37,3 +37,27 @@
   official [Lucide React](https://lucide.dev/guide/react) and
   [Tailwind container-query](https://tailwindcss.com/docs/responsive-design#container-queries)
   documentation before implementation.
+
+## Phase 37: Multiple Grocery Lists and Compact Shopping UI
+
+- Allow multiple open lists by replacing the unique partial index with a
+  non-unique family/creation-time/ID index. Preserve list-specific catalog
+  uniqueness, existing actor checks, RLS, and 90-day closed-list retention.
+- Keep a selected open list in client state, defaulting to the newest available
+  list; select newly created lists and fall back when a list closes. Lists do
+  not share quantities, notes, or bought state.
+- Reuse the native-dialog Modal for Add item. The editable item combobox searches
+  saved names/categories, supports Arrow keys/Enter/Escape, and prevents choosing
+  already-added items. First Escape dismisses suggestions; second closes the
+  modal. Saved defaults can be edited or cleared for the current list.
+- Use compact icon buttons on mobile with 44px touch targets and accessible names;
+  keep visible labels on larger screens.
+- Download CSV in the browser using already-authorized data, including recent
+  closed lists. Quote/escape fields, neutralize spreadsheet formula prefixes,
+  include a UTF-8 BOM, and use safe filenames. No new endpoint, package, or
+  storage is needed. Paginate reads so row limits do not silently truncate lists.
+- No new paid services or environment variables. More lists/items consume the
+  existing database and egress quota; closed-list retention is unchanged.
+- Reviewed installed Next.js 16.3.3 server/client and mutation guides and current
+  [Next.js mutation docs](https://nextjs.org/docs/app/getting-started/mutating-data)
+  and [Supabase index docs](https://supabase.com/docs/guides/database/postgres/indexes).
